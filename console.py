@@ -1,7 +1,7 @@
 """
 Лёгкая обёртка над ScheduleParser для получения расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 1.0
+Ver: 1.1
 """
 
 from tparser import ScheduledParser
@@ -16,7 +16,7 @@ ACTION:
     parse - Проверка работы парсера расписания
     debug - Получить информацию о расписании
     class [class_let] - Изменить класс по умолчанию 
-    class [today] [class_let] - Получить расписание для класса
+    lessons [today] [class_let] - Получить расписание для класса
 
 ARGS:
     class_let - Буква класса в фомрате "9a"
@@ -56,7 +56,7 @@ def main(args):
 
         # Команды отладки
         if x == "parse":
-            sp.parse_schedule()
+            sp.get_schedule(True)
 
         if x == "debug":
             print(sp.schedule)

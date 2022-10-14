@@ -3,7 +3,7 @@
 Умеет запоминать пользователей и сообщать об изменениях в расписании.
 
 Author: Milinuri Nirvalen
-Ver: 1.0
+Ver: 1.1
 
 Modules:
     os: Провенрка существования файлов
@@ -114,7 +114,7 @@ class ScheduledParser:
         save_file(self.users_path, users)
         log(f'save user: {self.uid}')
 
-    def parse_schedule(self):
+    def parse_schedule(self, update=False):
         """Хрупкий парсер школьного распеисания."""
         
         log('Get schedule file...')
@@ -125,7 +125,7 @@ class ScheduledParser:
         
         res["updated"] = datetime.now().hour
 
-        if res.get("hash", "") == h:
+        if res.get("hash", "") == h and not update:
             log('Schedule is uptime!')
             return res
 
@@ -141,7 +141,7 @@ class ScheduledParser:
         #          lt: Расписание звонков [[Начало, Конец], [...], ...]
         class_index = {}
         sc = {}
-        dlines = [3, 11, 19, 27, 35, 43, 44]
+        dlines = [3, 11, 19, 27, 35, 43, 49]
         lessons = 8
         lt_line = 52
 
@@ -202,13 +202,14 @@ class ScheduledParser:
         
         return res
 
-    def get_schedule(self):
+    def get_schedule(self, update=False):
         """Получаем и обновляем расписание."""
 
         t = load_file(self.sc_path)
-
-        if not t or t.get('updated', 0) != datetime.now().hour:
-            t = self.parse_schedule()
+        hour = datetime.now().hour
+        
+        if not t or t.get('updated', 0) != hour or update:
+            t = self.parse_schedule(update)
             if t is not None:
                 save_file(self.sc_path, t)
                
