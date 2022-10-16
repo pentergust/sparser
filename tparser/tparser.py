@@ -238,7 +238,8 @@ class ScheduledParser:
 
         for i, x in enumerate(self.user["day_hashes"]):
             if x != day_hashes[i]:
-                res += f'\n- Изменилось расписание на {days[i]}!'
+                if x is not None:
+                    res += f'\n- Изменилось расписание на {days[i]}!'
 
                 self.user["day_hashes"][i] = day_hashes[i]
 
@@ -275,10 +276,9 @@ class ScheduledParser:
         if today > 5:
             today = 0
         
-        if class_let is None:
+        if class_let is None or class_let not in self.schedule["schedule"]:
             class_let = self.user["class_let"]
 
-        class_let = self.user["class_let"]
         weekday = days[today]
         lessons = self.schedule["schedule"][class_let][today]["lessons"]
         res = f"🏫 {class_let} расписание на {weekday}:\n"
@@ -292,7 +292,8 @@ class ScheduledParser:
 
             res += f'\n{i+1}. {x}'
 
-        res += self.get_diff_day_hashes(class_let)
+        if class_let == self.user["class_let"]:
+            res += self.get_diff_day_hashes(class_let)
 
         return res
 

@@ -1,2 +1,8 @@
+# Cpm
+cpm/
+cpm_data/
+global_index*
+
+# Timwtable
 __pycache__/
 *.json
