@@ -23,33 +23,35 @@ ARGS:
     today     - Название дня недели (понедельник - суббота)
 """
 
-days = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
+days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 
 
 def main(args):
     action = None
     class_let = None
-    today = datetime.today().weekday()+1
+    days = []
     sp = ScheduledParser("Console")
             
     # Обработка аргументов
     # ====================
 
     for x in args:
-
+         
+        
         if x in sp.schedule["schedule"]:
             class_let = x.lower()
             continue
 
         if x == "сегодня":
-            today = datetime.today().weekday()
+            days.append(datetime.today().weekday())
             continue
 
-        for i, d in enumerate(days):
+        for i, d in enumerate(days_str):
             if x.startswith(d):
-                today = i 
+                days.append(i)
                 continue
-
+        
+               
         # Вывод справка по использованию
         if x == "help":
             print(helptext)
@@ -70,8 +72,12 @@ def main(args):
         
     if action == "class":
         print(sp.set_class(class_let))
+    
     elif action == "lessons":
-        print(sp.get_lessons(today))
+        if not days:
+            days = [datetime.today().weekday()+1]
+        
+        print(sp.get_lessons(days, class_let))
     elif action is None:
         print(helptext)
 

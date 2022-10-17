@@ -35,8 +35,8 @@ url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQ
 users_path = "users.json"
 sc_path = "sc.json"
 user_data = {"class_let":"9г", "day_hashes":[None, None, None, None, None, None]}
-days = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу",
-        "расписание на сегодня", "расписание на завтра"]
+days_str = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу",
+            "расписание на сегодня", "расписание на завтра"]
 
 
 # Управоение файлами с данными
@@ -239,7 +239,7 @@ class ScheduledParser:
         for i, x in enumerate(self.user["day_hashes"]):
             if x != day_hashes[i]:
                 if x is not None:
-                    res += f'\n- Изменилось расписание на {days[i]}!'
+                    res += f'\n- Изменилось расписание на {days_str[i]}!'
 
                 self.user["day_hashes"][i] = day_hashes[i]
 
@@ -269,20 +269,22 @@ class ScheduledParser:
 
 🏫 Доступные классы: {', '.join(self.schedule['schedule'])}"""
 
-    def get_lessons(self, today=0, class_let=None):
-        """Получает расписание уроков на конкретный день."""
-
-
+    def get_day_lessons(self, today=0, class_let=None):
+        """Получает расписание уроков на день для класса.
+        
+        :param today: День недеди (0-5)
+        :param class_let: Класс, для которого нужно получить расписание
+        
+        :return: Строковое расписание на день"""
+        
+        # Ограничение дней
         if today > 5:
             today = 0
-        
-        if class_let is None or class_let not in self.schedule["schedule"]:
-            class_let = self.user["class_let"]
-
-        weekday = days[today]
+    
         lessons = self.schedule["schedule"][class_let][today]["lessons"]
-        res = f"🏫 {class_let} расписание на {weekday}:\n"
-
+        res = "\n"
+    
+        
         for i, x in enumerate(lessons):
             if not x:
                 continue
@@ -292,6 +294,24 @@ class ScheduledParser:
 
             res += f'\n{i+1}. {x}'
 
+        return res
+        
+    def get_lessons(self, days=[0], class_let=None):
+        """Получает расписание уроков на конкретный день."""
+
+        if isinstance(days, int):
+            days = [days]     
+        
+        # Проверка правильности класса
+        if class_let is None or class_let not in self.schedule["schedule"]:
+            class_let = self.user["class_let"]
+            
+        weekday = ", ".join(map(lambda x: days_str[x], days))
+        res = f"🏫 {class_let} расписание на {weekday}:"
+
+        for day in days:
+            res += self.get_day_lessons(day, class_let)
+        
         if class_let == self.user["class_let"]:
             res += self.get_diff_day_hashes(class_let)
 
