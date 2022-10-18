@@ -1,15 +1,15 @@
-[main]
+[parser]
 name = "Schedule parser"
 desc = "Парсер школьного расписания"
-ver = "1.2"
-build = 4
+ver = "1.4"
+build = 6
 files = ["tparser.py", "console.py"]
 
 [telegram]
 name = "Telegram Schedule"
 desc = "[pytelegrambotapi] Telegram бот для tparser"
-ver = "2.1"
+ver = "2.1 (SP v1.0)"
 build = 5
-authors = [ "Артём Березин", "Milinuri Nirvalen"]
+authors = [ "Артём Березин"]
 files = [ "telegram.py"]
-require = ["tparser/main"]
+require = [ "tparser/parser"]

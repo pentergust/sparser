@@ -4,7 +4,7 @@
 
 Author: Артём Березин
 Modifired: Milinuri Nirvalen
-Ver: 2.0
+Ver: 2.1 on SP 1.0
 """
 
 from tparser import ScheduledParser

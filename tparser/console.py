@@ -1,25 +1,26 @@
 """
-Лёгкая обёртка над ScheduleParser для получения расписания в консоль.
+Обёртка над ScheduleParser для получения расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 1.1
+Ver: 1.4
 """
 
 from tparser import ScheduledParser
 
-import sys
 from datetime import datetime
+import sys
 
 helptext = """Использование console.py [Action] [Args]
 
 ACTION:
-    help  - Вывести справку по командам
+    help  - Справкв по командам
     parse - Проверка работы парсера расписания
-    debug - Получить информацию о расписании
+    debug - Информацию о расписании
     class [class_let] - Изменить класс по умолчанию 
-    lessons [today] [class_let] - Получить расписание для класса
+    schedule [class_let]  - Получить расписание уроков на неделю
+    lessons [Args] - Получить расписание на день
 
 ARGS:
-    class_let - Буква класса в фомрате "9a"
+    class_let - Класс в фомрате "9a"
     today     - Название дня недели (понедельник - суббота)
 """
 
@@ -27,21 +28,23 @@ days_str = ["понедельник", "вторник", "сред", "четве�
 
 
 def main(args):
+    sp = ScheduledParser("Console")
+
     action = None
     class_let = None
     days = []
-    sp = ScheduledParser("Console")
             
     # Обработка аргументов
     # ====================
 
-    for x in args:
-         
-        
+    for x in args:    
+    
+        # Смена класса для выполнения действия
         if x in sp.schedule["schedule"]:
             class_let = x.lower()
             continue
 
+        # Устанавливаем день
         if x == "сегодня":
             days.append(datetime.today().weekday())
             continue
@@ -50,8 +53,7 @@ def main(args):
             if x.startswith(d):
                 days.append(i)
                 continue
-        
-               
+              
         # Вывод справка по использованию
         if x == "help":
             print(helptext)
@@ -63,7 +65,7 @@ def main(args):
         if x == "debug":
             print(sp.schedule)
 
-        if x in ["class", "lessons"]:
+        if x in ["class", "lessons", "schedule"]:
             action = x
 
 
@@ -78,7 +80,11 @@ def main(args):
             days = [datetime.today().weekday()+1]
         
         print(sp.get_lessons(days, class_let))
-    elif action is None:
+
+    elif action == "schedule":
+        print(sp.get_lessons([0, 1, 2, 3, 4, 5], class_let))
+
+    else:
         print(helptext)
 
 

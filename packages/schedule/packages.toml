@@ -3,5 +3,5 @@ name = "schedule"
 desc = "Получени школьного расписания в Чио"
 ver = "1.0"
 build = 1
-require = [ "tparser/main"]
+require = [ "tparser/parser"]
 type = "plugin"
