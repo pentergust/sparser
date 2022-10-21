@@ -28,9 +28,9 @@ multiple = true
 
 ["packages/schedule"]
 name = "schedule"
-desc = "Получени школьного расписания в Чио"
-ver = "1.0"
-build = 1
+desc = "Получение школьного расписания в Чио"
+ver = "SP v1.4"
+build = 2
 require = [ "tparser/parser",]
 type = "plugin"
 full_desc = "no full desc"
@@ -50,5 +50,5 @@ multiple = false
 "tparser/packages.toml" = "410ff5095e01db686ecfba2e9ef58ac3"
 
 ["packages/schedule".files]
-"packages/schedule/main.py" = "2ec6cb4ca728aa1a1082cdf7862219d3"
-"packages/schedule/packages.toml" = "79763aae314db9f393af5ee79447e59d"
+"packages/schedule/main.py" = "b6ae4497db9472237c574fcdf3741784"
+"packages/schedule/packages.toml" = "ac14fcf34f13354f0e0a70f5555fd373"
