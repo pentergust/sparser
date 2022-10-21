@@ -301,7 +301,8 @@ class ScheduledParser:
 
         # Пропускаем пустые уроки с конца списка
         while True:
-            if lessons[-1].strip() == "|":
+            l = lessons[-1].split("|")[0].strip() 
+            if not l or l == "---":
                 lessons.pop()
             else:
                 break

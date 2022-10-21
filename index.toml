@@ -2,13 +2,13 @@
 name = "Schedule parser"
 desc = "Парсер школьного расписания"
 ver = "1.4"
-build = 6
+build = 7
 full_desc = "no full desc"
 type = "package"
 groups = []
 authors = [ "Milinuri Nirvalen",]
 require = []
-used = []
+used = [ "tparser/telegram", "packages/schedule",]
 path = "./tparser"
 multiple = true
 
@@ -18,7 +18,7 @@ desc = "[pytelegrambotapi] Telegram бот для tparser"
 ver = "2.1 (SP v1.0)"
 build = 5
 authors = [ "Артём Березин",]
-require = [ "tparser/main",]
+require = [ "tparser/parser",]
 full_desc = "no full desc"
 type = "package"
 groups = []
@@ -31,7 +31,7 @@ name = "schedule"
 desc = "Получени школьного расписания в Чио"
 ver = "1.0"
 build = 1
-require = [ "tparser/main",]
+require = [ "tparser/parser",]
 type = "plugin"
 full_desc = "no full desc"
 groups = []
@@ -41,14 +41,14 @@ path = "./packages/schedule"
 multiple = false
 
 ["tparser/parser".files]
-"tparser/tparser.py" = "14dfff3fc613dc0580344072cec13adb"
-"tparser/console.py" = "140f7d43e24d5828eb8575004469d42e"
-"tparser/packages.toml" = "55edbfb9bab795bae0543071ff0e0717"
+"tparser/tparser.py" = "0fcb2da415de9eec922c78fae78dd160"
+"tparser/console.py" = "daed6ba601328c3c79d3ae8901b5cd9d"
+"tparser/packages.toml" = "410ff5095e01db686ecfba2e9ef58ac3"
 
 ["tparser/telegram".files]
 "tparser/telegram.py" = "f7192e65f3bd906da76c4817f150576d"
-"tparser/packages.toml" = "55edbfb9bab795bae0543071ff0e0717"
+"tparser/packages.toml" = "410ff5095e01db686ecfba2e9ef58ac3"
 
 ["packages/schedule".files]
 "packages/schedule/main.py" = "2ec6cb4ca728aa1a1082cdf7862219d3"
-"packages/schedule/packages.toml" = "4d763d71ad376f67fa43ff74c2627035"
+"packages/schedule/packages.toml" = "79763aae314db9f393af5ee79447e59d"

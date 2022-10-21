@@ -2,7 +2,7 @@
 name = "Schedule parser"
 desc = "Парсер школьного расписания"
 ver = "1.4"
-build = 6
+build = 7
 files = ["tparser.py", "console.py"]
 
 [telegram]

@@ -1,7 +1,7 @@
 """
 Обёртка над ScheduleParser для получения расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 1.4
+Ver: 1.4.1
 """
 
 from tparser import ScheduledParser
@@ -30,7 +30,7 @@ days_str = ["понедельник", "вторник", "сред", "четве�
 def main(args):
     sp = ScheduledParser("Console")
 
-    action = None
+    action = "lessons"
     class_let = None
     days = []
             
