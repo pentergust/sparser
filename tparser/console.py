@@ -1,7 +1,7 @@
 """
 Обёртка над ScheduleParser для получения расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 1.4.1
+Ver: 1.4.2
 """
 
 from tparser import ScheduledParser

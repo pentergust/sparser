@@ -3,7 +3,7 @@
 Умеет запоминать пользователей и сообщать об изменениях в расписании.
 
 Author: Milinuri Nirvalen
-Ver: 1.4
+Ver: 1.4.2
 
 Modules:
     os: Провенрка существования файлов
@@ -328,12 +328,34 @@ class ScheduledParser:
 
         if isinstance(days, int):
             days = [days]     
+
+        # Убираем повторы и отрезаем несуществующие дни
+        # ---------------------------------------------
+
+        temp = []
+        for d in days:
+            if d > 5:
+                d = 0
+    
+            if d not in temp:
+                temp.append(d)
+
+        days = sorted(temp)
         
         # Проверка правильности класса
         if class_let is None or class_let not in self.schedule["schedule"]:
             class_let = self.user["class_let"]
 
-        weekday = ", ".join(map(lambda x: days_str[x], days))
+        # Для каких дней получаем расписание
+        if days == [0, 1, 2, 3, 4, 5]:
+            weekday = "неделю"
+        else:
+            weekday = ", ".join(map(lambda x: days_str[x], days))
+        
+        
+        # Формируем сообщение
+        # -------------------
+
         res = f"🏫 {class_let} расписание на {weekday}:"
 
         for day in days:
@@ -355,4 +377,3 @@ class ScheduledParser:
                 
 
         return res
-

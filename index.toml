@@ -1,8 +1,8 @@
 ["tparser/parser"]
 name = "Schedule parser"
 desc = "Парсер школьного расписания"
-ver = "1.4"
-build = 7
+ver = "1.4.2"
+build = 8
 full_desc = "no full desc"
 type = "package"
 groups = []
@@ -41,13 +41,13 @@ path = "./packages/schedule"
 multiple = false
 
 ["tparser/parser".files]
-"tparser/tparser.py" = "0fcb2da415de9eec922c78fae78dd160"
-"tparser/console.py" = "daed6ba601328c3c79d3ae8901b5cd9d"
-"tparser/packages.toml" = "410ff5095e01db686ecfba2e9ef58ac3"
+"tparser/tparser.py" = "fead64bfb7116e492afbbc1c021f3fa0"
+"tparser/console.py" = "91688b7737fcdaf1a4792d7f8422e182"
+"tparser/packages.toml" = "a98489fba68320c79f4cd06fa382ff00"
 
 ["tparser/telegram".files]
 "tparser/telegram.py" = "f7192e65f3bd906da76c4817f150576d"
-"tparser/packages.toml" = "410ff5095e01db686ecfba2e9ef58ac3"
+"tparser/packages.toml" = "a98489fba68320c79f4cd06fa382ff00"
 
 ["packages/schedule".files]
 "packages/schedule/main.py" = "b6ae4497db9472237c574fcdf3741784"
