@@ -1,8 +1,8 @@
 ["tparser/parser"]
 name = "Schedule parser"
 desc = "Парсер школьного расписания"
-ver = "1.4.2"
-build = 8
+ver = "1.6"
+build = 11
 full_desc = "no full desc"
 type = "package"
 groups = []
@@ -14,8 +14,8 @@ multiple = true
 
 ["tparser/telegram"]
 name = "Telegram Schedule"
-desc = "[pytelegrambotapi] Telegram бот для tparser"
-ver = "2.1 (SP v1.0)"
+desc = "[pytelegrambotapi] Бот для отправки расписания уроков"
+ver = "sp v1.0"
 build = 5
 authors = [ "Артём Березин",]
 require = [ "tparser/parser",]
@@ -28,9 +28,9 @@ multiple = true
 
 ["packages/schedule"]
 name = "schedule"
-desc = "Получение школьного расписания в Чио"
-ver = "SP v1.4"
-build = 2
+desc = "Плагин Чио для отправки расписания уроков"
+ver = "sp v1.6"
+build = 5
 require = [ "tparser/parser",]
 type = "plugin"
 full_desc = "no full desc"
@@ -41,14 +41,14 @@ path = "./packages/schedule"
 multiple = false
 
 ["tparser/parser".files]
-"tparser/tparser.py" = "fead64bfb7116e492afbbc1c021f3fa0"
-"tparser/console.py" = "91688b7737fcdaf1a4792d7f8422e182"
-"tparser/packages.toml" = "a98489fba68320c79f4cd06fa382ff00"
+"tparser/tparser.py" = "b88d007ad296eff62df4b956ecf4b799"
+"tparser/console.py" = "e054301074e23eb231478523d2b6bbe9"
+"tparser/packages.toml" = "fb84180192383c8adac107c54b5d0d31"
 
 ["tparser/telegram".files]
-"tparser/telegram.py" = "f7192e65f3bd906da76c4817f150576d"
-"tparser/packages.toml" = "a98489fba68320c79f4cd06fa382ff00"
+"tparser/telegram.py" = "2ed28ff9cdef5b1906baa8fca83a011e"
+"tparser/packages.toml" = "fb84180192383c8adac107c54b5d0d31"
 
 ["packages/schedule".files]
-"packages/schedule/main.py" = "b6ae4497db9472237c574fcdf3741784"
-"packages/schedule/packages.toml" = "ac14fcf34f13354f0e0a70f5555fd373"
+"packages/schedule/main.py" = "0f989e6420fe471135acfd0bcfaf42b0"
+"packages/schedule/packages.toml" = "2ed2d270aab1c9cb8e5b6491be8a2409"

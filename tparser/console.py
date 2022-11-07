@@ -1,10 +1,10 @@
 """
-Обёртка над ScheduleParser для получения расписания в консоль.
+Обёртка над ScheduleParser для отправки расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 1.4.2
+Ver: 1.6
 """
 
-from tparser import ScheduledParser
+from tparser import ScheduleParser
 
 from datetime import datetime
 import sys
@@ -14,21 +14,21 @@ helptext = """Использование console.py [Action] [Args]
 ACTION:
     help  - Справкв по командам
     parse - Проверка работы парсера расписания
-    debug - Информацию о расписании
+    debug - Переработанное расписание
     class [class_let] - Изменить класс по умолчанию 
     schedule [class_let]  - Получить расписание уроков на неделю
     lessons [Args] - Получить расписание на день
 
 ARGS:
     class_let - Класс в фомрате "9a"
-    today     - Название дня недели (понедельник - суббота)
+    today     - Название дня недели (понедельник - суббота), "сегодня", "завтра"
 """
 
 days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 
 
 def main(args):
-    sp = ScheduledParser("Console")
+    sp = ScheduleParser("Console")
 
     action = "lessons"
     class_let = None
@@ -40,7 +40,7 @@ def main(args):
     for x in args:    
     
         # Смена класса для выполнения действия
-        if x in sp.schedule["schedule"]:
+        if x in sp.schedule:
             class_let = x.lower()
             continue
 
@@ -76,13 +76,14 @@ def main(args):
         print(sp.set_class(class_let))
     
     elif action == "lessons":
-        if not days:
-            days = [datetime.today().weekday()+1]
-        
-        print(sp.get_lessons(days, class_let))
+        if days:
+            print(sp.ptint_lessons(days, class_let))
+        else:
+            print(sp.print_today_lessons(class_let))
+
 
     elif action == "schedule":
-        print(sp.get_lessons([0, 1, 2, 3, 4, 5], class_let))
+        print(sp.print_lessons([0, 1, 2, 3, 4, 5], class_let))
 
     else:
         print(helptext)

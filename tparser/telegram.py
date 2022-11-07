@@ -1,13 +1,13 @@
 """
-Телеграмм бот, отправяющий школьное расписание.
+Телеграмм бот, отправляющий расписание уроков.
 Является обёрткой над SceduleParser.
 
 Author: Артём Березин
 Modifired: Milinuri Nirvalen
-Ver: 2.1 on SP 1.0
+Ver: sp 1.0
 """
 
-from tparser import ScheduledParser
+from tparser import ScheduleParser
 
 from datetime import datetime
 
@@ -74,7 +74,7 @@ def start(msg):
 @bot.message_handler(content_types=["text"])
 def handle_text(msg):
     text = msg.text.lower()
-    sp = ScheduledParser(str(msg.chat.id))
+    sp = ScheduleParser(str(msg.chat.id))
 
     if text == "/help":
         return_to_home(msg, sp)

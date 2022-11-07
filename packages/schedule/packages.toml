@@ -1,7 +1,7 @@
 [schedule]
 name = "schedule"
-desc = "Получение школьного расписания в Чио"
-ver = "SP v1.4"
-build = 2
+desc = "Плагин Чио для отправки расписания уроков"
+ver = "sp v1.6"
+build = 5
 require = [ "tparser/parser"]
 type = "plugin"
