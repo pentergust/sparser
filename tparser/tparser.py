@@ -3,7 +3,7 @@
 Умеет запоминать пользователей и сообщать об изменениях в расписании.
 
 Author: Milinuri Nirvalen
-Ver: 2.0
+Ver: 2.1
 
 Modules:
       os: Проверка существования файлов
@@ -36,7 +36,8 @@ url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQ
 users_path = "users.json"
 sc_path = "sc.json"
 
-user_data = {"class_let":"9г", "day_hashes":[None, None, None, None, None, None]}
+user_data = {"class_let":"9г", "set_class": False, "last_parse": 0, 
+             "day_hashes":[None, None, None, None, None, None]}
 timetable = [["08:00", "08:45"],
              ["08:55", "09:40"],
              ["09:55", "10:40"],
@@ -260,6 +261,11 @@ class ScheduleParser:
 
     def get_schedule_changes(self):
         """Возвращает номера дней, для которых изменилось расписание."""
+        
+        # Если расписание не обновилось, значит и хеши дней тоже
+        if self.schedule["last_parse"] == self.user["last_parse"]:
+            return []
+
         lessons = self.get_lessons()
         days = []
 
@@ -271,6 +277,7 @@ class ScheduleParser:
                     days.append(i)
                     
         if days:
+            self.user["last_parse"] = self.schedule["last_parse"]
             self.save_user()
 
         return days
@@ -289,6 +296,7 @@ class ScheduleParser:
             self.user["class_let"] = class_let
             self.user["day_hashes"] = list(map(lambda x: x["hash"],
                                                self.get_lessons(class_let)))
+            self.user["set_class"] = True
             self.save_user()
             return f"✏ Класс изменён на \"{class_let}\"!"
         
@@ -401,3 +409,16 @@ class ScheduleParser:
             today = 0
 
         return self.print_lessons(today, class_let)
+
+
+    def print_status(self):
+        last_parse = datetime.fromtimestamp(self.schedule["last_parse"])
+
+        return f"""ScheduleParser (tparser)
+Версия: 2.1 (13)
+Автор: Milinuri Nirvalen (@milinuri)
+
+Всего пользователей: {len(load_file(self.users_path))}
+Последняя проверка в {self.schedule["updated"]}:00
+Последнее обновление {last_parse.strftime("%d %h в %H:%M")}
+"""

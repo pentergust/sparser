@@ -1,7 +1,7 @@
 """
 Обёртка над ScheduleParser для отправки расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 2.0
+Ver: 2.1
 """
 
 from tparser import ScheduleParser
@@ -68,6 +68,9 @@ def main(args):
         if x == "debug":
             print(sp.schedule)
 
+        if x == "status":
+            print(sp.print_status())
+
         if x in ["class", "lessons", "week"]:
             action = x
 
@@ -90,6 +93,9 @@ def main(args):
 
     else:
         print(helptext)
+
+    if not sp.user["set_class"]:
+        print('\nПРЕДУПРЕЖДЕНИЕ: Укажите ваш класс по умолчанию')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
