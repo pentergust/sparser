@@ -1,7 +1,7 @@
 """
 Обёртка над ScheduleParser для отправки расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 1.6
+Ver: 2.0
 """
 
 from tparser import ScheduleParser
@@ -16,12 +16,12 @@ ACTION:
     parse - Проверка работы парсера расписания
     debug - Переработанное расписание
     class [class_let] - Изменить класс по умолчанию 
-    schedule [class_let]  - Получить расписание уроков на неделю
-    lessons [Args] - Получить расписание на день
+    week [class_let]  - Получить расписание уроков на неделю
+    lessons [Args] - Получить расписание уроков
 
 ARGS:
     class_let - Класс в фомрате "9a"
-    today     - Название дня недели (понедельник - суббота), "сегодня", "завтра"
+    today     - Название дня недели (понедельник - суббота), "сегодня", "завтра")
 """
 
 days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
@@ -40,7 +40,7 @@ def main(args):
     for x in args:    
     
         # Смена класса для выполнения действия
-        if x in sp.schedule:
+        if x in sp.lessons:
             class_let = x.lower()
             continue
 
@@ -48,6 +48,9 @@ def main(args):
         if x == "сегодня":
             days.append(datetime.today().weekday())
             continue
+
+        if x == "завтра":
+            days.append(datetime.today().weekday()+1)
 
         for i, d in enumerate(days_str):
             if x.startswith(d):
@@ -65,7 +68,7 @@ def main(args):
         if x == "debug":
             print(sp.schedule)
 
-        if x in ["class", "lessons", "schedule"]:
+        if x in ["class", "lessons", "week"]:
             action = x
 
 
@@ -77,18 +80,16 @@ def main(args):
     
     elif action == "lessons":
         if days:
-            print(sp.ptint_lessons(days, class_let))
+            print(sp.print_lessons(days, class_let))
         else:
             print(sp.print_today_lessons(class_let))
 
 
-    elif action == "schedule":
+    elif action == "week":
         print(sp.print_lessons([0, 1, 2, 3, 4, 5], class_let))
 
     else:
         print(helptext)
-
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])

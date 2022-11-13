@@ -87,7 +87,7 @@ def handle_text(msg):
         else:
             today = days.index(text)
 
-        bot.reply_to(msg, sp.get_lessons(today))
+        bot.reply_to(msg, sp.print_lessons(today))
     
     elif text == "выбрать класс":
         keyboard = telebot.types.ReplyKeyboardMarkup(True)
