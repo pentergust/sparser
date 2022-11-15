@@ -1,7 +1,7 @@
 """
 Обёртка над ScheduleParser для отправки расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 2.1
+Ver: 2.2
 """
 
 from tparser import ScheduleParser
@@ -14,10 +14,15 @@ helptext = """Использование console.py [Action] [Args]
 ACTION:
     help  - Справкв по командам
     parse - Проверка работы парсера расписания
+    lindex - Получить индекс уроков
     debug - Переработанное расписание
+    
     class [class_let] - Изменить класс по умолчанию 
     week [class_let]  - Получить расписание уроков на неделю
     lessons [Args] - Получить расписание уроков
+    status - Статус ScheduleParser
+    count [class_let] - Самые частые уроки
+    search [lesson] - Когда и для кого будет урок
 
 ARGS:
     class_let - Класс в фомрате "9a"
@@ -29,19 +34,27 @@ days_str = ["понедельник", "вторник", "сред", "четве�
 
 def main(args):
     sp = ScheduleParser("Console")
+    lindex = sp.get_lessons_index()
 
     action = "lessons"
     class_let = None
     days = []
-            
+    lesson = "aaa"
+
+
     # Обработка аргументов
     # ====================
 
     for x in args:    
-    
+        x = x.lower()
+
         # Смена класса для выполнения действия
         if x in sp.lessons:
             class_let = x.lower()
+            continue
+
+        if x in lindex:
+            lesson = x
             continue
 
         # Устанавливаем день
@@ -71,7 +84,10 @@ def main(args):
         if x == "status":
             print(sp.print_status())
 
-        if x in ["class", "lessons", "week"]:
+        if x == "lindex":
+            print(sp.get_lessons_index())
+
+        if x in ["class", "lessons", "week", "count", "search"]:
             action = x
 
 
@@ -90,6 +106,12 @@ def main(args):
 
     elif action == "week":
         print(sp.print_lessons([0, 1, 2, 3, 4, 5], class_let))
+
+    elif action == "count":
+        print(sp.count_lessons(class_let))
+
+    elif action == "search":
+        print(sp.search_lesson(lesson))
 
     else:
         print(helptext)

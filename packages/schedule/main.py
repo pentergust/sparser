@@ -1,8 +1,9 @@
 """
 Плагин Чио для отправки школьного расписания.
 Обёртка над ScheduleParser
+
 Author: Milinuri Nirvalen
-Ver: sp 2.1
+Ver: sp 2.2
 """
 
 from core import Plugin
@@ -37,7 +38,7 @@ async def lessons(event, ctx):
             days.append(datetime.today().weekday())
 
         if x == "завтра":
-            days.append(datetime.today().weekday())+1
+            days.append(datetime.today().weekday()+1)
 
 
     if days:
@@ -64,12 +65,29 @@ async def schedule(event, ctx):
 
 
 @p.command('класс', usage='[class_let] сменить класс по умолчанию')
-async def set_class(event, ctx):
+async def setClass(event, ctx):
     sp = ScheduleParser(str(event.get('to.id')))
     await ctx.message(sp.set_class(ctx.sargs.lower()))
 
 
 @p.command('tparser', usage='Статус парсера школьного расписания')
-async def tparserstatus(event, ctx):
+async def tparserStatus(event, ctx):
     sp = ScheduleParser(str(event.get('to.id')))
     await ctx.message(sp.print_status())
+
+
+@p.command('<lesson(s) c(count)>', usage='[class_let] самые частые уроки')
+async def countLessons(event, ctx):
+    sp = ScheduleParser(str(event.get('to.id')))
+    
+    if ctx.sargs:
+        res = sp.count_lessons(ctx.sargs)
+    else:
+        res = sp.count_lessons()
+
+    await ctx.message(res)
+
+@p.command('<lessons s(earch)>', usage='[lesson] Когда будет урок')
+async def searchLessons(event, ctx):
+    sp = ScheduleParser(str(event.get('to.id')))
+    await ctx.message(sp.search_lesson(ctx.sargs))

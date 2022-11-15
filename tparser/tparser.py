@@ -3,7 +3,7 @@
 Умеет запоминать пользователей и сообщать об изменениях в расписании.
 
 Author: Milinuri Nirvalen
-Ver: 2.1
+Ver: 2.2
 
 Modules:
       os: Проверка существования файлов
@@ -282,6 +282,128 @@ class ScheduleParser:
 
         return days
 
+    # Индекс уроков
+    # =============
+
+    def get_lessons_index(self):
+        """Получает информацию об уроках в расписании.
+        Имена уроков, для кого и когда."""
+
+        lessons = {}
+
+        for k, v in self.lessons.items():
+            for day, day_lessons in enumerate(v):
+                for i, lesson in enumerate(day_lessons["lessons"]):
+
+                    lesson = lesson.lower().split("|")[0].strip(" .")
+                    lesson = lesson.replace('-', '=')
+
+                    if lesson not in lessons:
+                        lessons[lesson] = {}
+
+                    if k not in lessons[lesson]:
+                        lessons[lesson][k] = [[] for x in range(6)]
+
+                    lessons[lesson][k][day].append(i)
+
+        return lessons
+
+    def count_lessons(self, class_let=None):
+        """Считает частоту уроков в расписании.
+        Для всех или определённого класса.
+
+        :param class_let: Для какого класса произвести подсчёт
+
+        :returns: Сообщение с самыми частыми классами"""
+
+        if class_let is not None:
+            class_let = self.get_class(class_let)
+
+        res = ""
+        lindex = self.get_lessons_index()
+        data = {}
+        groups = {}
+
+
+        # Считаем частоту предметов
+        # -------------------------
+
+        for lesson, v in lindex.items():
+            if class_let:
+                if class_let in v:
+                    data[lesson] = sum(map(len, v[class_let]))
+
+            else:
+                data[lesson] = sum(map(lambda x: sum(map(len, x)), v.values()))
+
+        for k, v in data.items():
+            if str(v) not in groups:
+                groups[str(v)] = []
+
+            groups[str(v)].append(k)
+            
+
+        # Собираем сообщение
+        # ------------------
+
+        if class_let:
+            res += f"✨ Самые частые уроки у {class_let} ({len(data)}):\n"
+        else:
+            res += f"✨ Самые частые уроки ({len(data)}):\n"
+
+        for k, v in sorted(groups.items(), key=lambda x: int(x[0]), reverse=True):
+            res += f"\n-- {k} раз(а): {', '.join(v)}; "
+
+        return res
+
+    def search_lesson(self, lesson):
+        """Когда и для кого будет проведён урок.
+
+        :param lesson: Урок, который нужно найти
+
+        :returns: Сообщение с результатами поиска."""
+
+        lindex = self.get_lessons_index()
+
+        if lesson not in lindex:
+            return f"""❗Неправильно указан предмет:
+🏫 Доступные предметы {len(lindex)}: {'; '.join(lindex)}"""
+
+
+        # Собираем данные
+        # ---------------
+
+        data = [[[] for x in range(8)] for x in range(6)]
+
+        for class_let, v in lindex[lesson].items():
+            for day, lesson_numbers in enumerate(v):
+                for lesson_number in lesson_numbers:
+
+                    data[day][lesson_number].append(class_let)
+
+
+        # Собираем сообщение
+        # ------------------
+
+        res = f"🔎 Поиск {lesson}:"
+
+        for day, x in enumerate(data):
+            day_str = ""
+
+            for i, xx in enumerate(x):
+                if xx:
+                    tt = ""
+
+                    if i < len(timetable):
+                        tt = f'В {timetable[i][0]} '
+
+                    day_str += f"\n{i+1}. {tt}для: {', '.join(xx)}"
+
+            if day_str:
+                res += f'\n\n⏰ В {days_str[day]}:{day_str}'
+
+        return res 
+
 
     # Методы представления
     # ====================
@@ -303,7 +425,7 @@ class ScheduleParser:
         else:
             return f"""❗Класс указан неправильно.
 🔎 Укажите свой класс в формате "1А"
-🏫 Доступные классы: {'; '.join(self.lessons)}"""
+🏫 Доступные классы {len(self.lessons)}: {'; '.join(self.lessons)}"""
 
     def print_day_lessons(self, today=0, class_let=None):
         """Сообщение с расписанием уроков на день.
@@ -413,12 +535,15 @@ class ScheduleParser:
 
     def print_status(self):
         last_parse = datetime.fromtimestamp(self.schedule["last_parse"])
+        lindex = self.get_lessons_index()
 
         return f"""ScheduleParser (tparser)
-Версия: 2.1 (13)
+Версия: 2.2 (15)
 Автор: Milinuri Nirvalen (@milinuri)
 
 Всего пользователей: {len(load_file(self.users_path))}
 Последняя проверка в {self.schedule["updated"]}:00
 Последнее обновление {last_parse.strftime("%d %h в %H:%M")}
+Всего классов: {len(self.lessons)}
+Всего ~{len(lindex)} предметов
 """
