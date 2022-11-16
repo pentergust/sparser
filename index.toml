@@ -29,8 +29,8 @@ multiple = true
 ["packages/schedule"]
 name = "schedule"
 desc = "Плагин Чио для отправки расписания уроков"
-ver = "sp v2.2"
-build = 7
+ver = "sp v2.2.1"
+build = 8
 require = [ "tparser/parser",]
 type = "plugin"
 full_desc = "no full desc"
@@ -50,5 +50,5 @@ multiple = false
 "tparser/packages.toml" = "be66af15a593176b1f495273c410ab99"
 
 ["packages/schedule".files]
-"packages/schedule/main.py" = "81d8b8c01686f38fa10395c16d9f6a60"
-"packages/schedule/packages.toml" = "8d59ff4dacaf7f0107d8a832c0727e10"
+"packages/schedule/main.py" = "e9901adeb497210c373a143612b969e5"
+"packages/schedule/packages.toml" = "5cb26f9e7e826767c79480550c4e4e3d"
