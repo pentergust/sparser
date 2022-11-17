@@ -3,7 +3,7 @@
 Обёртка над ScheduleParser
 
 Author: Milinuri Nirvalen
-Ver: sp 2.2
+Ver: sp 2.3
 """
 
 from core import Plugin, Config
@@ -95,10 +95,17 @@ async def autopost(event, ctx):
 # Основные команды
 # ================
 
+@p.command('класс', usage='[class_let] сменить класс по умолчанию')
+async def setClass(event, ctx):
+    sp = ScheduleParser(str(event.get('to.id')))
+    await ctx.message(sp.set_class(ctx.sargs.lower()))
+
+
 @p.command("уроки", usage="[class_let; day] расписание на день")
 async def lessons(event, ctx):
     uid = str(event.get("to.id"))
     sp = ScheduleParser(uid)
+    lindex = sp.get_lessons_index()
     
     # Обновление данных автопоста
     # ---------------------------
@@ -110,7 +117,11 @@ async def lessons(event, ctx):
         c.save()
 
 
+    # Обработка аргументов
+    # --------------------
+
     class_let = None
+    lesson = None
     days = []
     
     for x in ctx.args:
@@ -118,6 +129,9 @@ async def lessons(event, ctx):
 
         if x in sp.lessons:
             class_let = x
+
+        if x in lindex:
+            lesson = x
 
         for i, d in enumerate(days_str):
             if x.startswith(d) and i not in days:
@@ -130,7 +144,12 @@ async def lessons(event, ctx):
             days.append(datetime.today().weekday()+1)
 
 
-    if days:
+    # Сборка сообщения
+    # ----------------
+
+    if lesson:
+        res = sp.search_lesson(lesson, days)
+    elif days:
         res = sp.print_lessons(days, class_let)
     else:
         res = sp.print_today_lessons(class_let)
@@ -162,10 +181,6 @@ async def schedule(event, ctx):
 
     await ctx.message(res)
 
-@p.command('класс', usage='[class_let] сменить класс по умолчанию')
-async def setClass(event, ctx):
-    sp = ScheduleParser(str(event.get('to.id')))
-    await ctx.message(sp.set_class(ctx.sargs.lower()))
 
 
 # Расширенные команды
@@ -179,15 +194,4 @@ async def tparserStatus(event, ctx):
 @p.command('<lesson(s) c(count)>', usage='[class_let] самые частые уроки')
 async def countLessons(event, ctx):
     sp = ScheduleParser(str(event.get('to.id')))
-    
-    if ctx.sargs:
-        res = sp.count_lessons(ctx.sargs)
-    else:
-        res = sp.count_lessons()
-
-    await ctx.message(res)
-
-@p.command('<lessons s(earch)>', usage='[lesson] Когда будет урок')
-async def searchLessons(event, ctx):
-    sp = ScheduleParser(str(event.get('to.id')))
-    await ctx.message(sp.search_lesson(ctx.sargs))
+    await ctx.message(sp.count_lessons(ctx.sargs or None))
