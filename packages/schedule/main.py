@@ -3,7 +3,7 @@
 Обёртка над ScheduleParser
 
 Author: Milinuri Nirvalen
-Ver: sp 2.3
+Ver: sp 2.4.1
 """
 
 from core import Plugin, Config
@@ -15,7 +15,7 @@ from datetime import datetime
 p = Plugin('Расписание', desc='Отправляет вам расписание уроков')
 
 days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
-set_class_message = f"""\n\n⚠️ Поажлуйста, укажите класс по умолчанию: /класс [Ващ класс]"""
+set_class_message = f"""\n\n⚠️ Поажлуйста, укажите класс по умолчанию: /класс [Ваш класс]"""
 
 config_path = "data/tparser_autopost.toml"
 user_base = {"autopost_hour":17, "hour":0, "day":0}
@@ -53,6 +53,7 @@ async def _(event, ctx):
     for x in autopost_targets:
         sp = ScheduleParser(x)
         await ctx.message(sp.print_today_lessons(), peer_id=x)
+
 
 # Настройка автопоста
 # ===================
@@ -174,7 +175,11 @@ async def schedule(event, ctx):
         c.save()
 
 
-    res = sp.print_lessons([0, 1, 2, 3, 4, 5], ctx.sargs.lower())
+    if ctx.sargs.lower() in ["changes", "изменения"]:
+        res = sp.print_sc_changes()
+    else:
+        res = sp.print_lessons([0, 1, 2, 3, 4, 5], ctx.sargs.lower())
+        res += f'\n\n/расписание изменения - что нового в расписании'
 
     if not ctx.sargs and not sp.user["set_class"]:
         res += set_class_message
@@ -186,12 +191,12 @@ async def schedule(event, ctx):
 # Расширенные команды
 # ===================
 
-@p.command('tparser', usage='Статус парсера школьного расписания')
+@p.command('tparser', usage='Статус парсера расписания')
 async def tparserStatus(event, ctx):
     sp = ScheduleParser(str(event.get('to.id')))
     await ctx.message(sp.print_status())
 
-@p.command('<lesson(s) c(count)>', usage='[class_let] самые частые уроки')
+@p.command('<lesson(s) c(ount)>', usage='[class_let] самые частые уроки')
 async def countLessons(event, ctx):
     sp = ScheduleParser(str(event.get('to.id')))
     await ctx.message(sp.count_lessons(ctx.sargs or None))

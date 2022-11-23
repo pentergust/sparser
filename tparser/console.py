@@ -1,7 +1,7 @@
 """
 Обёртка над ScheduleParser для отправки расписания в консоль.
 Author: Milinuri Nirvalen
-Ver: 2.2
+Ver: 2.4.1
 """
 
 from tparser import ScheduleParser
@@ -23,6 +23,7 @@ ACTION:
     status - Статус ScheduleParser
     count [class_let] - Самые частые уроки
     search [lesson] - Когда и для кого будет урок
+    changes - Просмотреть изменения в расписании
 
 ARGS:
     class_let - Класс в фомрате "9a"
@@ -86,6 +87,9 @@ def main(args):
 
         if x == "lindex":
             print(sp.get_lessons_index())
+
+        if x == "changes":
+            print(sp.print_sc_changes())
 
         if x in ["class", "lessons", "week", "count", "search"]:
             action = x

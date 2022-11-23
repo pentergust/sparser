@@ -7,7 +7,7 @@
 - Поиск по предмету.
 
 Author: Milinuri Nirvalen
-Ver: 2.3
+Ver: 2.4.1
 
 Modules:
       os: Проверка существования файлов
@@ -25,7 +25,7 @@ import hashlib
 import requests
 from datetime import datetime
 
-from icecream import ic
+# from icecream import ic
 
 
 """
@@ -41,9 +41,8 @@ from icecream import ic
 url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=csv"
 users_path = "users.json"
 sc_path = "sc.json"
-
-user_data = {"class_let":"9г", "set_class": False, "last_parse": 0, 
-             "day_hashes":[None, None, None, None, None, None]}
+sc_updates_path = "sc_updates.json"
+user_data = {"class_let":"9г", "set_class": False, "last_parse": 0}
 timetable = [["08:00", "08:45"],
              ["08:55", "09:40"],
              ["09:55", "10:40"],
@@ -69,7 +68,7 @@ def save_file(path, data):
     :return: data"""
 
     with open(path, 'w') as f:
-        f.write(json.dumps(data, indent=4))
+        f.write(json.dumps(data, indent=4, ensure_ascii=False))
     return data
 
 def load_file(path, data={}):
@@ -109,10 +108,12 @@ class ScheduleParser:
     :param users_file: Неcтандартный путь к файлу пользователей
     """
     
-    def __init__(self, uid, sc_file=sc_path, users_file=users_path):
+    def __init__(self, uid, sc_file=sc_path, sc_updates_file=sc_updates_path,
+                 users_file=users_path):
         super(ScheduleParser, self).__init__()
         self.uid = uid
         self.sc_path = sc_file
+        self.sc_updates_path = sc_updates_file
         self.users_path = users_file
 
         # Получаем данные пользователя и расписание
@@ -227,6 +228,56 @@ class ScheduleParser:
 
         return lessons
 
+    def get_schedule_diff(self, old_t, new_t):
+        """Делает полное сравнение двух расписаний."""
+
+        res = [{} for x in range(6)]
+
+        for k, v in new_t.items():
+            if not k in old_t:
+                continue
+
+            old_v = old_t[k]
+
+            for day, lessons in enumerate(v):
+                if lessons["hash"] == old_v[day]["hash"]:
+                    continue
+
+                o_lessons = old_v[day]["l"]
+                for lesson_n, lesson in enumerate(lessons["l"]):
+                    if lesson_n >= len(o_lessons):
+                        o_lesson = ["", ""]
+                    else:
+                        o_lesson = o_lessons[lesson_n]
+
+                    if k not in res[day]:
+                        res[day][k] = []
+
+                    if lesson != o_lesson: 
+                        res[day][k].append(f'{lesson_n+1}: {o_lesson[0]} -> {lesson[0]}')
+                    else:
+                        res[day][k].append(f'{lesson_n+1}: {lesson[0]}')
+
+        return res
+
+    def update_diff_file(self, old_t, new_t):
+        log('Update diff file...')
+
+        sc_changes = load_file(self.sc_updates_path)
+        day = int(datetime.now().strftime('%j'))        
+        
+        if sc_changes.get("day", 0) != day:
+            sc_changes = {"day":day, "changes":[]}
+
+        diff = self.get_schedule_diff(old_t.get("lessons", {}), 
+                                      new_t["lessons"])
+
+        if sum(map(len, diff)):
+            sc_changes["changes"].append({"time": new_t["last_parse"],
+                                          "diff": diff})
+
+        save_file(self.sc_updates_path, sc_changes)
+
     def get_schedule(self, update=False):
         """Получает и обновляет расписание.
         :param update: Принудительное обновление расписания
@@ -235,11 +286,13 @@ class ScheduleParser:
 
         log(f'{"Update" if update else "Get"} {self.uid} schedule')
 
-        hour = datetime.now().hour        
+        now = datetime.now()
+        hour = now.hour
         t = load_file(self.sc_path)
         
         # Обновляем данные расписания
         if not t or t.get('updated', 0) != hour or update:
+            old_t = t.copy()
             csv_file = requests.get(url).content
             h = hashlib.md5(csv_file).hexdigest()
 
@@ -248,6 +301,7 @@ class ScheduleParser:
                 t["last_parse"] = datetime.timestamp(datetime.now())
                 t["hash"] = h
 
+                self.update_diff_file(old_t, t)
             else:
                 log("Schedule is up to date")
 
@@ -310,25 +364,44 @@ class ScheduleParser:
         if self.schedule["last_parse"] == self.user["last_parse"]:
             return []
 
+        sc_changes = load_file(self.sc_updates_path)
         lessons = self.get_lessons()
         days = []
 
-        for i, x in enumerate(self.user["day_hashes"]):
-            if x != lessons[i]["hash"]:
-                self.user["day_hashes"][i] = lessons[i]["hash"]
-
-                if x:
-                    days.append(i)
-                    
-        if days:
-            self.user["last_parse"] = self.schedule["last_parse"]
-            self.save_user()
-
-        return days
+        self.user["last_parse"] = self.schedule["last_parse"]
+        # self.save_user()
+        
+        for x in sc_changes["changes"]:
+            for day, changes in enumerate(x["diff"]):
+                if changes.get(self.user["class_let"]):
+                    days.append(day)
+ 
+        return set(days)
 
 
     # Методы представления
     # ====================
+
+    def print_sc_changes(self):
+        """Отобразить измененив в расписании."""
+
+        sc_changes = load_file(self.sc_updates_path)
+
+        res = "Обновления в расписании:"
+
+        for x in sc_changes["changes"]:
+            t = datetime.fromtimestamp(x["time"]).strftime("%H:%M:%S")
+            res += f'\n⏰ Примерно в {t}:'
+
+            for day, changes in enumerate(x["diff"]):
+                if changes:
+                    res += f"\nНа {days_str[day]}:\n"
+                    
+                    for k, v in changes.items():
+                        changes_str = '\n'.join(v)
+                        res += f"\n🔶 Для {k}:\n{changes_str}\n"
+
+        return res
 
     def count_lessons(self, class_let=None):
         """Считает частоту уроков в расписании.
@@ -433,9 +506,8 @@ class ScheduleParser:
         
         if class_let in self.lessons:
             self.user["class_let"] = class_let
-            self.user["day_hashes"] = list(map(lambda x: x["hash"],
-                                               self.get_lessons(class_let)))
             self.user["set_class"] = True
+            self.user["last_parse"] = self.schedule["last_parse"]
             self.save_user()
             return f'✏ Установлен класс "{class_let}".'
         
@@ -461,10 +533,6 @@ class ScheduleParser:
         # Собираем сообщение с расписанием
         for i, x in enumerate(lessons):
             tt = ""
-
-            if x[0].strip() == "|":
-                x[0] = "---"
-
             if i < len(timetable):
                 tt = f" {timetable[i][0]}"
             
@@ -512,11 +580,11 @@ class ScheduleParser:
         
         if class_let == self.user["class_let"]:
             updates = self.get_schedule_changes()
-            updates = set(updates) - days
-
+            
             if updates:
                 res += f"\n\n🎉 Изменилось расписание!\n"
 
+                updates = updates - days
                 if len(updates) < 3:
                     for day in updates:
                         res += f"\n* На {days_str[day]}:{self.print_day_lessons(day)}\n" 
@@ -534,15 +602,14 @@ class ScheduleParser:
         :return: Сообщение с расписанием"""
 
         now = datetime.now()
-        today = now.weekday()
-
-        if today < 6:
-            lessons = self.get_lessons(class_let)
-            hour = int(timetable[len(lessons[today]["l"])-1][1].split(':')[0])
-            
-            if now.hour >= hour:
-                today += 1 
-        else:
+        today = min(now.weekday(), 5)
+        lessons = self.get_lessons(class_let)
+        hour = int(timetable[len(lessons[today]["l"])-1][1].split(':')[0])
+        
+        if now.hour >= hour:
+            today += 1 
+        
+        if today > 5:
             today = 0
 
         return self.print_lessons(today, class_let)
@@ -552,7 +619,7 @@ class ScheduleParser:
         lindex = self.get_lessons_index()
 
         return f"""ScheduleParser (tparser)
-Версия: 2.3 (16)
+Версия: 2.4 (19)
 Автор: Milinuri Nirvalen (@milinuri)
 
 * Пользователей: {len(load_file(self.users_path))}
