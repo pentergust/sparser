@@ -1,37 +1,37 @@
-["tparser/parser"]
-name = "Schedule parser"
+["sparser/sp"]
+name = "Schedule Parser"
 desc = "Парсер школьного расписания"
 ver = "2.4.1"
-build = 19
+build = 20
 full_desc = "no full desc"
 type = "package"
 groups = []
 authors = [ "Milinuri Nirvalen",]
 require = []
-used = [ "tparser/telegram", "packages/schedule",]
-path = "./tparser"
+used = [ "sparser/telegram", "packages/schedule",]
+path = "./sparser"
 multiple = true
 
-["tparser/telegram"]
+["sparser/telegram"]
 name = "Telegram Schedule"
 desc = "[pytelegrambotapi] Бот для отправки расписания уроков"
 ver = "sp v1.0"
 build = 5
 authors = [ "Артём Березин",]
-require = [ "tparser/parser",]
+require = [ "sparser/sp",]
 full_desc = "no full desc"
 type = "package"
 groups = []
 used = []
-path = "./tparser"
+path = "./sparser"
 multiple = true
 
 ["packages/schedule"]
-name = "schedule"
+name = "Chio Schedule"
 desc = "Плагин Чио для отправки расписания уроков"
-ver = "sp v2.3"
+ver = "sp v2.4.1"
 build = 10
-require = [ "tparser/parser",]
+require = [ "sparser/sp",]
 type = "plugin"
 full_desc = "no full desc"
 groups = []
@@ -40,15 +40,15 @@ used = []
 path = "./packages/schedule"
 multiple = false
 
-["tparser/parser".files]
-"tparser/tparser.py" = "c1926e1781b81a016dc545a67cb23ba5"
-"tparser/console.py" = "5b618937f1f9918a146322170cb12069"
-"tparser/packages.toml" = "d342e0db2653cd0094fee6d4e132b6ad"
+["sparser/sp".files]
+"sparser/sparser.py" = "fc1f31439cd6e41812598e30462a875a"
+"sparser/console.py" = "247d1d1cd53fb91e09a7e43b00f2743a"
+"sparser/packages.toml" = "798b227aa4df45894898c42933f339ce"
 
-["tparser/telegram".files]
-"tparser/telegram.py" = "2ed28ff9cdef5b1906baa8fca83a011e"
-"tparser/packages.toml" = "d342e0db2653cd0094fee6d4e132b6ad"
+["sparser/telegram".files]
+"sparser/telegram.py" = "81426040334b5201107d62d7c5c35585"
+"sparser/packages.toml" = "798b227aa4df45894898c42933f339ce"
 
 ["packages/schedule".files]
-"packages/schedule/main.py" = "59d0b3fad5b579bc6b1380805cbb7ee5"
-"packages/schedule/packages.toml" = "a70567ad7825cd718133e1b3b33976cc"
+"packages/schedule/main.py" = "44485d261de8564b3970eeb5036a99f9"
+"packages/schedule/packages.toml" = "bd0741ac659b1b637c0a11174928e838"

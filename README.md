@@ -1,4 +1,4 @@
-# Tparser
+# sparser
 
 > Парсер школьного расписания.
 
@@ -22,12 +22,12 @@
 Больше о `cpm` и как им пользоваться описано в его репозитории.
 
 ```sh
-# Добавляем репозиторий tparser в cpm
-echo "\n[tparser]\nurl = \"https://notabug.org/pentergust/tparser/raw/master/\"" >> cpm_data/repositories.toml
+# Добавляем репозиторий sparser в cpm
+echo "\n[sparser]\nurl = \"https://notabug.org/pentergust/sparser/raw/master/\"" >> cpm_data/repositories.toml
 
 # Устанавливаем парсер расписания
 python cpm update
-python cpm install tparser/parser
+python cpm install sparser/sp
 ```
 
 
@@ -61,14 +61,14 @@ python cpm install tparser/parser
 
 ## Console
 
-Поддерживает все 147% возможностей парсера.
+Поддерживает все 100% возможностей парсера.
 Поставляется вместе с парсером.
 Полезен для отладки и как пример использования парсера.
 Прост в использовании.
 
 ```sh
 # Просмотр справки по командам
-python tparser/console.py helpы
+python sparser/console.py --help
 ```
 
 ## Telegram
@@ -87,23 +87,23 @@ python tparser/console.py helpы
 
 ```sh
 # Установка (через cpm)
-python cpm install tparser.tparser/telegram
+python cpm install sparser.sparser/telegram
 
 # Запуск telegram бота
-python tparser/telegram.py
+python sparser/telegram.py
 ```
 
 ## Chio Plugin
 
 Поддерживаются 100% возможностей пасрера.
 Как установить и запустить Чио описано в её собственном репозитории.
-Есть реализация "оенивого" автопоста расписания.
+Есть реализация "ленивого" автопоста расписания.
 Довольно простые команды.
 
 
 ```sh
 # Установка плагина
-python cpm install tparser.packages/schedule
+python cpm install sparser.packages/schedule
 ```
 - `/автопост`: Настройка автопоста расписания
 - `/класс [class_let]`: Изменить класс по умолчанию на `class_let`
@@ -117,7 +117,7 @@ python cpm install tparser.packages/schedule
   - Если ничего не указать, получаем расписание на неделю для класса по умолчанию
   - Если указать класс, получаем расписание на неделю для этого класса
   - Если указать "изменения", получаем изменения в расписании 
-- `/tparser`: Информация о парсере
+- `/sparser`: Информация о парсере
 - `/clessons [class_let]`: Самыек частые уроки (всего/класс) 
 
 Более подробно, с примерами и скриншотами описана в группе [Чио](https://vk.com/chiorin).

@@ -369,7 +369,7 @@ class ScheduleParser:
         days = []
 
         self.user["last_parse"] = self.schedule["last_parse"]
-        # self.save_user()
+        self.save_user()
         
         for x in sc_changes["changes"]:
             for day, changes in enumerate(x["diff"]):
@@ -618,7 +618,7 @@ class ScheduleParser:
         last_parse = datetime.fromtimestamp(self.schedule["last_parse"])
         lindex = self.get_lessons_index()
 
-        return f"""ScheduleParser (tparser)
+        return f"""SP: ScheduleParser 
 Версия: 2.4 (19)
 Автор: Milinuri Nirvalen (@milinuri)
 

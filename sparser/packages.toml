@@ -1,0 +1,15 @@
+[sp]
+name = "Schedule Parser"
+desc = "Парсер школьного расписания"
+ver = "2.4.1"
+build = 20
+files = ["sparser.py", "console.py"]
+
+[telegram]
+name = "Telegram Schedule"
+desc = "[УСТАРЕЛ!] [pytelegrambotapi] Бот для отправки расписания уроков"
+ver = "sp v1.0"
+build = 5
+authors = [ "Артём Березин"]
+files = [ "telegram.py"]
+require = [ "sparser/sp"]

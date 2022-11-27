@@ -7,10 +7,8 @@ Modifired: Milinuri Nirvalen
 Ver: sp 1.0
 """
 
-from tparser import ScheduleParser
-
+from sparser import ScheduleParser
 from datetime import datetime
-
 import telebot
 
 

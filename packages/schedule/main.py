@@ -7,7 +7,7 @@ Ver: sp 2.4.1
 """
 
 from core import Plugin, Config
-from tparser.tparser import ScheduleParser
+from sparser.sparser import ScheduleParser
 
 from datetime import datetime
 
@@ -17,13 +17,13 @@ p = Plugin('Расписание', desc='Отправляет вам распи�
 days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 set_class_message = f"""\n\n⚠️ Поажлуйста, укажите класс по умолчанию: /класс [Ваш класс]"""
 
-config_path = "data/tparser_autopost.toml"
+config_path = "data/sparser_autopost.toml"
 user_base = {"autopost_hour":17, "hour":0, "day":0}
 
 
 @p.eventHandler('after')
 async def _(event, ctx):
-    p.log('Check tparser_autopost')
+    p.log('Check sparser_autopost')
 
     c = Config(filepath=config_path)
     day = int(datetime.today().strftime('%j'))
@@ -191,8 +191,8 @@ async def schedule(event, ctx):
 # Расширенные команды
 # ===================
 
-@p.command('tparser', usage='Статус парсера расписания')
-async def tparserStatus(event, ctx):
+@p.command('sparser', usage='Статус парсера расписания')
+async def sparserStatus(event, ctx):
     sp = ScheduleParser(str(event.get('to.id')))
     await ctx.message(sp.print_status())
 
