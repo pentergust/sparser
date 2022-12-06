@@ -1,21 +1,22 @@
 """
-Самостоятельный парсер школьного расписания.
-- Преобразование расписания в удобнгый формат.
-- Просмотр расписания.
-- Сообщение об изменении в расписании.
-- Статистика по предметам.
-- Поиск по предмету.
+Самостоятельный парсер школьного расписания уроков.
+
+- Преобразование расписания в удобный формат
+- Просмотр расписания
+- Сообщение об изменении в расписании
+- Статистика по предметам
+- Поиск по предмету
 
 Author: Milinuri Nirvalen
-Ver: 2.4.1
+Ver: 3.1
 
 Modules:
       os: Проверка существования файлов
     json: Управление файлами
      csv: Чтение CSV файла расписания
  hashlib: Работа с хеш-суммами
-requests: Получение файла расписания
-datetime: Работа с датой
+requests: Загрузка файла расписания
+datetime: Работа с датой и временем
 """
 
 import os
@@ -25,18 +26,9 @@ import hashlib
 import requests
 from datetime import datetime
 
-# from icecream import ic
 
-
-"""
-Настройки скрипта
-------------------
-    url       : Ссылка на загрузку CSV файла расписания
-    users_path: Путь по умолчанию к файлу данных пользователей
-    sc_path   : Путь по умолчанию к файлу расписания
-    user_data : Информация о пользователе по умолчанию
-    timetable : Расписание звонков [[Начало, Конец], [...]...]
-"""
+# Параметры парсера по умолчанию
+# ==============================
 
 url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=csv"
 users_path = "users.json"
@@ -65,7 +57,7 @@ def save_file(path, data):
     :param path: Путь к файлу для записи
     :param data: Данные для записи
 
-    :return: data"""
+    :returns: data"""
 
     with open(path, 'w') as f:
         f.write(json.dumps(data, indent=4, ensure_ascii=False))
@@ -100,34 +92,82 @@ def group_log(text):
     print(f'{log_prefix}\033[96m:\033[94m: \033[0m\033[1m{text}\033[0m')
 
 
+# Работа с расписанием
+# ====================
+
+def get_sc_diff(a, b):
+    """Делает полное сравнение двух расписаний.
+
+    :param a: Пераое расписание уроков (старое)
+    :param b: Второе расписание уроков (новое)
+
+    :returns: Разница между двумя расписаниями"""
+
+    res = [{} for x in range(6)]
+
+    # Пробегаемся по новому расписанию
+    for k, v in b.items():
+
+        # Если класса нет в старом расписании - пропускаем
+        if not k in a:
+            continue
+
+        av = a[k]
+
+        # Пробегаемся по дням недели в новом расписании
+        for d, lessons in enumerate(v):
+            if lessons["hash"] == av[d]["hash"]:
+                continue
+
+            a_lessons = av[d]["l"]
+            
+            # n - номер урока; l - название урока
+            for n, l in enumerate(lessons["l"]):
+                if n >= len(a_lessons):
+                    al = ["", ""]
+                else:
+                    al = a_lessons[n]
+
+                if k not in res[d]:
+                    res[d][k] = []
+
+                if l != al: 
+                    res[d][k].append([al, l])
+                else:
+                    res[d][k].append([l, None])
+
+    return res
+
+
 class ScheduleParser:
-    """Парсер школьного расписание
+    """Парсер школьного расписания уроков
     
-    :param uid: User ID или кто работает с расписанием
-    :param sc_file: Нестандартный путь к файлу расписания
-    :param users_file: Неcтандартный путь к файлу пользователей
+    :param uid: User ID - кто работает с расписанием
+    :param sc_file: Другой путь к файлу расписания
+    :param scu_file: Жругой путь к файлу обновлений расписания
+    :param users_file: Лругой путь к файлу пользователей
     """
     
-    def __init__(self, uid, sc_file=sc_path, sc_updates_file=sc_updates_path,
+    def __init__(self, uid, sc_file=sc_path, scu_file=sc_updates_path,
                  users_file=users_path):
         super(ScheduleParser, self).__init__()
         self.uid = uid
         self.sc_path = sc_file
-        self.sc_updates_path = sc_updates_file
+        self.scu_path = scu_file
         self.users_path = users_file
 
         # Получаем данные пользователя и расписание
         self.user = self.get_user()
         self.schedule = self.get_schedule()
         
-
-        # lessons: Расписание с классами в качестве ключей
-        # l_index: Расписание, с предметами в качестве ключей
-        # c_index: Расписание, с кабинетами в качестве ключей
-
+        # Словарь расписания по классам
         self.lessons = self.schedule["lessons"]
+        
+        # l_index: Словарь расписания по урокам
         self.l_index = None
-        # self.c_index = None
+        
+        # c_index: Словарь расписания по кабинетам
+        self.c_index = None
 
 
     # Управление данными пользователя
@@ -144,20 +184,41 @@ class ScheduleParser:
         save_file(self.users_path, users)
         log(f'Write: {self.uid}')
 
+    def get_lessons_updates(self):
+        """Возвращает номера дней, для которых изменилось расписание."""
+        
+        # Если расписание не обновилось, значит и хеши дней тоже
+        if self.schedule["last_parse"] == self.user["last_parse"]:
+            return []
+
+        sc_changes = load_file(self.scu_path)
+        lessons = self.get_lessons()
+        days = []
+
+        self.user["last_parse"] = self.schedule["last_parse"]
+        self.save_user()
+        
+        for x in sc_changes["changes"]:
+            for day, changes in enumerate(x["diff"]):
+                if changes.get(self.user["class_let"]):
+                    days.append(day)
+ 
+        return set(days)
+
 
     # Получаем расписание
     # ===================
 
     def parse_schedule(self, csv_file):
-        """Преобразует CSV файл в удобный формат.
+        """Преобразует CSV файл расписания уроков в удобный формат.
 
-        :param csv_file: CSV файл расписания для преобразования
+        :param csv_file: CSV файл расписания уроков для переработки
 
-        :return: Преобразованное расписание"""
+        :returns: Переработанный словарь расписания по классам"""
         
         group_log('Parse schedule...')
     
-        # class_index: Словарь с классами и их столбцам в расписании
+        # class_index: Словарь с классами и их столбцами в расписании
         #     lessons: Словарь расписания [КЛАСС][Номер Дня]
         #      dindex: Указание строк начала дней недели
         #         day: Номер текущего дня недели (0-5)
@@ -180,6 +241,7 @@ class ScheduleParser:
                 for v, k in enumerate(row):
                     if k.replace(' ', ''):
                         class_index[k.lower()] = v
+                continue
 
 
             # Собираем расписание уроков
@@ -228,55 +290,30 @@ class ScheduleParser:
 
         return lessons
 
-    def get_schedule_diff(self, old_t, new_t):
-        """Делает полное сравнение двух расписаний."""
+    def update_diff_file(self, a, b):
+        """Обновляет файл с изменениями расписания.
 
-        res = [{} for x in range(6)]
+        :param a: Старое расписание
+        :param b: Новое расписание
+        """
 
-        for k, v in new_t.items():
-            if not k in old_t:
-                continue
-
-            old_v = old_t[k]
-
-            for day, lessons in enumerate(v):
-                if lessons["hash"] == old_v[day]["hash"]:
-                    continue
-
-                o_lessons = old_v[day]["l"]
-                for lesson_n, lesson in enumerate(lessons["l"]):
-                    if lesson_n >= len(o_lessons):
-                        o_lesson = ["", ""]
-                    else:
-                        o_lesson = o_lessons[lesson_n]
-
-                    if k not in res[day]:
-                        res[day][k] = []
-
-                    if lesson != o_lesson: 
-                        res[day][k].append(f'{lesson_n+1}: {o_lesson[0]} -> {lesson[0]}')
-                    else:
-                        res[day][k].append(f'{lesson_n+1}: {lesson[0]}')
-
-        return res
-
-    def update_diff_file(self, old_t, new_t):
         log('Update diff file...')
 
-        sc_changes = load_file(self.sc_updates_path)
+        # Загружаем файл с изменениями
+        sc_changes = load_file(self.scu_path)
         day = int(datetime.now().strftime('%j'))        
         
+        # Если сменился день, очищаем расписание
         if sc_changes.get("day", 0) != day:
             sc_changes = {"day":day, "changes":[]}
 
-        diff = self.get_schedule_diff(old_t.get("lessons", {}), 
-                                      new_t["lessons"])
-
+        # Если есть изменения - добавляем файл
+        diff = get_sc_diff(a.get("lessons", {}), b["lessons"])
         if sum(map(len, diff)):
-            sc_changes["changes"].append({"time": new_t["last_parse"],
+            sc_changes["changes"].append({"time": b["last_parse"],
                                           "diff": diff})
-
-        save_file(self.sc_updates_path, sc_changes)
+        
+        save_file(self.scu_path, sc_changes)
 
     def get_schedule(self, update=False):
         """Получает и обновляет расписание.
@@ -311,39 +348,101 @@ class ScheduleParser:
         return t
 
 
-    # Получение индексов
-    # ==================
+    # Получение данных из расписания
+    # ==============================
 
-    def get_lessons_index(self):
+    def get_sc_lindex(self):
         """Получает информацию об уроках в расписании.
         Имена уроков, для кого и когда."""
 
         if self.l_index:
             return self.l_index
 
-        lessons = {}
+        res = {}
 
         for k, v in self.lessons.items():
-            for day, day_lessons in enumerate(v):
-                for i, lesson in enumerate(day_lessons["l"]):
+            for day, lessons in enumerate(v):
+                for n, l in enumerate(lessons["l"]):
 
-                    lesson = lesson[0].lower().strip(" .")
-                    lesson = lesson.replace('-', '=').replace(' ', '-')
+                    c = l[1]
+                    l = l[0].lower().strip(" .")
+                    l = l.replace('-', '=').replace(' ', '-').replace('.-', '.')
 
-                    if lesson not in lessons:
-                        lessons[lesson] = {}
+                    
+                    if l not in res:
+                        res[l] = {}
 
-                    if k not in lessons[lesson]:
-                        lessons[lesson][k] = [[] for x in range(6)]
+                    if c not in res[l]:
+                        res[l][c] = {}
 
-                    lessons[lesson][k][day].append(i)
 
-        self.l_index = lessons
-        return lessons
+                    if k not in res[l][c]:
+                        res[l][c][k] = [[] for x in range(6)]
 
- 
-    # Взаимодействуем с расписанием
-    # =============================
+                    res[l][c][k][day].append(n)
+
+        self.l_index = res
+        return res
+
+    def get_sc_cindex(self):
+        """Получает информацию о кабинетах в расписании.
+        Какие уроки проводятся, для кого и когда."""
+
+        if self.c_index:
+            return self.c_index
+
+        res = {}
+
+        for k, v in self.lessons.items():
+            for day, lessons in enumerate(v):
+                for n, l in enumerate(lessons["l"]):
+
+                    cs = l[1].split('/')
+                    l = l[0].lower().strip(" .")
+                    l = l.replace('-', '=').replace(' ', '-')
+
+                    for c in cs: 
+                        if c not in res:
+                            res[c] = {}
+
+                        if l not in res[c]:
+                            res[c][l] = {}
+
+
+                        if k not in res[c][l]:
+                            res[c][l][k] = [[] for x in range(6)]
+
+                        res[c][l][k][day].append(n)
+
+        self.c_index = res
+        return res
+
+    def search(self, target):
+        """Поиск данных в расписании.
+
+        :param target: Цель для поиска, кабинет или название урока
+
+        :returns: Результаты поиска"""
+        res = {}
+
+        if target.isdigit():
+            index = self.get_sc_cindex()
+        else:
+            index = self.get_sc_lindex()
+        
+        if target in index:
+            # k - номер кабинета/предмет cs - словарь классов
+            for k, cs in index[target].items():
+                if k not in res:
+                    res[k] = [[[] for x in range(8)] for x in range(6)]
+
+                for class_let, days in cs.items():
+                    for day, ns in enumerate(days):
+                        for n in ns:
+                            res[k][day][n].append(class_let)
+
+        return res
+
 
     def get_class(self, class_let=None):
         """Возвращает выбранный класс или класс по умолчанию."""
@@ -357,152 +456,65 @@ class ScheduleParser:
         """Получает расписание уроков на неделю для класса."""
         return self.lessons[self.get_class(class_let)]
 
-    def get_schedule_changes(self):
-        """Возвращает номера дней, для которых изменилось расписание."""
-        
-        # Если расписание не обновилось, значит и хеши дней тоже
-        if self.schedule["last_parse"] == self.user["last_parse"]:
-            return []
 
-        sc_changes = load_file(self.sc_updates_path)
-        lessons = self.get_lessons()
-        days = []
+class SPMessages(ScheduleParser):
+    """Генератор текстовых сообщений для ScheduleParser.
 
-        self.user["last_parse"] = self.schedule["last_parse"]
-        self.save_user()
-        
-        for x in sc_changes["changes"]:
-            for day, changes in enumerate(x["diff"]):
-                if changes.get(self.user["class_let"]):
-                    days.append(day)
- 
-        return set(days)
+    :param uid: User ID - кто работает с расписанием
+    :param sc_file: Другой путь к файлу расписания
+    :param scu_file: Жругой путь к файлу обновлений расписания
+    :param users_file: Лругой путь к файлу пользователей
+    """
+
+    def __init__(self, uid, sc_file=sc_path, scu_file=sc_updates_path,
+                 users_file=users_path):
+        super(SPMessages, self).__init__(uid, sc_file, scu_file, users_file)
 
 
-    # Методы представления
-    # ====================
+    # Прочие сообщения парсера
+    # ========================
 
-    def print_sc_changes(self):
-        """Отобразить измененив в расписании."""
+    def send_sc_changes(self):
+        """Отправить измененив в расписании."""
 
-        sc_changes = load_file(self.sc_updates_path)
-
+        sc_changes = load_file(self.scu_path)
         res = "Обновления в расписании:"
 
+        # Пробегаемся по измененияв в оасписании
         for x in sc_changes["changes"]:
+            
+            # Добавляем заголовок изменений
             t = datetime.fromtimestamp(x["time"]).strftime("%H:%M:%S")
             res += f'\n⏰ Примерно в {t}:'
 
+            # Пробегаемся по дням
             for day, changes in enumerate(x["diff"]):
                 if changes:
                     res += f"\nНа {days_str[day]}:\n"
                     
+                    # Пробегаемся по классам
                     for k, v in changes.items():
-                        changes_str = '\n'.join(v)
-                        res += f"\n🔶 Для {k}:\n{changes_str}\n"
+                        d_str = "" 
+
+                        # Проьегаемся по урокам
+                        for i, l in enumerate(v):
+                            o = l[0]
+                            n = l[1]
+
+                            if n:
+                                d_str += f"\n{i+1}: {n[1]} | {o[0]} -> {n[0]}"
+                            else:
+                                d_str += f"\n{i+1}: {o[1]} | {o[0]}"
+
+                        res += f"\n🔶 Для {k}:{d_str}\n"
 
         return res
-
-    def count_lessons(self, class_let=None):
-        """Считает частоту уроков в расписании.
-        Для всех или определённого класса.
-
-        :param class_let: Для какого класса произвести подсчёт
-
-        :returns: Сообщение с самыми частыми классами"""
-
-        if class_let is not None:
-            class_let = self.get_class(class_let)
-
-        res = ""
-        lindex = self.get_lessons_index()
-        groups = {}
-
-
-        # Считаем частоту предметов
-        # -------------------------
-
-        for lesson, v in lindex.items():
-            if class_let:
-                if class_let in v:
-                    c = sum(map(len, v[class_let]))
-            else:
-                c = sum(map(lambda x: sum(map(len, x)), v.values()))
-
-            if str(c) not in groups:
-                groups[str(c)] = []
-
-            groups[str(c)].append(lesson)
-  
-
-        # Собираем сообщение
-        # ------------------
-
-        if class_let:
-            res += f"✨ Самые частые уроки у {class_let}:\n"
-        else:
-            res += f"✨ Самые частые уроки:\n"
-
-        for k, v in sorted(groups.items(), key=lambda x: int(x[0]), reverse=True):
-            res += f"\n-- {k} раз(а): {', '.join(v)}; "
-
-        return res
-
-    def search_lesson(self, lesson, days=None):
-        """Когда и для кого будет проведён урок.
-
-        :param lesson: Урок, который нужно найти
-        :param days: Для каких дней отображать результат поимка
-
-        :returns: Сообщение с результатами поиска."""
-
-        lindex = self.get_lessons_index()
-        days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
-
-        if lesson not in lindex:
-            return f"❗Неправильно указан предмет.\n🏫 Доступные предметы {len(lindex)}: {'; '.join(lindex)}"
-
-
-        # Собираем данные
-        # ---------------
-
-        data = [[[] for x in range(8)] for x in range(6)]
-
-        for class_let, v in lindex[lesson].items():
-            for day, lesson_numbers in enumerate(v):
-                for lesson_number in lesson_numbers:
-
-                    data[day][lesson_number].append(class_let)
-
-
-        # Собираем сообщение
-        # ------------------
-
-        res = f"🔎 Поиск {lesson}:"
-
-        for day in days:
-            x = data[day]
-            day_str = ""
-
-            for i, xx in enumerate(x):
-                if xx:
-                    tt = ""
-
-                    if i < len(timetable):
-                        tt = f'В {timetable[i][0]} '
-
-                    day_str += f"\n{i+1}. {tt}для: {', '.join(xx)}"
-
-            if day_str:
-                res += f'\n\n⏰ {days_str[day]}:{day_str}'
-
-        return res 
 
     def set_class(self, class_let=None):
         """Изменяет класс пользователя.
         :param class_let: Новый класс по умолчанию
 
-        :return: Сообщение о смене класса"""
+        :returns: Сообщение о смене класса"""
         
         if class_let in self.lessons:
             self.user["class_let"] = class_let
@@ -514,7 +526,11 @@ class ScheduleParser:
         else:
             return f"""🔎 Укажите свой класс в формате "1А".\n🏫 Доступные классы: {'; '.join(self.lessons)}"""
 
-    def print_day_lessons(self, today=0, class_let=None):
+
+    # Получение расписания уроков
+    # ===========================
+
+    def send_day_lessons(self, today=0, class_let=None):
         """Сообщение с расписанием уроков на день.
         
         :param today: День недеди (0-5)
@@ -528,7 +544,7 @@ class ScheduleParser:
     
         class_let = self.get_class(class_let)
         lessons = self.get_lessons(class_let)[today]["l"]
-        res = ""
+        res = f"\n🔶 На {days_str[today]}:"
 
         # Собираем сообщение с расписанием
         for i, x in enumerate(lessons):
@@ -536,11 +552,11 @@ class ScheduleParser:
             if i < len(timetable):
                 tt = f" {timetable[i][0]}"
             
-            res += f'\n{i+1}{tt} {x[0]} | {x[1]}'
+            res += f'\n{i+1}{tt} {x[1]} | {x[0]}'
 
         return res
         
-    def print_lessons(self, days=[0], class_let=None):
+    def send_lessons(self, days=[0], class_let=None):
         """Сообщение с расписанием уроков.
 
         :param days: Дни недели, для которых нужно расписание
@@ -558,28 +574,21 @@ class ScheduleParser:
 
         days = set(filter(lambda x: x < 6, days))
 
-        # Для каких дней получаем расписание
-        if days == {0, 1, 2, 3, 4, 5}:
-            weekday = "неделю"
-        else:
-            weekday = ", ".join(map(lambda x: days_str[x], days))
-        
-
         # Собираем сообщение
         # ------------------
 
-        res = f"🏫 Расписание для {class_let} на {weekday}:"
+        res = f"🏫 Расписание для {class_let}:"
 
         for day in days:
             res += "\n"
-            res += self.print_day_lessons(day, class_let)
+            res += self.send_day_lessons(day, class_let)
         
 
         # Обновления в расписаниии
         # ------------------------
         
         if class_let == self.user["class_let"]:
-            updates = self.get_schedule_changes()
+            updates = self.get_lessons_updates()
             
             if updates:
                 res += f"\n\n🎉 Изменилось расписание!\n"
@@ -587,13 +596,13 @@ class ScheduleParser:
                 updates = updates - days
                 if len(updates) < 3:
                     for day in updates:
-                        res += f"\n* На {days_str[day]}:{self.print_day_lessons(day)}\n" 
+                        res += f"{self.send_day_lessons(day)}\n" 
                 else:
                     res += f"На {', '.join(map(lambda x: days_str[x], updates))}."
 
         return res
 
-    def print_today_lessons(self, class_let=None):
+    def send_today_lessons(self, class_let=None):
         """Получение расписания на сегодня/завтра.
         Есои уроки закончились, выводится расписание на завтра.
 
@@ -612,18 +621,295 @@ class ScheduleParser:
         if today > 5:
             today = 0
 
-        return self.print_lessons(today, class_let)
+        return self.send_lessons(today, class_let)
 
-    def print_status(self):
+
+    # Самые частыек уроки/кабинеты
+    # ============================
+
+    def count_lessons(self, class_let=None):
+        """Считает частоту уроков в расписании.
+        Для всех или определённого класса.
+
+        :param class_let: Для какого класса произвести подсчёт
+
+        :returns: Сообщение с самыми частыми классами"""
+
+        if class_let is not None:
+            class_let = self.get_class(class_let)
+
+        res = ""
+        lindex = self.get_sc_lindex()
+        groups = {}
+
+        # Считаем частоту предметов
+        # -------------------------
+
+        for lesson, v in lindex.items():
+            
+            cabinets = {}
+            for cabinet, vv in v.items():
+                if class_let:
+                    c = sum(map(len, vv.get(class_let, [])))
+                else:
+                    c = sum(map(lambda x: sum(map(len, x)), vv.values()))
+
+                if c:
+                    cabinets[cabinet] = c
+
+            c = sum(cabinets.values())
+            if c:
+                if str(c) not in groups:
+                    groups[str(c)] = {}
+
+                groups[str(c)][lesson] = cabinets
+  
+        # Собираем сообщение
+        # ------------------
+
+        if class_let:
+            res += f"✨ Самые частые уроки у {class_let}:\n"
+        else:
+            res += f"✨ Самые частые уроки:\n"
+
+        for k, v in sorted(groups.items(), key=lambda x: int(x[0]), reverse=True):
+            res += f"\n\n🔶 {k} раз(а):"
+
+            for lesson, cabinets in v.items():
+                if len(v) > 1:
+                    res += "\n--"
+                
+                res += f" {lesson} ("
+
+                for c, n in cabinets.items():
+                    if n > 1 and len(cabinets) > 1:
+                        res += f" {c}:{n}"
+                    else:
+                        res += f" {c}"
+                
+                res += ")"
+
+        return res
+       
+    def count_cabinets(self, class_let=None):
+        """Считает частоту кабинетов в расписании.
+        Для всех или определённого класса.
+
+        :param class_let: Для какого класса произвести подсчёт
+
+        :returns: Сообщение с самыми частыми кабинетами"""
+
+        if class_let is not None:
+            class_let = self.get_class(class_let)
+
+        res = ""
+        cindex = self.get_sc_cindex()
+        groups = {}
+
+        # Считаем частоту предметов
+        # -------------------------
+
+        for cabinet, v in cindex.items():
+            
+            lessons = {}
+            for l, vv in v.items():
+                if class_let:
+                    c = sum(map(len, vv.get(class_let, [])))
+                else:
+                    c = sum(map(lambda x: sum(map(len, x)), vv.values()))
+
+                if c:
+                    lessons[l] = c
+
+            c = sum(lessons.values())
+            if c:
+                if str(c) not in groups:
+                    groups[str(c)] = {}
+
+                groups[str(c)][cabinet] = lessons
+  
+        # Собираем сообщение
+        # ------------------
+
+        if class_let:
+            res += f"✨ Самые частые кабинеты у {class_let}:"
+        else:
+            res += f"✨ Самые частые кабинеты:"
+
+        for k, v in sorted(groups.items(), key=lambda x: int(x[0]), reverse=True):
+            res += f"\n\n🔶 {k} раз(а):"
+
+            for cabinet, lessons in v.items():
+                if len(v) > 1:
+                    res += f'\n--'
+
+                res += f" {cabinet} |"
+
+                for l, n in lessons.items():
+                    if n > 1 and len(vv) > 1:
+                        res += f" {l}:{n};"
+                    else:
+                        res += f" {l};"
+                
+
+        return res
+  
+
+    def search_lesson(self, lesson, days=None, class_let=None):
+        """Поиск упоминаний о уроке.
+        Когда (день), где (кабинет), для кого (класс), каким уроком.
+
+        :param lesson: Урок, который нужно найти
+        :param days: Для каких дней отображать результат поиска
+        :param class_let: Для какого класса отображать результаты
+
+        :returns: Сообщение с результатами поиска."""
+
+        lindex = self.get_sc_lindex()
+        
+        if lesson not in lindex:
+            return f"❗Неправильно указан предмет.\n🏫 Доступные предметы: {'; '.join(lindex)}"
+
+        days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
+
+        if class_let is not None:
+            class_let = self.get_class(class_let)
+
+        data = self.search(lesson)
+
+        # Собираем сообщение
+        # ------------------
+
+        search_str = f"🔎 Поиск упоминаний \"{lesson}\""
+        if days == {0, 1, 2, 3, 4, 5}:
+            search_str += f" за неделю"
+        elif days:
+            search_str += f" за {', '.join(map(lambda x: days_str[x], days))}"
+
+        if class_let:
+            search_str += f" для {class_let}"
+
+        res = search_str
+
+        # Пробегаемся по результатам поиска
+        for cabinet, v in data.items():
+            cabinet_str = ""
+
+            # Пробегаемся по указанным дням
+            for day in days:
+                ln = v[day]
+                day_str = ""
+
+                for i, cs in enumerate(ln):
+                    if class_let and class_let not in cs:
+                        continue
+
+                    if cs:
+                        tt = ""
+
+                        if i < len(timetable):
+                            tt = f'В {timetable[i][0]} '
+
+                        day_str += f"\n{i+1} у. {tt}- {', '.join(cs)}"
+
+                if day_str:
+                    cabinet_str += f'\n\n⏰ На {days_str[day]}:{day_str}'
+            if cabinet_str:
+                res += f"\n\n🔶 Кабинет {cabinet}:{cabinet_str}" 
+
+        return res 
+
+    def search_cabinet(self, cabinet, lesson=None, days=None, class_let=None):
+        """Поиск упоминаний о кабинете.
+        Когда (день), что (урок), для кого (класс), каким уроком.
+
+        :param cabinet: Кабинет, который нужно найти
+        :param lesson: Для какого урока отображать результат
+        :param days: Для каких дней отображать результат поиска
+        :param class_let: Для какого класса отображать результаты
+
+        :returns: Сообщение с результатами поиска."""
+
+        cindex = self.get_sc_cindex()
+        
+        if cabinet not in cindex:
+            return f"❗Неправильно указан кабинет.\n🏫 Доступные кабинеты: {'; '.join(cindex)}"
+
+        days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
+
+        if class_let is not None:
+            class_let = self.get_class(class_let)
+
+        data = self.search(cabinet)
+
+
+        # Собираем сообщение
+        # ------------------
+
+        search_str = f"🔎 Поиск по кабнету {cabinet}"
+        if days == {0, 1, 2, 3, 4, 5}:
+            search_str += f" за неделю"
+        elif days:
+            search_str += f" за {', '.join(map(lambda x: days_str[x], days))}"
+
+        if class_let:
+            search_str += f" для {class_let}"
+
+        if lesson:
+            search_str += f" ({lesson})"
+
+        res = search_str
+
+        # Пробегаемся по результатам поиска
+        for l, v in data.items():
+            lesson_str = ""
+
+            if lesson and lesson != l:
+                continue
+
+            # Пробегаемся по указанным дням
+            for day in days:
+                ln = v[day]
+                day_str = ""
+
+                for i, cs in enumerate(ln):
+                    if class_let and class_let not in cs:
+                        continue
+
+                    if cs:
+                        tt = ""
+
+                        if i < len(timetable):
+                            tt = f'В {timetable[i][0]} '
+
+                        day_str += f"\n{i+1} у. {tt}- {', '.join(cs)}"
+
+                if day_str:
+                    lesson_str += f'\n\n⏰ На {days_str[day]}:{day_str}'
+            if lesson_str:
+                res += f"\n\n🔶 Урок {l}:{lesson_str}" 
+
+        return res 
+
+  
+    def send_status(self):
+        """Возвращает некоторую информауию о парсере."""
+
         last_parse = datetime.fromtimestamp(self.schedule["last_parse"])
-        lindex = self.get_lessons_index()
+        lindex = self.get_sc_lindex()
+        cindex = self.get_sc_cindex()
 
-        return f"""SP: ScheduleParser 
-Версия: 2.4 (19)
-Автор: Milinuri Nirvalen (@milinuri)
+        res = "SP: ScheduleParserMessages"
+        res += "\nВерсия: 3.0 (22)"
+        res += "\nАвтор: Milinuri Nirvalen"
+        res += f"\n\n* Класс: {self.user['class_let']}"
+        res += f"\n\n* Пользователей: {len(load_file(self.users_path))}"
+        res += f"\n* Проверено в: {self.schedule['updated']}:00"
+        res += f"\n* Обновлено: {last_parse.strftime('%d %h в %H:%M')}"
+        res += f"\n* Классов: {len(self.lessons)}"
+        res += f"\n* Предметов: ~{len(lindex)}"
+        res += f"\n* Кабинетов: ~{len(cindex)}"
 
-* Пользователей: {len(load_file(self.users_path))}
-* Проверено в: {self.schedule["updated"]}:00
-* Обновлено: {last_parse.strftime("%d %h в %H:%M")}
-* Классов: {len(self.lessons)}
-* Предметов: ~{len(lindex)}"""
+        return res
+
+

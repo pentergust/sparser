@@ -1,8 +1,8 @@
 ["sparser/sp"]
 name = "Schedule Parser"
 desc = "Парсер школьного расписания"
-ver = "2.4.1"
-build = 20
+ver = "3.1"
+build = 24
 full_desc = "no full desc"
 type = "package"
 groups = []
@@ -14,7 +14,7 @@ multiple = true
 
 ["sparser/telegram"]
 name = "Telegram Schedule"
-desc = "[pytelegrambotapi] Бот для отправки расписания уроков"
+desc = "[УСТАРЕЛ!] [pytelegrambotapi] Бот для отправки расписания уроков"
 ver = "sp v1.0"
 build = 5
 authors = [ "Артём Березин",]
@@ -29,8 +29,8 @@ multiple = true
 ["packages/schedule"]
 name = "Chio Schedule"
 desc = "Плагин Чио для отправки расписания уроков"
-ver = "sp v2.4.1"
-build = 10
+ver = "sp v3.1"
+build = 12
 require = [ "sparser/sp",]
 type = "plugin"
 full_desc = "no full desc"
@@ -41,14 +41,14 @@ path = "./packages/schedule"
 multiple = false
 
 ["sparser/sp".files]
-"sparser/sparser.py" = "fc1f31439cd6e41812598e30462a875a"
-"sparser/console.py" = "247d1d1cd53fb91e09a7e43b00f2743a"
-"sparser/packages.toml" = "798b227aa4df45894898c42933f339ce"
+"sparser/sparser.py" = "c5745f74061a57bbb2d4ef87eacfbbc7"
+"sparser/console.py" = "1af9cc7b7377c2ba152a5cf7d5400f81"
+"sparser/packages.toml" = "899fd0b83916606877d4896c9a69ca6d"
 
 ["sparser/telegram".files]
-"sparser/telegram.py" = "81426040334b5201107d62d7c5c35585"
-"sparser/packages.toml" = "798b227aa4df45894898c42933f339ce"
+"sparser/telegram.py" = "8ca294ef5b53fd71f2279e14600d78f7"
+"sparser/packages.toml" = "899fd0b83916606877d4896c9a69ca6d"
 
 ["packages/schedule".files]
-"packages/schedule/main.py" = "44485d261de8564b3970eeb5036a99f9"
-"packages/schedule/packages.toml" = "bd0741ac659b1b637c0a11174928e838"
+"packages/schedule/main.py" = "9a3454e8fe18a5950090c5bbbdcff0b0"
+"packages/schedule/packages.toml" = "1960e1b7d7166c502ade43528f04a90d"

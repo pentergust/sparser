@@ -3,11 +3,11 @@
 Обёртка над ScheduleParser
 
 Author: Milinuri Nirvalen
-Ver: sp 2.4.1
+Ver: sp 3.1
 """
 
 from core import Plugin, Config
-from sparser.sparser import ScheduleParser
+from sparser.sparser import SPMessages
 
 from datetime import datetime
 
@@ -21,7 +21,7 @@ config_path = "data/sparser_autopost.toml"
 user_base = {"autopost_hour":17, "hour":0, "day":0}
 
 
-@p.eventHandler('after')
+@p.eventHandler("after")
 async def _(event, ctx):
     p.log('Check sparser_autopost')
 
@@ -96,18 +96,19 @@ async def autopost(event, ctx):
 # Основные команды
 # ================
 
-@p.command('класс', usage='[class_let] сменить класс по умолчанию')
+@p.command("класс", usage="[class_let] сменить класс по умолчанию")
 async def setClass(event, ctx):
-    sp = ScheduleParser(str(event.get('to.id')))
+    sp = SPMessages(str(event.get('to.id')))
     await ctx.message(sp.set_class(ctx.sargs.lower()))
 
 
 @p.command("уроки", usage="[class_let; day] расписание на день")
 async def lessons(event, ctx):
     uid = str(event.get("to.id"))
-    sp = ScheduleParser(uid)
-    lindex = sp.get_lessons_index()
-    
+    sp = SPMessages(uid)
+    lindex = sp.get_sc_lindex()
+    cindex = sp.get_sc_cindex()
+
     # Обновление данных автопоста
     # ---------------------------
 
@@ -123,6 +124,7 @@ async def lessons(event, ctx):
 
     class_let = None
     lesson = None
+    cabinet = None
     days = []
     
     for x in ctx.args:
@@ -133,6 +135,9 @@ async def lessons(event, ctx):
 
         if x in lindex:
             lesson = x
+
+        if x in cindex:
+            cabinet = x
 
         for i, d in enumerate(days_str):
             if x.startswith(d) and i not in days:
@@ -148,12 +153,15 @@ async def lessons(event, ctx):
     # Сборка сообщения
     # ----------------
 
-    if lesson:
-        res = sp.search_lesson(lesson, days)
+    if lesson or cabinet:
+        if cabinet:
+            res = sp.search_cabinet(cabinet, lesson, days, class_let)
+        else:
+            res = sp.search_lesson(lesson, days, class_let)
     elif days:
-        res = sp.print_lessons(days, class_let)
+        res = sp.send_lessons(days, class_let)
     else:
-        res = sp.print_today_lessons(class_let)
+        res = sp.send_today_lessons(class_let)
 
     if not class_let and not sp.user["set_class"]:
         res += set_class_message
@@ -163,7 +171,7 @@ async def lessons(event, ctx):
 @p.command("расписание", usage= "[class_let] расписание на неделю")
 async def schedule(event, ctx):
     uid = str(event.get("to.id"))
-    sp = ScheduleParser(uid)
+    sp = SPMessages(uid)
 
     # Обновление данных автопоста
     # ---------------------------
@@ -176,9 +184,9 @@ async def schedule(event, ctx):
 
 
     if ctx.sargs.lower() in ["changes", "изменения"]:
-        res = sp.print_sc_changes()
+        res = sp.send_sc_changes()
     else:
-        res = sp.print_lessons([0, 1, 2, 3, 4, 5], ctx.sargs.lower())
+        res = sp.send_lessons([0, 1, 2, 3, 4, 5], ctx.sargs.lower())
         res += f'\n\n/расписание изменения - что нового в расписании'
 
     if not ctx.sargs and not sp.user["set_class"]:
@@ -191,12 +199,12 @@ async def schedule(event, ctx):
 # Расширенные команды
 # ===================
 
-@p.command('sparser', usage='Статус парсера расписания')
+@p.command("sparser", usage="Статус парсера расписания")
 async def sparserStatus(event, ctx):
-    sp = ScheduleParser(str(event.get('to.id')))
-    await ctx.message(sp.print_status())
+    sp = SPMessages(str(event.get('to.id')))
+    await ctx.message(sp.send_status())
 
-@p.command('<lesson(s) c(ount)>', usage='[class_let] самые частые уроки')
+@p.command("<lesson(s) c(ount)>", usage="[class_let] самые частые уроки")
 async def countLessons(event, ctx):
-    sp = ScheduleParser(str(event.get('to.id')))
+    sp = SPMessages(str(event.get('to.id')))
     await ctx.message(sp.count_lessons(ctx.sargs or None))
