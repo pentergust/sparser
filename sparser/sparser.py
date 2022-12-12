@@ -8,7 +8,7 @@
 - Поиск по предмету
 
 Author: Milinuri Nirvalen
-Ver: 3.1
+Ver: 3.1.1
 
 Modules:
       os: Проверка существования файлов
@@ -262,7 +262,10 @@ class ScheduleParser:
                              "hash": None} for x in range(6)
                         ]
 
-                    lessons[k][day]["l"][i-dindex[day]] = [row[v], row[v+1]]
+                    l = row[v]
+                    c = row[v+1]
+
+                    lessons[k][day]["l"][i-dindex[day]] = [l, c]
 
 
         # Получаем хеши дней
@@ -283,6 +286,13 @@ class ScheduleParser:
                         day["l"].pop()
                     else:
                         break
+
+                for i, l in enumerate(day["l"]):
+                    if not l[0]:
+                        l[0] = "None"
+                    if not l[1]:
+                        l[1] = "0"
+
 
                 day["hash"] = h
                 n_days.append(day)
@@ -425,8 +435,10 @@ class ScheduleParser:
         :returns: Результаты поиска"""
         res = {}
 
-        if target.isdigit():
-            index = self.get_sc_cindex()
+        cindex = self.get_sc_cindex()
+
+        if target in cindex:
+            index = cindex
         else:
             index = self.get_sc_lindex()
         
@@ -746,7 +758,7 @@ class SPMessages(ScheduleParser):
                 res += f" {cabinet} |"
 
                 for l, n in lessons.items():
-                    if n > 1 and len(vv) > 1:
+                    if n > 1 and len(cabinets) > 1:
                         res += f" {l}:{n};"
                     else:
                         res += f" {l};"
