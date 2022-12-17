@@ -9,6 +9,7 @@ from datetime import datetime
 import argparse
 import re
 
+from icecream import ic
 
 # Определение аргументов коммандной строки
 # ========================================
@@ -22,7 +23,6 @@ parser.add_argument("-c", "--class", dest="class_let",
                     help="Для какого класса применить действие")
 parser.add_argument("-C", "--set-class", help="Изменить класс по умолчанию")
 parser.add_argument("-d", "--days", nargs="*", default=[])
-parser.add_argument("--cabinet")
 
 # Команды парсеру
 parser.add_argument("--changes", action="store_true",
@@ -30,6 +30,7 @@ parser.add_argument("--changes", action="store_true",
 parser.add_argument("--status", action="store_true",
                     help="Информация о парсере")
 parser.add_argument("--search", help="Поиск по уроку", nargs="?")
+parser.add_argument("--cabinet", help="Поиск по кабинету")
 parser.add_argument("--lessons", action="store_true", help="Самые частые уроки")
 parser.add_argument("--cabinets", action="store_true", help="Самые частые кабинеты")
 parser.add_argument("--week", action="store_true", help="Расписание на неделю")
@@ -63,12 +64,19 @@ class SPConsole(SPMessages):
     def __init__(self, uid):
         super(SPConsole, self).__init__(uid)
     
-    def send_sc_changes(self):
-        """Отправить измененив в расписании."""
+    def send_sc_changes(self, days=None, class_let=None):
+        """Отправить измененив в расписании.
+
+        :param days: Для каких дней показать изменения
+        :param class_let: Для какого класса показать изменения"""
 
         sc_changes = load_file(self.scu_path)
         group_log("Изменения в расписании:")
         
+        if class_let is not None:
+            class_let = self.get_class(class_let)
+
+
         # Пробегаемся по измененияв в оасписании
         for x in sc_changes["changes"]:
             
@@ -78,11 +86,17 @@ class SPConsole(SPMessages):
 
             # Пробегаемся по дням
             for day, changes in enumerate(x["diff"]):
+                if days and day not in days:
+                    continue
+
                 if changes:
                     row(f"На {days_str[day]}", 36)
                     
                     # Пробегаемся по классам
                     for k, v in changes.items():
+                        if class_let and class_let != k:
+                            continue
+
                         row(k, 94)
                         d_str = "" 
 
@@ -345,8 +359,7 @@ class SPConsole(SPMessages):
                             tt = f'{timetable[i][0]} '
 
                         print(f"\033[32m{days_str[day]} \033[34m {i+1}. {tt}\033[0m- {', '.join(cs)}")
-
-            
+        
     def search_cabinet(self, cabinet, lesson=None, days=None, class_let=None):
         """Поиск упоминаний о кабинете.
         Когда (день), что (урок), для кого (класс), каким уроком.
@@ -455,7 +468,7 @@ def main():
 
     # Получаем изменения в расписании
     if args.changes:
-        sp.send_sc_changes()
+        sp.send_sc_changes(days, args.class_let)
 
     # Получаем информацию о парсере
     if args.status:
