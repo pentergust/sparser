@@ -11,39 +11,27 @@ import re
 
 from icecream import ic
 
-# Определение аргументов коммандной строки
-# ========================================
 
-parser = argparse.ArgumentParser()
+# Вспомогательные компоненты
+# ==========================
 
-# Необязательные аргументы
-parser.add_argument("-p", "--parse", action="store_true", 
-                    help="Принудительное обновление расписания")
-parser.add_argument("-c", "--class", dest="class_let",
-                    help="Для какого класса применить действие")
-parser.add_argument("-C", "--set-class", help="Изменить класс по умолчанию")
-parser.add_argument("-d", "--days", nargs="*", default=[])
+def parse_days(args):
+    days = []
 
-# Команды парсеру
-parser.add_argument("--changes", action="store_true",
-                    help="Изменения в расписании")
-parser.add_argument("--status", action="store_true",
-                    help="Информация о парсере")
-parser.add_argument("--search", help="Поиск по уроку", nargs="?")
-parser.add_argument("--cabinet", help="Поиск по кабинету")
-parser.add_argument("--lessons", action="store_true", help="Самые частые уроки")
-parser.add_argument("--cabinets", action="store_true", help="Самые частые кабинеты")
-parser.add_argument("--week", action="store_true", help="Расписание на неделю")
-parser.add_argument("--sc", action="store_false", help="Расписание уроков")
+    for x in args:
+        if x == "сегодня":
+            days.append(datetime.today().weekday())
+            continue
 
-# Команда для отладки
-parser.add_argument("--debug", help="Строка для отладки")
+        if x == "завтра":
+            days.append(datetime.today().weekday()+1)
 
+        for i, d in enumerate(days_str):
+            if x.startswith(d):
+                days.append(i)
+                continue
 
-
-
-# Вспомогательные функции
-# =======================
+    return days
 
 def group_log(text):
     print(f'\033[96m:\033[94m: \033[0m\033[1m{text}\033[0m')
@@ -60,7 +48,10 @@ def row(text= None, color=35):
 
 
 class SPConsole(SPMessages):
-    """docstring for SPConsole"""
+    """Переписанный класс генепатора сообщений для консоли.
+
+    :param uid: User ID, кто использует парсер"""
+    
     def __init__(self, uid):
         super(SPConsole, self).__init__(uid)
     
@@ -428,81 +419,133 @@ class SPConsole(SPMessages):
                         print(f"\033[32m{days_str[day]} \033[34m{i+1}. {tt}\033[0m- {', '.join(cs)}")
 
 
+
 def main():
     days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
     sp = SPConsole("Console")
     days = []
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--parse", action="store_true", 
+                        help="Принудительное обновление расписания")
+    
+    # Определние команд парсера
+    # -------------------------
+
+    subparsers = parser.add_subparsers(dest="cmd", metavar="command")
+    subparsers.add_parser("status", help="Информация о парсере")
+    
+    lessons = subparsers.add_parser("lessons", help="Самые частые уроки")
+    lessons.add_argument("class_let", nargs="?", default=None,
+                         help="Сортировка по классу")
+    
+    cabinets = subparsers.add_parser("cabinets", help="Самые частые кабинеты")
+    cabinets.add_argument("class_let", nargs="?", default=None,
+                          help="Сортировка по классу")
+
+    changes = subparsers.add_parser("changes", help="Изменения в расписании")
+    changes.add_argument("-d", dest="days", nargs="*", default=[],
+                        help="Сортировка по дням (понедельник-суббота)")
+    changes.add_argument("-c", dest="class_let", nargs="?",
+                        help="Сортировка по классу")
+
+    search = subparsers.add_parser("search", help="Поиск в расписании")
+    search.add_argument("args", nargs="+", help="Урок, кабинет или класс")
+
+    week = subparsers.add_parser("week", help="Расписание на неделю")
+    week.add_argument("class_let", nargs="?", default=None, 
+                      help="Целевой класс")
+    
+    sc = subparsers.add_parser("sc", help="Расписание уроков")
+    sc.add_argument("class_let", nargs="?", default=None, help="Целевой класс")
+    
+    change_class = subparsers.add_parser("class", 
+                                         help="Изменить класс по умолчанию")
+    change_class.add_argument("class_let", help="Целевой класс")
+
 
     # Обработка аргументов
     # ====================
 
     args = parser.parse_args()
-
-    # Настройки поведения парсера
-    # ---------------------------
-
-    # Устанавливаем класс по умолчанию
-    if args.set_class:
-        print(sp.set_class(args.set_class))
-
+    
     # Принудитекльно обновляем расписание
     if args.parse:
         sp.get_schedule(True)
 
     # Задаём дни недели
-    for x in args.days:
-        if x == "сегодня":
-            days.append(datetime.today().weekday())
-            continue
+    if "days" in args:
+        days = parse_days(args.days)
 
-        if x == "завтра":
-            days.append(datetime.today().weekday()+1)
+    if not args.cmd:
+        sp.send_today_lessons()
 
-        for i, d in enumerate(days_str):
-            if x.startswith(d):
-                days.append(i)
-                continue
 
-    # Команды парсера
-    # ---------------
-
-    # Получаем изменения в расписании
-    if args.changes:
+    
+    if args.cmd == "changes":
         sp.send_sc_changes(days, args.class_let)
-
-    # Получаем информацию о парсере
-    if args.status:
+    
+    if args.cmd == "status":
         print(sp.send_status())
 
-    # Самые частые уроки и кабинеты
-    if args.lessons:
+    if args.cmd == "lessons":
         sp.count_lessons(args.class_let)
-    elif args.cabinets:
+    
+    elif args.cmd == "cabinets":
         sp.count_cabinets(args.class_let)
 
-    # Поиск по предмета
-    elif args.search or args.cabinet:
-        if args.cabinet:
-            sp.search_cabinet(args.cabinet, lesson=args.search, days=days, 
-                              class_let=args.class_let)
-        else:
-            sp.search_lesson(args.search, days=days, class_let=args.class_let)
+    elif args.cmd == "search":
+        days = []
+        cabinet = None
+        lessons = None
+        class_let = None
+        cindex = sp.get_sc_cindex()
+        lindex = sp.get_sc_lindex()
 
-    # Расписание на неделю
-    elif args.week:
+        for x in args.args:
+            if x == "сегодня":
+                days.append(datetime.today().weekday())
+                continue
+
+            if x == "завтра":
+                days.append(datetime.today().weekday()+1)
+
+            for i, d in enumerate(days_str):
+                if x.startswith(d):
+                    days.append(i)
+                    continue
+    
+            if x in sp.lessons:
+                class_let = x
+
+            elif x in lindex:
+                lessons = x
+
+            elif x in cindex:
+                cabinet = x
+
+
+        if cabinet:
+            sp.search_cabinet(cabinet, lessons, days, class_let)
+        else:
+            sp.search_lesson(lessons, days, class_let)
+
+    elif args.cmd == "week":
         sp.send_lessons([0, 1, 2, 3, 4, 5], args.class_let)
    
-    # Расписание уроков
-    elif args.sc:
+    elif args.cmd == "sc":
         if days:
             sp.send_lessons(days, args.class_let)
         else:
             sp.send_today_lessons(args.class_let)
 
+    if args.cmd == "class":
+        print(sp.set_class(args.class_let))
 
     if not sp.user["set_class"]:
-        print('\nПРЕДУПРЕЖДЕНИЕ: Не указан класс по умолчанию для Console')
+        print("\nНе указан класс по умолчанию для Console.")
+        print("Используйте \"--help\" для получения Информации.")
 
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
