@@ -12,7 +12,7 @@ from sparser.sparser import SPMessages
 from datetime import datetime
 
 
-p = Plugin('Расписание', desc='Отправляет вам расписание уроков')
+p = Plugin("Расписание", desc="Отправляет вам расписание уроков")
 
 days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 set_class_message = f"""\n\n⚠️ Поажлуйста, укажите класс по умолчанию: /класс [Ваш класс]"""
@@ -23,10 +23,10 @@ user_base = {"autopost_hour":17, "hour":0, "day":0}
 
 @p.eventHandler("after")
 async def _(event, ctx):
-    p.log('Check sparser_autopost')
+    p.log("Check sparser_autopost")
 
     c = Config(filepath=config_path)
-    day = int(datetime.today().strftime('%j'))
+    day = int(datetime.today().strftime("%j"))
     hour = datetime.now().hour
     updated = False
     autopost_targets = []
@@ -80,7 +80,7 @@ async def autopost(event, ctx):
     autopost_command = ""
 
     if uid not in c.file_data:
-        res += f'🔕 Выключен'
+        res += f"🔕 Выключен"
         autopost_command = "\n🔷 /автопост [час] - включить автопост"
     else:
         res += f"🔔 В {c.file_data[uid]['autopost_hour']}:00"
@@ -98,7 +98,7 @@ async def autopost(event, ctx):
 
 @p.command("класс", usage="[class_let] сменить класс по умолчанию")
 async def setClass(event, ctx):
-    sp = SPMessages(str(event.get('to.id')))
+    sp = SPMessages(str(event.get("to.id")))
     await ctx.message(sp.set_class(ctx.sargs.lower()))
 
 
@@ -106,15 +106,13 @@ async def setClass(event, ctx):
 async def lessons(event, ctx):
     uid = str(event.get("to.id"))
     sp = SPMessages(uid)
-    lindex = sp.get_sc_lindex()
-    cindex = sp.get_sc_cindex()
-
+    
     # Обновление данных автопоста
     # ---------------------------
 
     c = Config(filepath=config_path)
     if uid in c.file_data:
-        c.file_data[uid]["day"] = int(datetime.today().strftime('%j'))
+        c.file_data[uid]["day"] = int(datetime.today().strftime("%j"))
         c.file_data[uid]["hour"] = datetime.now().hour
         c.save()
 
@@ -133,10 +131,10 @@ async def lessons(event, ctx):
         if x in sp.lessons:
             class_let = x
 
-        if x in lindex:
+        if x in sp.l_index:
             lesson = x
 
-        if x in cindex:
+        if x in sp.c_index:
             cabinet = x
 
         for i, d in enumerate(days_str):
@@ -178,7 +176,7 @@ async def schedule(event, ctx):
 
     c = Config(filepath=config_path)
     if uid in c.file_data:
-        c.file_data[uid]["day"] = int(datetime.today().strftime('%j'))
+        c.file_data[uid]["day"] = int(datetime.today().strftime("%j"))
         c.file_data[uid]["hour"] = datetime.now().hour
         c.save()
 
@@ -187,7 +185,7 @@ async def schedule(event, ctx):
         res = sp.send_sc_changes()
     else:
         res = sp.send_lessons([0, 1, 2, 3, 4, 5], ctx.sargs.lower())
-        res += f'\n\n/расписание изменения - что нового в расписании'
+        res += f"\n\n/расписание изменения - что нового в расписании"
 
     if not ctx.sargs and not sp.user["set_class"]:
         res += set_class_message
@@ -201,10 +199,16 @@ async def schedule(event, ctx):
 
 @p.command("sparser", usage="Статус парсера расписания")
 async def sparserStatus(event, ctx):
-    sp = SPMessages(str(event.get('to.id')))
+    sp = SPMessages(str(event.get("to.id")))
     await ctx.message(sp.send_status())
 
 @p.command("<lesson(s) c(ount)>", usage="[class_let] самые частые уроки")
 async def countLessons(event, ctx):
-    sp = SPMessages(str(event.get('to.id')))
+    sp = SPMessages(str(event.get("to.id")))
     await ctx.message(sp.count_lessons(ctx.sargs or None))
+
+@p.command("<cabinet(s) c(ount)>", "кабинеты",
+    usage="[class_let] самые частые кабинеты")
+async def countCabinets(event, ctx):
+    sp = SPMessages(str(event.get("tp.id")))
+    await ctx.message(sp.count_cabinets(ctx.sargs or None))

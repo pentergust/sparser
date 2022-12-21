@@ -9,8 +9,6 @@ from datetime import datetime
 import argparse
 import re
 
-from icecream import ic
-
 
 # Вспомогательные компоненты
 # ==========================
@@ -61,7 +59,7 @@ class SPConsole(SPMessages):
         :param days: Для каких дней показать изменения
         :param class_let: Для какого класса показать изменения"""
 
-        sc_changes = load_file(self.scu_path)
+        sc_changes = load_file(self._scu_path)
         group_log("Изменения в расписании:")
         
         if class_let is not None:
@@ -69,8 +67,7 @@ class SPConsole(SPMessages):
 
 
         # Пробегаемся по измененияв в оасписании
-        for x in sc_changes["changes"]:
-            
+        for x in sc_changes["changes"]:      
             # Добавляем заголовок изменений
             t = datetime.fromtimestamp(x["time"]).strftime("%H:%M:%S")
             print(f"\nПримерно в {t}")
@@ -186,14 +183,12 @@ class SPConsole(SPMessages):
         if class_let is not None:
             class_let = self.get_class(class_let)
 
-        res = ""
-        lindex = self.get_sc_lindex()
         groups = {}
 
         # Считаем частоту предметов
         # -------------------------
 
-        for lesson, v in lindex.items():
+        for lesson, v in self.l_index.items():
             
             cabinets = {}
             for cabinet, vv in v.items():
@@ -246,13 +241,12 @@ class SPConsole(SPMessages):
         if class_let is not None:
             class_let = self.get_class(class_let)
 
-        cindex = self.get_sc_cindex()
         groups = {}
 
         # Считаем частоту предметов
         # -------------------------
 
-        for cabinet, v in cindex.items():      
+        for cabinet, v in self.c_index.items():      
             lessons = {}
             for l, vv in v.items():
                 if class_let:
@@ -302,11 +296,9 @@ class SPConsole(SPMessages):
 
         :returns: Сообщение с результатами поиска."""
 
-        lindex = self.get_sc_lindex()
-        
-        if lesson not in lindex:
+        if lesson not in self.l_index:
             print("Неправильно указан предмет")
-            print(f"Доступные предметы: {'; '.join(lindex)}")
+            print(f"Доступные предметы: {'; '.join(self.l_index)}")
             return False
 
         days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
@@ -362,11 +354,9 @@ class SPConsole(SPMessages):
 
         :returns: Сообщение с результатами поиска."""
 
-        cindex = self.get_sc_cindex()
-        
-        if cabinet not in cindex:
+        if cabinet not in self.c_index:
             print("Неправильно указан кабинет")
-            print(f"Доступные кабинеты: {'; '.join(cindex)}")
+            print(f"Доступные кабинеты: {'; '.join(self.c_index)}")
             return False
             
         days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
@@ -417,7 +407,6 @@ class SPConsole(SPMessages):
                             tt = f'В {timetable[i][0]} '
 
                         print(f"\033[32m{days_str[day]} \033[34m{i+1}. {tt}\033[0m- {', '.join(cs)}")
-
 
 
 def main():
@@ -498,9 +487,7 @@ def main():
         cabinet = None
         lessons = None
         class_let = None
-        cindex = sp.get_sc_cindex()
-        lindex = sp.get_sc_lindex()
-
+        
         for x in args.args:
             if x == "сегодня":
                 days.append(datetime.today().weekday())
@@ -517,10 +504,10 @@ def main():
             if x in sp.lessons:
                 class_let = x
 
-            elif x in lindex:
+            elif x in sp.l_index:
                 lessons = x
 
-            elif x in cindex:
+            elif x in sp.c_index:
                 cabinet = x
 
 
