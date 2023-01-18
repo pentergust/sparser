@@ -13,6 +13,7 @@ import re
 # Вспомогательные компоненты
 # ==========================
 
+
 def parse_days(args):
     days = []
 
@@ -43,6 +44,25 @@ def row(text= None, color=35):
         print(f"\033[90m----- \033[{color}m{text} \033[90m{'-'*lc}\033[0m")
     else:
         print("\033[90m"+"-"*80+"\033[0m")
+
+def register_user(sp):
+    """Проводит первоначальную регистрацию класса.
+    
+    :param sp: Экзмепляр SPMessages"""
+
+    print("Добро пожаловать!")
+    print("Для использования sp, ему нужно знать ваш класс.")
+    print("Это для того, чтобы не указывать его каждый раз.")
+    print("Вы всегда сможете сменить свой класс по умолчанию.")
+    print(f"\nДоступные классы: {', '.join(sp.lessons)}")
+
+    while True:
+        print()
+        class_let = input("Выш класс: ").lower().strip()
+
+        if class_let in sp.lessons:
+            print(sp.set_class(class_let))
+            break
 
 
 class SPConsole(SPMessages):
@@ -456,6 +476,9 @@ def main():
     # ====================
 
     args = parser.parse_args()
+
+    if not sp.user["set_class"]:
+        register_user(sp)
     
     # Принудитекльно обновляем расписание
     if args.parse:
