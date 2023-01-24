@@ -5,16 +5,27 @@ Ver: 3.1
 """
 
 from sparser import SPMessages, load_file, days_str, timetable
+
 from datetime import datetime
+from shutil import get_terminal_size
+
 import argparse
 import re
 
 
-# Вспомогательные компоненты
-# ==========================
-
+# Вспомогательные функции
+# =======================
 
 def parse_days(args):
+    """Парсит имена дней из аргументов.
+    
+    Args:
+        args (list): Список строковых аргументов
+    
+    Returns:
+        list: Список номеров дней
+    """
+    
     days = []
 
     for x in args:
@@ -24,7 +35,9 @@ def parse_days(args):
 
         if x == "завтра":
             days.append(datetime.today().weekday()+1)
+            continue
 
+        # Если начало слова совпадает пятниц... а, у, ы.
         for i, d in enumerate(days_str):
             if x.startswith(d):
                 days.append(i)
@@ -32,63 +45,100 @@ def parse_days(args):
 
     return days
 
-def group_log(text):
-    print(f'\033[96m:\033[94m: \033[0m\033[1m{text}\033[0m')
-
-def rc(text):
-    return re.sub(r'\033\[[0-9]*m', '', text)
-
-def row(text= None, color=35):
-    if text:
-        lc = 73 - len(text)
-        print(f"\033[90m----- \033[{color}m{text} \033[90m{'-'*lc}\033[0m")
-    else:
-        print("\033[90m"+"-"*80+"\033[0m")
-
 def register_user(sp):
-    """Проводит первоначальную регистрацию класса.
+    """Проводит первоначальную регистрацию класса пользователя.
     
-    :param sp: Экзмепляр SPMessages"""
+    Args:
+        sp (ScheduleParser): Экземпляр парсера
+    """
 
     print("Добро пожаловать!")
-    print("Для использования sp, ему нужно знать ваш класс.")
-    print("Это для того, чтобы не указывать его каждый раз.")
+    print("Для использования SP, ему нужно знать ваш класс.")
+    print("Для того, чтобы не указывать его каждый раз.")
     print("Вы всегда сможете сменить свой класс по умолчанию.")
     print(f"\nДоступные классы: {', '.join(sp.lessons)}")
 
     while True:
         print()
-        class_let = input("Выш класс: ").lower().strip()
+        class_let = input("\033[33mВаш класс\033[0m: ").lower().strip()
 
         if class_let in sp.lessons:
             print(sp.set_class(class_let))
             break
 
 
-class SPConsole(SPMessages):
-    """Переписанный класс генепатора сообщений для консоли.
+# Вспомогательные функции отображения
+# ===================================
 
-    :param uid: User ID, кто использует парсер"""
+def group_log(text):
+    print(f'\033[96m:\033[94m: \033[0m\033[1m{text}\033[0m')
+
+def rc(text):
+    """Очищает текст от цветовых кодов."""
+    return re.sub(r'\033\[[0-9]*m', '', text)
+
+def row(text= None, color=35):
+    """Вертикальный разделитель в консоли.
+    
+    Args:
+        text (str, optional): Текст разделителя
+        color (int, optional): Цвет текста
+    """
+    
+    l = get_terminal_size()[0]
+
+    if text:
+        lc = l - (len(text) + 7)
+        print(f"\033[90m===== \033[{color}m{text} \033[90m{'-'*lc}\033[0m")
+    else:
+        print("\033[90m"+"-"*l+"\033[0m")
+
+def enumerate_list(l, pt=False):
+    """Отображает пронумерованный список.
+    
+    Args:
+        l (list): Список для отображения
+        pt (bool, optional): Отображать ли расписание (звонков)
+    """
+
+    for i, x in enumerate(l):
+        if pt:
+            tt = ""
+            if i < len(timetable):
+                tt = f" {timetable[i][0]} "
+            print(f"\033[94m{i+1}\033[34m{tt}\033[90m| \033[0m{x}\033[0m")
+        
+        else:
+            print(f"\033[34m{i+1}\033[90m|\033[0m {x}\033[0m")
+
+
+# Генератор сообщений для консоли
+# ===============================
+
+class SPConsole(SPMessages):
+    """Генератор сообщений для консоли."""
     
     def __init__(self, uid):
         super(SPConsole, self).__init__(uid)
     
-    def send_sc_changes(self, days=None, class_let=None):
-        """Отправить измененив в расписании.
-
-        :param days: Для каких дней показать изменения
-        :param class_let: Для какого класса показать изменения"""
+    def send_sc_changes(self, days=None, cl=None):
+        """Отображает изменения в расписании.
+        
+        Args:
+            days (list, optional): Фильтр по дням
+            cl (str, optional): Фильтр по классу
+        """
 
         sc_changes = load_file(self._scu_path)
         group_log("Изменения в расписании:")
         
-        if class_let is not None:
-            class_let = self.get_class(class_let)
+        if cl is not None:
+            cl = self.get_class(cl)
 
-
-        # Пробегаемся по измененияв в оасписании
+        # Пробегаемся по измененияв в расписании
         for x in sc_changes["changes"]:      
-            # Добавляем заголовок изменений
+            
+            # заголовок изменений
             t = datetime.fromtimestamp(x["time"]).strftime("%H:%M:%S")
             print(f"\nПримерно в {t}")
 
@@ -98,87 +148,76 @@ class SPConsole(SPMessages):
                     continue
 
                 if changes:
-                    row(f"На {days_str[day]}", 36)
+                    print()
+                    row(f"На {days_str[day]}", color=36)
                     
                     # Пробегаемся по классам
                     for k, v in changes.items():
-                        if class_let and class_let != k:
+                        if cl and cl != k:
                             continue
 
-                        row(k, 94)
-                        d_str = "" 
+                        row(k, color=94)
+                        res = []
 
-                        # Проьегаемся по урокам
-                        for i, l in enumerate(v):
-                            o = l[0]
-                            n = l[1]
-
+                        # Пробегаемся по урокам
+                        for o, n in v:
                             if n:
-                                if n[1] != o[1]:
-                                    print(f"\033[34m{i+1} \033[90m| \033[31m{o[0]}\033[90m:{o[1]} \033[0m> \033[32m{n[0]}\033[90m:{n[1]}\033[0m")
-                                else:
-                                    print(f"\033[34m{i+1} \033[90m| \033[31m{o[0]} \033[0m> \033[32m{n[0]}\033[90m:{n[1]}\033[0m")
+                                res.append(f"{o[0]} >> \033[32m{n[0]}\033[90m:{n[1]}")
                             else:
-                                print(f"\033[34m{i+1} \033[90m| \033[0m{o[0]}\033[90m:{o[1]}\033[0m")
+                                res.append(f"{o[0]}\033[90m:{o[1]}")
+                            
+                        enumerate_list(res)
 
-    def send_day_lessons(self, today=0, class_let=None):
-        """Сообщение с расписанием уроков на день.
+    def send_day_lessons(self, today=0, cl=None):
+        """Отображает расписанием уроков на день.
         
-        :param today: День недеди (0-5)
-        :param class_let: Класс, которому требуется расписание
-        
-        :return: Сообщение с расписанием на день"""
+        Args:
+            today (int, optional): День недели
+            cl (str, optional): Для какого класса
+        """
         
         # Ограничение дней
-        if today > 5:
-            today = 0
+        today = today % 6
     
-        class_let = self.get_class(class_let)
-        lessons = self.get_lessons(class_let)[today]["l"]
-        row(f"На {days_str[today]}", 36)
+        cl = self.get_class(cl)
+        lessons = self.get_lessons(cl)[today]["l"]
+        row(f"На {days_str[today]}", color=36)
         
         # Собираем сообщение с расписанием
-        for i, x in enumerate(lessons):
-            tt = ""
-            if i < len(timetable):
-                tt = f" {timetable[i][0]}"
-            
-            print(f"\033[34m{i+1}{tt} \033[90m| \033[0m{x[0]}\033[90m:{x[1]}\033[0m")
-
-        return ""
+        res = []
+        for x in lessons:
+            res.append(f"{x[0]}\033[90m:{x[1]}")
+        
+        enumerate_list(res, pt=True)
      
-    def send_lessons(self, days=[0], class_let=None):
-        """Сообщение с расписанием уроков.
+    def send_lessons(self, days=[0], cl=None):
+        """Отображает расписанием уроков.
+        
+        Args:
+            days (list, optional): Для каких дней недели
+            cl (str, optional): Для какого класса
+        """
 
-        :param days: Дни недели, для которых нужно расписание
-        :param class_let: Класс, для которого нужно расписание
-
-        :return: Сообщение с расписанием"""
-
-        class_let = self.get_class(class_let)
+        cl = self.get_class(cl)
 
         if isinstance(days, int):
             days = [days]     
 
-        # Убираем повторы и отрезаем несуществующие дни
-        # ---------------------------------------------
-
+        # Убираем повторы и несуществующие дни
         days = set(filter(lambda x: x < 6, days))
 
         # Собираем сообщение
         # ------------------
 
-        print(f"\nРасписание для {class_let}:")
-
+        print(f"\nРасписание для {cl}:")
         for day in days:
             print()
-            self.send_day_lessons(day, class_let)
+            self.send_day_lessons(day, cl)
         
-
-        # Обновления в расписаниии
-        # ------------------------
+        # Обновления в расписании
+        # -----------------------
         
-        if class_let == self.user["class_let"]:
+        if cl == self.user["class_let"]:
             updates = self.get_lessons_updates()
             
             if updates:
@@ -192,28 +231,24 @@ class SPConsole(SPMessages):
                 else:
                     print(f"На {', '.join(map(lambda x: days_str[x], updates))}.")
 
-    def count_lessons(self, class_let=None):
+    def count_lessons(self, cl=None):
         """Считает частоту уроков в расписании.
-        Для всех или определённого класса.
+        
+        Args:
+            cl (str, optional): Для какого класса
+        """
 
-        :param class_let: Для какого класса произвести подсчёт
-
-        :returns: Сообщение с самыми частыми классами"""
-
-        if class_let is not None:
-            class_let = self.get_class(class_let)
-
-        groups = {}
+        if cl is not None:
+            cl = self.get_class(cl)
 
         # Считаем частоту предметов
-        # -------------------------
-
-        for lesson, v in self.l_index.items():
-            
+        res = {}
+        for lesson, v in self.l_index.items(): 
             cabinets = {}
+            
             for cabinet, vv in v.items():
-                if class_let:
-                    c = sum(map(len, vv.get(class_let, [])))
+                if cl:
+                    c = sum(map(len, vv.get(cl, [])))
                 else:
                     c = sum(map(lambda x: sum(map(len, x)), vv.values()))
 
@@ -222,22 +257,22 @@ class SPConsole(SPMessages):
 
             c = sum(cabinets.values())
             if c:
-                if str(c) not in groups:
-                    groups[str(c)] = {}
+                if str(c) not in res:
+                    res[str(c)] = {}
 
-                groups[str(c)][lesson] = cabinets
+                res[str(c)][lesson] = cabinets
   
         # Собираем сообщение
         # ------------------
 
-        if class_let:
-            group_log(f"Самые частые уроки у {class_let}:")
+        if cl:
+            group_log(f"Самые частые уроки у {cl}:")
         else:
             group_log(f"Самые частые уроки:")
 
-        for k, v in sorted(groups.items(), key=lambda x: int(x[0]), reverse=True):
+        for k, v in sorted(res.items(), key=lambda x: int(x[0]), reverse=True):
             print()
-            row(F"{k} раз(а)", 35)
+            row(f"{k} раз(а)", color=35)
 
             for lesson, cabinets in v.items():
                 cabinets_str = ""
@@ -250,27 +285,24 @@ class SPConsole(SPMessages):
                 
                 print(f" * {lesson} {cabinets_str}\033[0m")
                 
-    def count_cabinets(self, class_let=None):
+    def count_cabinets(self, cl=None):
         """Считает частоту кабинетов в расписании.
-        Для всех или определённого класса.
+        
+        Args:
+            cl (str, optional): Для какого класса
+        """
 
-        :param class_let: Для какого класса произвести подсчёт
+        if cl is not None:
+            cl = self.get_class(cl)
 
-        :returns: Сообщение с самыми частыми кабинетами"""
 
-        if class_let is not None:
-            class_let = self.get_class(class_let)
-
-        groups = {}
-
-        # Считаем частоту предметов
-        # -------------------------
-
+        # Считаем частоту кабинетов        
+        res = {}
         for cabinet, v in self.c_index.items():      
             lessons = {}
             for l, vv in v.items():
-                if class_let:
-                    c = sum(map(len, vv.get(class_let, [])))
+                if cl:
+                    c = sum(map(len, vv.get(cl, [])))
                 else:
                     c = sum(map(lambda x: sum(map(len, x)), vv.values()))
 
@@ -279,21 +311,21 @@ class SPConsole(SPMessages):
 
             c = sum(lessons.values())
             if c:
-                if str(c) not in groups:
-                    groups[str(c)] = {}
+                if str(c) not in res:
+                    res[str(c)] = {}
 
-                groups[str(c)][cabinet] = lessons
+                res[str(c)][cabinet] = lessons
   
         # Собираем сообщение
         # ------------------
 
-        if class_let:
-            group_log(f"Самые частые кабинеты у {class_let}:")
+        if cl:
+            group_log(f"Самые частые кабинеты у {cl}:")
         else:
             group_log(f"Самые частые кабинеты:")
 
-        for k, v in sorted(groups.items(), key=lambda x: int(x[0]), reverse=True):
-            row(f"{k} раз(а)", 35)
+        for k, v in sorted(res.items(), key=lambda x: int(x[0]), reverse=True):
+            row(f"{k} раз(а)", color=35)
             
             for cabinet, lessons in v.items():
                 lessons_str = ""
@@ -306,26 +338,24 @@ class SPConsole(SPMessages):
                 
                 print(f" * {cabinet}: {lessons_str}\033[0m")
   
-    def search_lesson(self, lesson, days=None, class_let=None):
-        """Поиск упоминаний о уроке.
-        Когда (день), где (кабинет), для кого (класс), каким уроком.
-
-        :param lesson: Урок, который нужно найти
-        :param days: Для каких дней отображать результат поиска
-        :param class_let: Для какого класса отображать результаты
-
-        :returns: Сообщение с результатами поиска."""
-
+    def search_lesson(self, lesson, days=None, cl=None):
+        """Поиск упоминаний об уроке.
+        
+        Args:
+            lesson (str): Урок для поиска
+            days (list, optional): Для каких дней
+            cl (str, optional): Для какого класса
+        """
+        
         if lesson not in self.l_index:
             print("Неправильно указан предмет")
             print(f"Доступные предметы: {'; '.join(self.l_index)}")
             return False
 
+        if cl is not None:
+            cl = self.get_class(cl)
+
         days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
-
-        if class_let is not None:
-            class_let = self.get_class(class_let)
-
         data = self.search(lesson)
 
         # Собираем сообщение
@@ -337,14 +367,14 @@ class SPConsole(SPMessages):
         elif days:
             search_str += f" за {', '.join(map(lambda x: days_str[x], days))}"
 
-        if class_let:
-            search_str += f" для {class_let}"
+        if cl:
+            search_str += f" для {cl}"
 
         group_log(search_str)
 
         # Пробегаемся по результатам поиска
         for cabinet, v in data.items():
-            row(cabinet, 35)
+            row(cabinet, color=35)
 
             # Пробегаемся по указанным дням
             for day in days:
@@ -352,7 +382,7 @@ class SPConsole(SPMessages):
                 day_res = []
 
                 for i, cs in enumerate(ln):
-                    if class_let and class_let not in cs:
+                    if cl and cl not in cs:
                         continue
 
                     if cs:
@@ -363,29 +393,27 @@ class SPConsole(SPMessages):
 
                         print(f"\033[32m{days_str[day]} \033[34m {i+1}. {tt}\033[0m- {', '.join(cs)}")
         
-    def search_cabinet(self, cabinet, lesson=None, days=None, class_let=None):
+    def search_cabinet(self, cabinet, lesson=None, days=None, cl=None):
         """Поиск упоминаний о кабинете.
         Когда (день), что (урок), для кого (класс), каким уроком.
-
-        :param cabinet: Кабинет, который нужно найти
-        :param lesson: Для какого урока отображать результат
-        :param days: Для каких дней отображать результат поиска
-        :param class_let: Для какого класса отображать результаты
-
-        :returns: Сообщение с результатами поиска."""
+        
+        Args:
+            cabinet (str): Кабинет для поиска
+            lesson (str, optional): Для какого урока
+            days (list, optional): Для каких дней
+            cl (str, optional): Для какого класса
+        """
 
         if cabinet not in self.c_index:
             print("Неправильно указан кабинет")
             print(f"Доступные кабинеты: {'; '.join(self.c_index)}")
             return False
             
+        if cl is not None:
+            cl = self.get_class(cl)
+
         days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
-
-        if class_let is not None:
-            class_let = self.get_class(class_let)
-
         data = self.search(cabinet)
-
 
         # Собираем сообщение
         # ------------------
@@ -396,8 +424,8 @@ class SPConsole(SPMessages):
         elif days:
             search_str += f" за {', '.join(map(lambda x: days_str[x], days))}"
 
-        if class_let:
-            search_str += f" для {class_let}"
+        if cl:
+            search_str += f" для {cl}"
 
         if lesson:
             search_str += f" ({lesson})"
@@ -406,18 +434,17 @@ class SPConsole(SPMessages):
 
         # Пробегаемся по результатам поиска
         for l, v in data.items():
-
             if lesson and lesson != l:
                 continue
 
-            row(l, 35)
+            row(l, color=35)
 
             # Пробегаемся по указанным дням
             for day in days:
                 ln = v[day]
                 
                 for i, cs in enumerate(ln):
-                    if class_let and class_let not in cs:
+                    if cl and cl not in cs:
                         continue
 
                     if cs:
