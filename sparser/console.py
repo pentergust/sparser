@@ -105,7 +105,7 @@ def enumerate_list(l, pt=False):
         if pt:
             tt = ""
             if i < len(timetable):
-                tt = f" {timetable[i][0]} "
+                tt = f" {timetable[i][0]}"
             print(f"\033[94m{i+1}\033[34m{tt}\033[90m| \033[0m{x}\033[0m")
         
         else:
@@ -374,6 +374,7 @@ class SPConsole(SPMessages):
 
         # Пробегаемся по результатам поиска
         for cabinet, v in data.items():
+            print()
             row(cabinet, color=35)
 
             # Пробегаемся по указанным дням
@@ -381,18 +382,18 @@ class SPConsole(SPMessages):
                 ln = v[day]
                 day_res = []
 
+                res = []
                 for i, cs in enumerate(ln):
                     if cl and cl not in cs:
                         continue
 
                     if cs:
-                        tt = ""
+                        res.append(", ".join(cs))
+                        
+                if res:
+                    row(days_str[day], color=32)
+                    enumerate_list(res, pt=True)
 
-                        if i < len(timetable):
-                            tt = f'{timetable[i][0]} '
-
-                        print(f"\033[32m{days_str[day]} \033[34m {i+1}. {tt}\033[0m- {', '.join(cs)}")
-        
     def search_cabinet(self, cabinet, lesson=None, days=None, cl=None):
         """Поиск упоминаний о кабинете.
         Когда (день), что (урок), для кого (класс), каким уроком.
@@ -433,11 +434,10 @@ class SPConsole(SPMessages):
         group_log(search_str)
 
         # Пробегаемся по результатам поиска
+        res = [[[] for x in range(8)] for x in range(6)]
         for l, v in data.items():
             if lesson and lesson != l:
                 continue
-
-            row(l, color=35)
 
             # Пробегаемся по указанным дням
             for day in days:
@@ -448,13 +448,28 @@ class SPConsole(SPMessages):
                         continue
 
                     if cs:
-                        tt = ""
+                        res[day][i].append(f"{l}:\033[33m{', '.join(cs)}\033[0m")
+            
+        for day, lessons in enumerate(res):
+            if lessons:
+                print()
+                row(days_str[day], color=35)
+                
+                while lessons:
+                    if not lessons[-1]:
+                        lessons.pop()
+                    else:
+                        break
 
-                        if i < len(timetable):
-                            tt = f'В {timetable[i][0]} '
-
-                        print(f"\033[32m{days_str[day]} \033[34m{i+1}. {tt}\033[0m- {', '.join(cs)}")
-
+                day_lessons = []
+                for l in lessons:
+                    if not l:
+                        day_lessons.append("===")
+                    else:
+                        day_lessons.append(", ".join(l))
+                            
+                enumerate_list(day_lessons, pt=True)
+ 
 
 def main():
     days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
@@ -479,10 +494,9 @@ def main():
                           help="Сортировка по классу")
 
     changes = subparsers.add_parser("changes", help="Изменения в расписании")
-    changes.add_argument("-d", dest="days", nargs="*", default=[],
+    changes.add_argument("-d", dest="days", nargs="+", default=[],
                         help="Сортировка по дням (понедельник-суббота)")
-    changes.add_argument("-c", dest="class_let", nargs="?",
-                        help="Сортировка по классу")
+    changes.add_argument("-c", dest="class_let", help="Сортировка по классу")
 
     search = subparsers.add_parser("search", help="Поиск в расписании")
     search.add_argument("args", nargs="+", help="Урок, кабинет или класс")
@@ -493,6 +507,8 @@ def main():
     
     sc = subparsers.add_parser("sc", help="Расписание уроков")
     sc.add_argument("class_let", nargs="?", default=None, help="Целевой класс")
+    sc.add_argument("-d", dest="days", nargs="+", default=[],
+                    help="Для каких дней (понедельник-суббота)")
     
     change_class = subparsers.add_parser("class", 
                                          help="Изменить класс по умолчанию")
