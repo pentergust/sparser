@@ -231,113 +231,73 @@ class SPConsole(SPMessages):
                 else:
                     print(f"На {', '.join(map(lambda x: days_str[x], updates))}.")
 
-    def count_lessons(self, cl=None):
-        """Считает частоту уроков в расписании.
+    def count_lessons(self, cl=None, lessons=True):
+        """Универсальная функция подсчёта кабинетов/уроков.
         
         Args:
-            cl (str, optional): Для какого класса
+            cl (str, optional): Для какого класс
+            lessons (bool, optional): Подсчёт уроков, иначе кабинетов
         """
-
+        
         if cl is not None:
             cl = self.get_class(cl)
 
-        # Считаем частоту предметов
+        # Считаем частоту предметов/кабинетов
+        # -----------------------------------
+
         res = {}
-        for lesson, v in self.l_index.items(): 
-            cabinets = {}
+        index = self.l_index if lessons else self.c_index
+
+        # Если obj - уроки, то another - кабинеты, и наоборот
+        for obj, v in index.items(): 
+            another = {}
             
-            for cabinet, vv in v.items():
+            # Индекс уроков - указания кабинетов, и наоборот
+            for a_k, a_v in v.items():
                 if cl:
-                    c = sum(map(len, vv.get(cl, [])))
+                    c = sum(map(len, a_v.get(cl, [])))
                 else:
-                    c = sum(map(lambda x: sum(map(len, x)), vv.values()))
+                    c = sum(map(lambda x: sum(map(len, x)), a_v.values()))
 
                 if c:
-                    cabinets[cabinet] = c
+                    another[a_k] = c
 
-            c = sum(cabinets.values())
+            c = sum(another.values())
             if c:
                 if str(c) not in res:
                     res[str(c)] = {}
 
-                res[str(c)][lesson] = cabinets
-  
+                res[str(c)][obj] = another
+
         # Собираем сообщение
         # ------------------
 
-        if cl:
-            group_log(f"Самые частые уроки у {cl}:")
+        group_msg = "Самые частые "
+        if lessons:
+            group_msg += "уроки"
         else:
-            group_log(f"Самые частые уроки:")
+            group_msg += "кабинеты"
 
+        if cl:
+            group_msg += f" у {cl}"
+
+        group_log(group_msg)
+        
         for k, v in sorted(res.items(), key=lambda x: int(x[0]), reverse=True):
             print()
-            row(f"{k} раз(а)", color=35)
+            row(F"{k} раз(а)", 35)
 
-            for lesson, cabinets in v.items():
-                cabinets_str = ""
+            for obj, another in v.items():
+                another_str = ""
 
-                for c, n in cabinets.items():
-                    if n > 1 and len(cabinets) > 1:
-                        cabinets_str += f"\033[33m{c}:\033[90m{n} "
+                for a, n in another.items():
+                    if n > 1 and len(another) > 1:
+                        another_str += f"\033[33m{a}:\033[90m{n} "
                     else:
-                        cabinets_str += f"\033[33m{c} "
+                        another_str += f"\033[33m{a} "
                 
-                print(f" * {lesson} {cabinets_str}\033[0m")
-                
-    def count_cabinets(self, cl=None):
-        """Считает частоту кабинетов в расписании.
-        
-        Args:
-            cl (str, optional): Для какого класса
-        """
+                print(f" * {obj} {another_str}\033[0m")
 
-        if cl is not None:
-            cl = self.get_class(cl)
-
-
-        # Считаем частоту кабинетов        
-        res = {}
-        for cabinet, v in self.c_index.items():      
-            lessons = {}
-            for l, vv in v.items():
-                if cl:
-                    c = sum(map(len, vv.get(cl, [])))
-                else:
-                    c = sum(map(lambda x: sum(map(len, x)), vv.values()))
-
-                if c:
-                    lessons[l] = c
-
-            c = sum(lessons.values())
-            if c:
-                if str(c) not in res:
-                    res[str(c)] = {}
-
-                res[str(c)][cabinet] = lessons
-  
-        # Собираем сообщение
-        # ------------------
-
-        if cl:
-            group_log(f"Самые частые кабинеты у {cl}:")
-        else:
-            group_log(f"Самые частые кабинеты:")
-
-        for k, v in sorted(res.items(), key=lambda x: int(x[0]), reverse=True):
-            row(f"{k} раз(а)", color=35)
-            
-            for cabinet, lessons in v.items():
-                lessons_str = ""
-
-                for l, n in lessons.items():
-                    if n > 1 and len(lessons) > 1:
-                        lessons_str += f"\033[33m{l}:\033[90m{n} "
-                    else:
-                        lessons_str += f"\033[33m{l} "
-                
-                print(f" * {cabinet}: {lessons_str}\033[0m")
-  
     def search_lesson(self, lesson, days=None, cl=None):
         """Поиск упоминаний об уроке.
         
@@ -546,7 +506,7 @@ def main():
         sp.count_lessons(args.class_let)
     
     elif args.cmd == "cabinets":
-        sp.count_cabinets(args.class_let)
+        sp.count_lessons(args.class_let, lessons=False)
 
     elif args.cmd == "search":
         days = []
