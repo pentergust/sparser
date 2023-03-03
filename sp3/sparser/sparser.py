@@ -103,11 +103,10 @@ def get_sc_diff(a, b):
     
     :returns: Разница между двумя расписаниями"""
 
-    res = [{} for x in range(6)]
-
     # Пробегаемся по новому расписанию
+    res = [{} for x in range(6)]
     for k, v in b.items():
-
+        
         # Если класса нет в старом расписании - пропускаем
         if not k in a:
             continue
