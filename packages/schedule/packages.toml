@@ -1,7 +1,0 @@
-[schedule]
-name = "Chio Schedule"
-desc = "Плагин Чио для отправки расписания уроков"
-ver = "sp v3.1"
-build = 12
-require = [ "sparser/sp"]
-type = "plugin"
