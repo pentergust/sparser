@@ -1,9 +1,12 @@
 """
 Плагин Чио для отправки школьного расписания.
-Обёртка над ScheduleParser
+Обёртка для ScheduleParser
 
 Author: Milinuri Nirvalen
 Ver: sp 3.1
+
+Пожалуйста, переместите меня в папку packages/ вашей сборки Чио.
+И переименуйте меня во что-то более логичное.. например "schedule.py"
 """
 
 from core import Plugin, Config
@@ -69,7 +72,7 @@ async def autopost(event, ctx):
         if uid in c.file_data:
             del c.file_data[uid]
             c.save()
-    
+
     elif ctx.sargs.isdigit():
         user = c.file_data.get(uid, user_base)
         user["autopost_hour"] = min(max(int(ctx.sargs), 0), 23)
@@ -106,7 +109,7 @@ async def setClass(event, ctx):
 async def lessons(event, ctx):
     uid = str(event.get("to.id"))
     sp = SPMessages(uid)
-    
+
     # Обновление данных автопоста
     # ---------------------------
 
@@ -124,7 +127,7 @@ async def lessons(event, ctx):
     lesson = None
     cabinet = None
     days = []
-    
+
     for x in ctx.args:
         x = x.lower()
 
@@ -139,7 +142,7 @@ async def lessons(event, ctx):
 
         for i, d in enumerate(days_str):
             if x.startswith(d) and i not in days:
-                days.append(i) 
+                days.append(i)
 
         if x == "сегодня":
             days.append(datetime.today().weekday())
@@ -165,7 +168,7 @@ async def lessons(event, ctx):
         res += set_class_message
 
     await ctx.message(res)
-  
+
 @p.command("расписание", usage= "[class_let] расписание на неделю")
 async def schedule(event, ctx):
     uid = str(event.get("to.id"))

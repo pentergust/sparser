@@ -18,14 +18,14 @@ import re
 
 def parse_days(args):
     """Парсит имена дней из аргументов.
-    
+
     Args:
         args (list): Список строковых аргументов
-    
+
     Returns:
         list: Список номеров дней
     """
-    
+
     days = []
 
     for x in args:
@@ -47,7 +47,7 @@ def parse_days(args):
 
 def register_user(sp):
     """Проводит первоначальную регистрацию класса пользователя.
-    
+
     Args:
         sp (ScheduleParser): Экземпляр парсера
     """
@@ -79,12 +79,12 @@ def rc(text):
 
 def row(text= None, color=35):
     """Вертикальный разделитель в консоли.
-    
+
     Args:
         text (str, optional): Текст разделителя
         color (int, optional): Цвет текста
     """
-    
+
     l = get_terminal_size()[0]
 
     if text:
@@ -95,7 +95,7 @@ def row(text= None, color=35):
 
 def enumerate_list(l, pt=False):
     """Отображает пронумерованный список.
-    
+
     Args:
         l (list): Список для отображения
         pt (bool, optional): Отображать ли расписание (звонков)
@@ -107,7 +107,7 @@ def enumerate_list(l, pt=False):
             if i < len(timetable):
                 tt = f" {timetable[i][0]}"
             print(f"\033[94m{i+1}\033[34m{tt}\033[90m| \033[0m{x}\033[0m")
-        
+
         else:
             print(f"\033[34m{i+1}\033[90m|\033[0m {x}\033[0m")
 
@@ -117,13 +117,13 @@ def enumerate_list(l, pt=False):
 
 class SPConsole(SPMessages):
     """Генератор сообщений для консоли."""
-    
+
     def __init__(self, uid):
         super(SPConsole, self).__init__(uid)
-    
+
     def send_sc_changes(self, days=None, cl=None):
         """Отображает изменения в расписании.
-        
+
         Args:
             days (list, optional): Фильтр по дням
             cl (str, optional): Фильтр по классу
@@ -131,13 +131,13 @@ class SPConsole(SPMessages):
 
         sc_changes = load_file(self._scu_path)
         group_log("Изменения в расписании:")
-        
+
         if cl is not None:
             cl = self.get_class(cl)
 
         # Пробегаемся по измененияв в расписании
-        for x in sc_changes["changes"]:      
-            
+        for x in sc_changes["changes"]:
+
             # заголовок изменений
             t = datetime.fromtimestamp(x["time"]).strftime("%H:%M:%S")
             print(f"\nПримерно в {t}")
@@ -150,7 +150,7 @@ class SPConsole(SPMessages):
                 if changes:
                     print()
                     row(f"На {days_str[day]}", color=36)
-                    
+
                     # Пробегаемся по классам
                     for k, v in changes.items():
                         if cl and cl != k:
@@ -165,34 +165,34 @@ class SPConsole(SPMessages):
                                 res.append(f"{o[0]} >> \033[32m{n[0]}\033[90m:{n[1]}")
                             else:
                                 res.append(f"{o[0]}\033[90m:{o[1]}")
-                            
+
                         enumerate_list(res)
 
     def send_day_lessons(self, today=0, cl=None):
         """Отображает расписанием уроков на день.
-        
+
         Args:
             today (int, optional): День недели
             cl (str, optional): Для какого класса
         """
-        
+
         # Ограничение дней
         today = today % 6
-    
+
         cl = self.get_class(cl)
         lessons = self.get_lessons(cl)[today]["l"]
         row(f"На {days_str[today]}", color=36)
-        
+
         # Собираем сообщение с расписанием
         res = []
         for x in lessons:
             res.append(f"{x[0]}\033[90m:{x[1]}")
-        
+
         enumerate_list(res, pt=True)
-     
+
     def send_lessons(self, days=[0], cl=None):
         """Отображает расписанием уроков.
-        
+
         Args:
             days (list, optional): Для каких дней недели
             cl (str, optional): Для какого класса
@@ -201,7 +201,7 @@ class SPConsole(SPMessages):
         cl = self.get_class(cl)
 
         if isinstance(days, int):
-            days = [days]     
+            days = [days]
 
         # Убираем повторы и несуществующие дни
         days = set(filter(lambda x: x < 6, days))
@@ -213,13 +213,13 @@ class SPConsole(SPMessages):
         for day in days:
             print()
             self.send_day_lessons(day, cl)
-        
+
         # Обновления в расписании
         # -----------------------
-        
+
         if cl == self.user["class_let"]:
             updates = self.get_lessons_updates()
-            
+
             if updates:
                 print()
                 group_log(f"Изменилось расписание!")
@@ -227,18 +227,18 @@ class SPConsole(SPMessages):
                 updates = updates - days
                 if len(updates) < 3:
                     for day in updates:
-                        self.send_day_lessons(day) 
+                        self.send_day_lessons(day)
                 else:
                     print(f"На {', '.join(map(lambda x: days_str[x], updates))}.")
 
     def count_lessons(self, cl=None, lessons=True):
         """Универсальная функция подсчёта кабинетов/уроков.
-        
+
         Args:
             cl (str, optional): Для какого класс
             lessons (bool, optional): Подсчёт уроков, иначе кабинетов
         """
-        
+
         if cl is not None:
             cl = self.get_class(cl)
 
@@ -249,9 +249,9 @@ class SPConsole(SPMessages):
         index = self.l_index if lessons else self.c_index
 
         # Если obj - уроки, то another - кабинеты, и наоборот
-        for obj, v in index.items(): 
+        for obj, v in index.items():
             another = {}
-            
+
             # Индекс уроков - указания кабинетов, и наоборот
             for a_k, a_v in v.items():
                 if cl:
@@ -282,7 +282,7 @@ class SPConsole(SPMessages):
             group_msg += f" у {cl}"
 
         group_log(group_msg)
-        
+
         for k, v in sorted(res.items(), key=lambda x: int(x[0]), reverse=True):
             print()
             row(F"{k} раз(а)", 35)
@@ -295,18 +295,18 @@ class SPConsole(SPMessages):
                         another_str += f"\033[33m{a}:\033[90m{n} "
                     else:
                         another_str += f"\033[33m{a} "
-                
+
                 print(f" * {obj} {another_str}\033[0m")
 
     def search_lesson(self, lesson, days=None, cl=None):
         """Поиск упоминаний об уроке.
-        
+
         Args:
             lesson (str): Урок для поиска
             days (list, optional): Для каких дней
             cl (str, optional): Для какого класса
         """
-        
+
         if lesson not in self.l_index:
             print("Неправильно указан предмет")
             print(f"Доступные предметы: {'; '.join(self.l_index)}")
@@ -349,7 +349,7 @@ class SPConsole(SPMessages):
 
                     if cs:
                         res.append(", ".join(cs))
-                        
+
                 if res:
                     row(days_str[day], color=32)
                     enumerate_list(res, pt=True)
@@ -357,7 +357,7 @@ class SPConsole(SPMessages):
     def search_cabinet(self, cabinet, lesson=None, days=None, cl=None):
         """Поиск упоминаний о кабинете.
         Когда (день), что (урок), для кого (класс), каким уроком.
-        
+
         Args:
             cabinet (str): Кабинет для поиска
             lesson (str, optional): Для какого урока
@@ -369,7 +369,7 @@ class SPConsole(SPMessages):
             print("Неправильно указан кабинет")
             print(f"Доступные кабинеты: {'; '.join(self.c_index)}")
             return False
-            
+
         if cl is not None:
             cl = self.get_class(cl)
 
@@ -402,19 +402,19 @@ class SPConsole(SPMessages):
             # Пробегаемся по указанным дням
             for day in days:
                 ln = v[day]
-                
+
                 for i, cs in enumerate(ln):
                     if cl and cl not in cs:
                         continue
 
                     if cs:
                         res[day][i].append(f"{l}:\033[33m{', '.join(cs)}\033[0m")
-            
+
         for day, lessons in enumerate(res):
             if lessons:
                 print()
                 row(days_str[day], color=35)
-                
+
                 while lessons:
                     if not lessons[-1]:
                         lessons.pop()
@@ -427,28 +427,28 @@ class SPConsole(SPMessages):
                         day_lessons.append("===")
                     else:
                         day_lessons.append(", ".join(l))
-                            
+
                 enumerate_list(day_lessons, pt=True)
- 
+
 
 def main():
     days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
     sp = SPConsole("Console")
     days = []
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--parse", action="store_true", 
+    parser.add_argument("-p", "--parse", action="store_true",
                         help="Принудительное обновление расписания")
-    
+
     # Определние команд парсера
     # -------------------------
 
     subparsers = parser.add_subparsers(dest="cmd", metavar="command")
     subparsers.add_parser("status", help="Информация о парсере")
-    
+
     lessons = subparsers.add_parser("lessons", help="Самые частые уроки")
     lessons.add_argument("class_let", nargs="?", default=None,
                          help="Сортировка по классу")
-    
+
     cabinets = subparsers.add_parser("cabinets", help="Самые частые кабинеты")
     cabinets.add_argument("class_let", nargs="?", default=None,
                           help="Сортировка по классу")
@@ -462,15 +462,15 @@ def main():
     search.add_argument("args", nargs="+", help="Урок, кабинет или класс")
 
     week = subparsers.add_parser("week", help="Расписание на неделю")
-    week.add_argument("class_let", nargs="?", default=None, 
+    week.add_argument("class_let", nargs="?", default=None,
                       help="Целевой класс")
-    
+
     sc = subparsers.add_parser("sc", help="Расписание уроков")
     sc.add_argument("class_let", nargs="?", default=None, help="Целевой класс")
     sc.add_argument("-d", dest="days", nargs="+", default=[],
                     help="Для каких дней (понедельник-суббота)")
-    
-    change_class = subparsers.add_parser("class", 
+
+    change_class = subparsers.add_parser("class",
                                          help="Изменить класс по умолчанию")
     change_class.add_argument("class_let", help="Целевой класс")
 
@@ -482,7 +482,7 @@ def main():
 
     if not sp.user["set_class"]:
         register_user(sp)
-    
+
     # Принудитекльно обновляем расписание
     if args.parse:
         sp.get_schedule(True)
@@ -495,16 +495,16 @@ def main():
         sp.send_today_lessons()
 
 
-    
+
     if args.cmd == "changes":
         sp.send_sc_changes(days, args.class_let)
-    
+
     if args.cmd == "status":
         print(sp.send_status())
 
     if args.cmd == "lessons":
         sp.count_lessons(args.class_let)
-    
+
     elif args.cmd == "cabinets":
         sp.count_lessons(args.class_let, lessons=False)
 
@@ -513,7 +513,7 @@ def main():
         cabinet = None
         lessons = None
         class_let = None
-        
+
         for x in args.args:
             if x == "сегодня":
                 days.append(datetime.today().weekday())
@@ -526,7 +526,7 @@ def main():
                 if x.startswith(d):
                     days.append(i)
                     continue
-    
+
             if x in sp.lessons:
                 class_let = x
 
@@ -544,7 +544,7 @@ def main():
 
     elif args.cmd == "week":
         sp.send_lessons([0, 1, 2, 3, 4, 5], args.class_let)
-   
+
     elif args.cmd == "sc":
         if days:
             sp.send_lessons(days, args.class_let)
