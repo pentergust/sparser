@@ -2,21 +2,21 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.2
+Ver: 4.3
 
 Modules:
-    json: Управление файлами
      csv: Чтение CSV файла расписания
  hashlib: Работа с хеш-суммами
+    json: Управление файлами
 requests: Загрузка файла расписания
-  loguru: Ведение журнала отладки
+    Path: Проверка существования файла
 datetime: Работа с датой и временем
+  loguru: Ведение журнала отладки
 """
 
 import csv
 import hashlib
 import json
-import os
 import requests
 
 from pathlib import Path
@@ -42,7 +42,7 @@ timetable = [["08:00", "08:45"],
              ["13:40", "14:25"],
              ["14:35", "15:20"]]
 
-days_str = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
+days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
 
 
 # Управление файлами
@@ -50,11 +50,11 @@ days_str = ["понедельник", "вторник", "среду", "четв�
 
 def save_file(path: Path, data: dict) -> dict:
     """Записывает данные в файл.
-    
+
     Args:
         path (Path): Путь к файлу для записи
         data (dict): Данные для записи
-    
+
     Returns:
         dict: Данные для записи
     """
@@ -68,19 +68,19 @@ def save_file(path: Path, data: dict) -> dict:
 
 def load_file(path: Path, data: Optional[dict] = {}):
     """Читает данные из файла.
-    
+
     Args:
         path (Path): Путь к файлу для чтения
         data (dict, optional): Данные для записи при отцуцтвии файла
-    
+
     Returns:
-        dict: Данные из файла/данные для записи 
+        dict: Данные из файла/данные для записи
     """
 
     if path.is_file():
         with open(path) as f:
             return json.loads(f.read())
-    
+
     elif data is not None:
         return save_file(path, data)
 
@@ -91,57 +91,59 @@ def load_file(path: Path, data: Optional[dict] = {}):
 # Вспомогательные функции
 # =======================
 
-def get_sc_diff(a: dict, b: dict) -> list:
-    """Делает полное сравнение расписания B с A.
-    
+def get_day_hash(day_lessons: list) -> str:
+    return hashlib.md5(("".join(day_lessons)).encode()).hexdigest()
+
+def get_sc_updates(a: dict, b: dict) -> list:
+    """Делает полное сравнение расписания B и A.
+
+    Формат списка изменений:
+        [класс][день] [номер урока, старый урок, новый урок]
+
     Args:
-        a (dict): Первое расписание
-        b (dict): Второе расписание
-    
+        a (dict): Первое (старое) расписание
+        b (dict): Второе (новое) расписание
+
     Returns:
-        list: Разница между расписаниями
+        list: Список изменений в расписании
     """
 
     # Пробегаемся по новому расписанию
-    res = []
+    updates = [{} for x in range(6)]
     for k, v in b.items():
-        # Если класса нет в старом расписании - пропускаем
         if not k in a:
             continue
 
         # Пробегаемся по дням недели в новом расписании
         av = a[k]
         for day, lessons in enumerate(v):
-            if lessons[0] == av[day][0]:
+            if get_day_hash(lessons[1:]) == get_day_hash(av[day][1:]):
                 continue
 
-            # n - номер урока; l - название урока
-            a_lessons = av[day][1:]
-            for n, l in enumerate(lessons[1:]):
-                if n >= len(a_lessons):
-                    al = None
-                else:
-                    al = a_lessons[n]
+            a_lessons = av[day]
+            for i, l in enumerate(lessons[1:]):
+                al = a_lessons[i] if i <= len(a_lessons)-1 else None
+                if l != al:
+                    if k not in updates[day]:
+                        updates[day][k] = []
 
-                if l != al: 
-                    res.append(f"{k}|{day}|{n}| {al} -> {l}")
-
-    return res
+                    updates[day][k].append([i, al, l])
+    return updates
 
 def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
     """Преобразует расписание уроков в индекс предметов/кабинетов.
 
-    Индeксом называется словарь расписания, где как ключ вместо 
+    Индeксом называется словарь расписания, где как ключ вместо
     классов используюся кабинеты/уроки.
 
     Расписание: [Класс][День][Уроки]
     l_index (l_mode True): [Урок][Кабинет][Класс][День][Номер урока]
     c_index (l_mode False): [Кабинет][Урок][Класс][День][Номер урока]
-    
+
     Args:
         sp_lessons (dict): Расписание уроков sp.lessons
         lessons_mode (bool, optional): Использовать как ключ уроки
-    
+
     Returns:
         dict: Индекс уроков/кабинетов
     """
@@ -153,7 +155,7 @@ def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
                 l, c = l.lower().split(":")
                 l = l.strip(" .")
                 cs = c.split('/')
-                
+
                 for old, new in [('-', '='), (' ', '-'), (".-", '.')]:
                     l = l.replace(old, new)
 
@@ -164,7 +166,7 @@ def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
                     obj = cs
                     another = l
 
-                for x in obj: 
+                for x in obj:
                     if x not in res:
                         res[x] = {}
 
@@ -180,15 +182,15 @@ def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
 
 def group_updates(updates: list, lessons: dict) -> list:
     """Группирует список обновалений расписания.
-    
+
     Оригинал, сгруппировано:
         Класс|День|Урок| До -> После
         res[День][Класс]
-    
+
     Args:
         updates (list): Список изменений в расписании
         lessons (dict): Словарь расписания уроков
-    
+
     Returns:
         list: Сгруппированые изменения по дням и классам
     """
@@ -196,10 +198,10 @@ def group_updates(updates: list, lessons: dict) -> list:
 
     for u in updates:
         cl, day, n, text = u.split("|")
-        
+
         if cl not in res[int(day)]:
             res[int(day)][cl] = lessons[cl][int(day)][1:]
-            
+
         old, new = text.split(" -> ")
         old = old.split(":")[0].strip()
         new = new.split(":")[0].strip()
@@ -207,36 +209,65 @@ def group_updates(updates: list, lessons: dict) -> list:
         l = int(n)-(len(res[int(day)][cl])-1)
         if l > 0:
             res[int(day)][cl].extend(["~~~"]*l)
-            
+
         res[int(day)][cl][int(n)] = f"* {old} -> {new}"
 
     return res
 
 
+# Вспомогательныек функции отображения
+# ====================================
+
+def send_cl_updates(cl_updates: list) -> str:
+    """Возвращет сообщение списка изменений для класса.
+    В зависимости от изменений вид сообщений немного отличается.
+
+    Args:
+        cl_updates (list): Список изменеий для класса
+
+    Returns:
+        str: Сообщение с изменениями в расписании для класса
+    """
+    message = ""
+    for u in cl_updates:
+        if str(u[1]) == "None":
+            message += f"🔹{u[0]} +{u[2]}\n"
+            continue
+
+        ol, oc = str(u[1]).split(':')
+        l, c = str(u[2]).split(':')
+
+        if ol == "---":
+            message += f"🔹{u[0]}: +{u[2]}\n"
+        elif l == "---":
+            message += f"🔸{u[0]}: -{u[1]}\n"
+        elif oc == c:
+            message += f"{u[0]}: {ol} -> {l}:{c}\n"
+        elif ol == l:
+            message += f"{u[0]}: {l}:({oc} -> {c})\n"
+        else:
+            message += f"{u[0]}: {u[1]} -> {u[2]}\n"
+
+    return message
+
+
 class Schedule:
-    """Описание расписания уроков"""
-      
-    def __init__(self, sc_file: Optional[str] = sc_path, 
+    """Описание расписания уроков и способы взаимодействия с ним."""
+
+    def __init__(self, sc_file: Optional[str] = sc_path,
                 updates_file: Optional[str] = sc_updates_path,
                 index_path: Optional[str] = index_path):
         super(Schedule, self).__init__()
-
-        """
-        Args:
-            sc_file (str, optional): Свой путь к файлу расписания
-            updates_file (str, optional): Свой путь к файлу изменений
-        """
-
         self.sc_path = Path(sc_file)
         self.updates_path = Path(updates_file)
         self.index_path = Path(index_path)
+
         self._l_index = None
         self._c_index = None
-
-        # Получаем данные пользователя и расписание
+        self._updates = None
         self.schedule = self.get()
         self.lessons = self.schedule["lessons"]
-        
+
 
     @property
     def l_index(self) -> dict:
@@ -245,7 +276,7 @@ class Schedule:
 
         if not self._l_index:
             self._l_index = load_file(self.index_path)["l"]
-                
+
         return self._l_index
 
     @property
@@ -255,42 +286,49 @@ class Schedule:
 
         if not self._c_index:
             self._c_index = load_file(self.index_path)["c"]
-        
+
         return self._c_index
 
-    
+    @property
+    def updates(self) -> list:
+        """Возврвщает список изменений в расписании."""
+        if self._updates is None:
+            self._updates = load_file(self.updates_path)
+
+        return self._updates
+
     # Получаем расписание
     # ===================
-     
+
     def _parse_schedule(self, csv_file: str) -> dict:
         """Пересобирает CSV файл расписания в удобный формат.
-        
+
         Args:
             csv_file (str): CSV файла расписания
-        
+
         Returns:
             dict: Словарь расписания по классам
         """
-        
+
         logger.info("Start parse schedule...")
-        
+
         # class_index: Словарь с классами и их столбцами в расписании
         #     lessons: Словарь расписания [КЛАСС][Номер Дня]
         #      dindex: Указание строк начала дней недели
         #         day: Номер текущего дня недели (0-5)
         #     lessons: Максимальное кол-во урокеов в день
-        
+
         class_index = {}
         lessons = {}
         day = 0
         lessons_line = 8
         max_lessons = 8
-        
+
         logger.info("Read CSV file...")
         reader = csv.reader(csv_file.decode("utf-8").splitlines())
 
         for i, row in enumerate(list(reader)):
-            
+
             # Получаем словарь с классами
             if i == 1:
                 logger.info("Get class_index...")
@@ -305,23 +343,23 @@ class Schedule:
             if row[1].isdigit():
                 if int(row[1]) < lessons_line:
                     day += 1
-            
+
                 if int(row[1]) > max_lessons:
                     max_lessons = int(row[1])
-            
+
                 lessons_line = int(row[1])
-            
+
             elif day:
                 logger.debug("Break CSV file read")
                 break
 
             # Собираем расписание уроков
             # --------------------------
-            
-            if day:    
+
+            if day:
                 # Пробегаемся по всем класаам
                 for k, v in class_index.items():
-                        
+
                     # Если класса нет в расписании, то добавляем его
                     if k not in lessons:
                         lessons[k] = [[None] for x in range(6)]
@@ -338,9 +376,9 @@ class Schedule:
         logger.info("Get day hashes and cleanup...")
         for class_let, days in lessons.items():
             n_days = []
-            
+
             for day in days:
-                
+
                 while day[1:]:
                     if not day[-1]:
                         day.pop()
@@ -354,7 +392,7 @@ class Schedule:
 
                 day[0] = hashlib.md5(bytearray(f";".join(day[1:]),
                                                'utf-8')).hexdigest()
-                
+
                 n_days.append(day)
             lessons[class_let] = n_days
 
@@ -362,24 +400,24 @@ class Schedule:
 
     def _update_diff_file(self, a: dict, b: dict) -> None:
         """Обновляет файл изменений в расписании.
-        
+
         Args:
             a (dict): Старое расписание
-            b (dict): Новое расписание 
+            b (dict): Новое расписание
         """
         logger.info("Update diff file...")
         sc_changes = load_file(self.updates_path, [None for x in range(15)])
-        
+
         # Если есть изменения, записываем их
-        diff = get_sc_diff(a.get("lessons", {}), b["lessons"])
-        if sum(map(len, diff)):
+        updates = get_sc_updates(a.get("lessons", {}), b["lessons"])
+        if sum(map(len, updates)):
             sc_changes.pop(0)
-            sc_changes.append({"time": b["last_parse"], "diff": diff})
+            sc_changes.append({"time": b["last_parse"], "updates": updates})
             save_file(self.updates_path, sc_changes)
 
     def _update_index_files(self, sp_lessons: dict) -> None:
         """Обновляет файлы c_index и l_index
-        
+
         Args:
             sp_lessons (dict): Уроки в расписании
         """
@@ -390,7 +428,7 @@ class Schedule:
 
     def _process_update(self, t: dict) -> None:
         """Полное обновление расписания, индексов, файлов изменений.
-        
+
         Args:
             t (dict): Расписание уроков
         """
@@ -409,10 +447,10 @@ class Schedule:
             t["next_update"] = timestamp+60
             self.save_file(self.sc_path, t)
             return
-            
+
         old_t = t.copy()
         h = hashlib.md5(csv_file).hexdigest()
-        
+
         # Сравниваем хеши расписаний
         if t.get("hash", "") == h:
             logger.info("Schedule is up to date")
@@ -425,26 +463,26 @@ class Schedule:
             self._update_index_files(t["lessons"])
 
         t["next_update"] = timestamp + 3600
-        save_file(self.sc_path, t)    
-       
+        save_file(self.sc_path, t)
+
     def get(self, update: Optional[bool] = False) -> dict:
         """Получает и обновляет расписание.
-        
+
         Args:
             update (bool, optional): Принудительное обноваление
-        
+
         Returns:
             dict: Описание
         """
         now = datetime.timestamp(datetime.now())
         t = load_file(self.sc_path)
-        
+
         # Обновляем данные расписания
         # ---------------------------
 
         if not t or t.get("next_update", 0) < now or update:
             self._process_update(t)
-                
+
         return t
 
 
@@ -453,10 +491,10 @@ class Schedule:
 
     def search(self, target: str) -> dict:
         """Поиск данных в расписании.
-        
+
         Args:
             target (str): Цель для поиск, кабинет или название урока
-        
+
         Returns:
             dict: Результаты поиска
         """
@@ -468,7 +506,7 @@ class Schedule:
         else:
             index = self.l_index
             index_type = "lessons_index"
-        
+
         logger.info("Search {} in {}", target, index_type)
         if target in index:
             # k - номер кабинета/предмет cs - словарь классов
@@ -503,13 +541,13 @@ class SPMessages:
 
         self.user = self.get_user()
 
-     
+
     def send_status(self):
         """Возвращает некоторую информауию о парсере."""
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.2 (39)"
+        res = "Версия sp: 4.3 (41)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
         res += f"\n:: Обновлено: {last_parse.strftime('%d %h в %H:%M')}"
@@ -537,14 +575,14 @@ class SPMessages:
 
     def set_class(self, cl: str) -> str:
         """Изменяет класс пользователя.
-        
+
         Args:
             cl (str): Целевой класс пользователя
-        
+
         Returns:
             str: Сообщение с результатом работы
         """
-        
+
         if cl in self.sc.lessons:
             self.user["class_let"] = cl
             self.user["set_class"] = True
@@ -556,7 +594,7 @@ class SPMessages:
             message = "🔎 Укажите свой класс в формате \"1А\"."
             message += f"\n🏫 Доступные классы: {'; '.join(self.sc.lessons)}"
 
-        return message 
+        return message
 
 
     # Получение данных из расписания
@@ -565,7 +603,7 @@ class SPMessages:
     def get_class(self, cl: str) -> str:
         """Проверяет наличие класса.
         Вовращает введённый класс или класс пользователя."""
-        return cl if cl in self.sc.lessons else self.user["class_let"] 
+        return cl if cl in self.sc.lessons else self.user["class_let"]
 
     def get_lessons(self, cl: str = "") -> dict:
         """Получает расписание уроков на неделю для класса."""
@@ -573,7 +611,7 @@ class SPMessages:
 
     def get_lessons_updates(self) -> set:
         """Возвращает дни, для которых изменилось расписание."""
-        
+
         # Если расписание не обновилось, значит и хеши дней тоже
         if self.sc.schedule["last_parse"] == self.user["last_parse"]:
             return set()
@@ -586,7 +624,7 @@ class SPMessages:
         # Обновление времени последней проверки расписания
         self.user["last_parse"] = self.sc.schedule["last_parse"]
         self.save_user()
-        
+
         # Пробегаемся по списку измененийй
         for x in updates:
             # Пропускаем изменния, которые мы уже смотрели
@@ -594,108 +632,75 @@ class SPMessages:
                 continue
 
             # Пробеаемся по каждой записи с изменениями
-            for c in x["diff"]:
-                cl, day, _, _  = c.split("|")
-                if cl == self.user["class_let"] and day not in days:
-                    days.append(int(day))
- 
+            for day, day_updates in enumerate(x["updates"]):
+                if self.user["class_let"] in day_updates:
+                    days.append(day)
+
         return set(days)
-
-    def get_updates_pages(self, days: Optional[list] = [], cl: str = "") -> list:
-        """Упаковывает список изменений по страницам.
-        
-        Args:
-            days (Optional[list], optional): для каких дней нужны изменения
-            cl (str, optional): Для какого класса нужны изменения
-        
-        Returns:
-            list: Отсортированный список изменений
-        """
-        updates = load_file(self.sc.updates_path)
-        cl = self.get_class(cl) if cl else None
-        days = set(filter(lambda x: x < 6, days)) or [0] if days else []
-        pages = []
-
-        # Пробегаемся по измененияв в расписании
-        # --------------------------------------
-
-        for x in updates:
-            if x is None:
-                continue
-
-            # Пробегаемся по обновлениям
-            diff_message = ""
-            for u in x["diff"]:
-                # Фильтр по классам
-                if cl and u.split("|", 1)[0] != cl:
-                    continue
-                
-                # Фильстр по дням
-                if days and u.split("|")[1] not in days:
-                    continue
-
-                diff_message += f"\n* {u}"
-
-                if len(diff_message) >= 3000:
-                    diff_message += f"\n<< Обрезано >>"
-                    pages.append({"time": x["time"], "message": diff_message})
-                    diff_message = "\n<< Пропущено >>"
-
-            if diff_message:
-                pages.append({"time": x["time"], "message": diff_message})
-
-        return pages
 
 
     # Отображение расписания
     # ======================
 
-    def send_updates_page(self, page: dict) -> str:
-        """Отправляет страницу изменений в расписании.
-        
+    def send_update(self, update: dict) -> str:
+        """Собирает сообщение со списком изменений в расписании.
+
         Args:
-            page (dict): Отсортированный список страниц изменений.
-        
+            update (ТИП): Словарь изменений в расписании
+            cl (str, optional): Список изменений для выбранного класса
+
         Returns:
-            str: Текст сообщения
+            ТИП: Готовое сообщение с изменениями в расписании
         """
-        t = datetime.fromtimestamp(page["time"]).strftime("%d.%m %H:%M")
-        return f"⏰ Примерно {t}:{page['message']}"
+        t = datetime.fromtimestamp(update["time"]).strftime("%d.%m %H:%M")
+        message = f"⏰ Примерно {t}:\n"
+
+        for day, day_updates in enumerate(update["updates"]):
+            if not day_updates:
+                continue
+
+            message += f"\n🔷 На {days_names[day]}\n"
+            for u_cl, cl_updates in day_updates.items():
+                message += f"Для {u_cl}:"
+                message += "\n" if len(cl_updates) > 1 else " "
+                message += send_cl_updates(cl_updates)
+
+        return message
 
     def send_day_lessons(self, today: int, cl: Optional[str] = None) -> str:
         """Сообщение с расписанием уроков на день.
-        
+
         Args:
             today (int): День недели (0-5)
             cl (str, optional): Для какого класса
-        
+
         Returns:
             str: Сообщение с расписанием на день
         """
         if today > 5:
             today = 0
-    
+
         cl = self.get_class(cl)
         lessons = self.get_lessons(cl)[today][1:]
-        message = f"\n🔶 На {days_str[today]}:"
+        message = f"\n🔶 На {days_names[today]}:"
 
         # Собираем сообщение с расписанием
         for i, x in enumerate(lessons):
             tt = ""
             if i < len(timetable):
                 tt = f" {timetable[i][0]}"
-            
+
             message += f"\n{i+1}{tt} | {x}"
 
         return message
-        
+
     def send_lessons(self, days: list[int], cl: Optional[str] = None) -> str:
         """Сообщение с расписанием уроков.
-        
+
         Args:
             day (list[int]): Для каких дней расписание
             cl (str, optional): Для каких классов
-        
+
         Returns:
             str: Сообение с расписание уроков
         """
@@ -703,35 +708,35 @@ class SPMessages:
         days = set(filter(lambda x: x < 6, days)) or {0}
         cl = self.get_class(cl)
         message = f"🏫 Для {cl}:"
-        
+
         for day in days:
             message += f"{self.send_day_lessons(day, cl)}\n"
-            
+
         # Обновления в расписаниии
         # ------------------------
-        
+
         if self.user["set_class"]:
             updates = self.get_lessons_updates()
-            
+
             if updates:
                 message += f"\n🎉 Изменилось расписание!"
 
                 updates = updates - days
                 if len(updates) < 3:
                     for day in updates:
-                        message += f"{self.send_day_lessons(day)}\n" 
+                        message += f"{self.send_day_lessons(day)}\n"
                 else:
-                    message += f"На {', '.join(map(lambda x: days_str[x], updates))}."
+                    message += f"\nНа {', '.join(map(lambda x: days_names[x], updates))}."
 
         return message
 
     def send_today_lessons(self, cl: Optional[str] = "") -> str:
         """Сообщение с расписанием на сегодня/завтра.
         Есои уроки закончились, выводится расписание на завтра.
-        
+
         Args:
             cl (str, optional): Для какого класса
-        
+
         Returns:
             str: Сообщыение с расписанием на сегодня/завтра
         """
@@ -740,10 +745,10 @@ class SPMessages:
         today = min(now.weekday(), 5)
         lessons = self.get_lessons(cl)
         hour = int(timetable[len(lessons[today])-2][1].split(':')[0])
-        
+
         if now.hour >= hour:
-            today += 1 
-        
+            today += 1
+
         if today > 5:
             today = 0
 
@@ -751,12 +756,12 @@ class SPMessages:
 
     def count_lessons(self, cabinets: Optional[bool] = False, cl: Optional[str] = "") -> str:
         """Подсчитывает число уроков/кабинетов.
-        
+
         Args:
-            cabinets (bool, optional): Подсчитывать кабинеты 
-                вместо уроков 
+            cabinets (bool, optional): Подсчитывать кабинеты
+                вместо уроков
             cl (str, optional): Для какого класса произвести подсчёт
-        
+
         Returns:
             str: Сообщение с результатами
         """
@@ -791,7 +796,7 @@ class SPMessages:
                     res[str(c)] = {}
 
                 res[str(c)][obj] = another
-  
+
         # Собираем сообщение
         # ------------------
 
@@ -811,7 +816,7 @@ class SPMessages:
             for obj, another in v.items():
                 if len(v) > 1:
                     message += "\n--"
-                
+
                 message += f" {obj}"
 
                 for c, n in sorted(another.items(), key=lambda x: x[1], reverse=True):
@@ -821,7 +826,7 @@ class SPMessages:
                         message += f" 🔹{c}:{n}"
                     else:
                         message += f" {c}"
-                
+
         return message
 
 
@@ -831,19 +836,19 @@ class SPMessages:
     def search_lesson(self, lesson: str, days: Optional[list[int]] = [], cl: Optional[str] = ""):
         """Поиск упоминаний об уроке.
         Когда (день), где (кабинет), для кого (класс), каким уроком.
-        
+
         Args:
             lesson (str): Урок, который нужно найти
             days (list[int], optional): Для каких дней нужно найти
             cl (str, optional): Для какого класса нужно найти
-        
+
         Returns:
             str: результаты поиска
         """
 
         if lesson not in self.sc.l_index:
             message = f"❗Неправильно указан предмет."
-            message += f"\n🏫 Доступные предметы: {'; '.join(self.sc.l_index)}"  
+            message += f"\n🏫 Доступные предметы: {'; '.join(self.sc.l_index)}"
             return message
 
         if cl:
@@ -859,7 +864,7 @@ class SPMessages:
         if days == {0, 1, 2, 3, 4, 5}:
             search_str += f" за неделю"
         elif days:
-            search_str += f" за {', '.join(map(lambda x: days_str[x], days))}"
+            search_str += f" за {', '.join(map(lambda x: days_names[x], days))}"
 
         if cl:
             search_str += f" для {cl}"
@@ -888,9 +893,9 @@ class SPMessages:
                         day_str += f"\n{i+1}{tt}| {', '.join(cs)}"
 
                 if day_str:
-                    cabinet_str += f'\n⏰ На {days_str[day]}:{day_str}'
+                    cabinet_str += f'\n⏰ На {days_names[day]}:{day_str}'
             if cabinet_str:
-                message += f"\n\n🔶 Кабинет {cabinet}:{cabinet_str}" 
+                message += f"\n\n🔶 Кабинет {cabinet}:{cabinet_str}"
 
         return message
 
@@ -907,7 +912,7 @@ class SPMessages:
 
         if cabinet not in self.sc.c_index:
             message = f"❗Неправильно указан кабинет."
-            message += f"\n🏫 Доступные кабинеты: {'; '.join(self,c_index)}" 
+            message += f"\n🏫 Доступные кабинеты: {'; '.join(self,c_index)}"
             return message
 
 
@@ -923,7 +928,7 @@ class SPMessages:
         if days == {0, 1, 2, 3, 4, 5}:
             message += f" за неделю"
         elif days:
-            message += f" за {', '.join(map(lambda x: days_str[x], days))}"
+            message += f" за {', '.join(map(lambda x: days_names[x], days))}"
 
         if cl:
             message += f" для {cl}"
@@ -940,16 +945,16 @@ class SPMessages:
             # Пробегаемся по указанным дням
             for day in days:
                 ln = v[day]
-                
+
                 for i, cs in enumerate(ln):
                     if cl and cl not in cs:
                         continue
 
                     if cs:
                         res[day][i].append(f"{l}:{', '.join(cs)}")
-            
+
         for day, lessons in enumerate(res):
-            if lessons:                
+            if lessons:
                 while lessons:
                     if not lessons[-1]:
                         lessons.pop()
@@ -969,6 +974,6 @@ class SPMessages:
                         day_str += f"\n{i+1} {tt}| ==="
 
                 if day_str:
-                    message += f"\n\n🔶На {days_str[day]}:{day_str}"
+                    message += f"\n\n🔶На {days_names[day]}:{day_str}"
 
         return message
