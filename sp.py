@@ -2,7 +2,7 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.3
+Ver: 4.3.1
 
 Modules:
      csv: Чтение CSV файла расписания
@@ -120,7 +120,7 @@ def get_sc_updates(a: dict, b: dict) -> list:
             if get_day_hash(lessons[1:]) == get_day_hash(av[day][1:]):
                 continue
 
-            a_lessons = av[day]
+            a_lessons = av[day][1:]
             for i, l in enumerate(lessons[1:]):
                 al = a_lessons[i] if i <= len(a_lessons)-1 else None
                 if l != al:
@@ -547,7 +547,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.3 (41)"
+        res = "Версия sp: 4.3.1 (42)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
         res += f"\n:: Обновлено: {last_parse.strftime('%d %h в %H:%M')}"
