@@ -1,8 +1,10 @@
-# Cpm
-cpm/
-cpm_data/
-global_index*
-
-# Timwtable
+# Python
+bin/
+lib/
+lib64
+pyvenv.cfg
+share/
 __pycache__/
-*.json
+
+# Sparser
+sp_data/
