@@ -2,7 +2,7 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.4
+Ver: 4.5
 
 Modules:
      csv: Чтение CSV файла расписания
@@ -22,6 +22,7 @@ import requests
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+from collections import Counter
 
 from loguru import logger
 
@@ -188,13 +189,12 @@ def get_sc_updates(a: dict, b: dict) -> list:
 
 def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
     """Преобразует расписание уроков в индекс предметов/кабинетов.
-
     Индeксом называется словарь расписания, где как ключ вместо
     классов используюся кабинеты/уроки.
 
-    Расписание: [Класс][День][Уроки]
-    l_index (l_mode True): [Урок][Кабинет][Класс][День][Номер урока]
-    c_index (l_mode False): [Кабинет][Урок][Класс][День][Номер урока]
+    - Расписание: [Класс][День][Уроки]
+    - l_index (l_mode True): [Урок][День][Кабинет][Класс][Номер урока]
+    - c_index (l_mode False): [Кабинет][День][Урок][Класс][Номер урока]
 
     Args:
         sp_lessons (dict): Расписание уроков sp.lessons
@@ -210,31 +210,25 @@ def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
             for n, l in enumerate(lessons):
                 l, c = l.lower().split(":")
                 l = l.strip(" .")
-                cs = c.split('/')
-
                 for old, new in [('-', '='), (' ', '-'), (".-", '.')]:
                     l = l.replace(old, new)
 
-                if lessons_mode:
-                    obj = [l]
-                    another = c
-                else:
-                    obj = cs
-                    another = l
+                obj = [l] if lessons_mode else c.split("/")
+                another = c if lessons_mode else l
 
                 for x in obj:
                     if x not in res:
-                        res[x] = {}
+                        res[x] = [{} for x in range(6)]
 
-                    if another not in res[x]:
-                        res[x][another] = {}
+                    if another not in res[x][day]:
+                        res[x][day][another] = {}
 
-                    if k not in res[x][another]:
-                        res[x][another][k] = [[] for x in range(6)]
+                    if k not in res[x][day][another]:
+                        res[x][day][another][k] = []
 
-                    res[x][another][k][day].append(n)
-
+                    res[x][day][another][k].append(n)
     return res
+
 
 
 # Вспомогательныек функции отображения
@@ -296,7 +290,7 @@ class Schedule:
         """Получает информацию об уроках в расписании.
         Имена уроков, для кого и когда."""
         if not self._l_index:
-            self._l_index = load_file(self.index_path)["l"]
+            self._l_index = load_file(self.index_path)[0]
 
         return self._l_index
 
@@ -305,7 +299,7 @@ class Schedule:
         """Получает информацию о кабинетах в расписании.
         Какие уроки проводятся, для кого и когда."""
         if not self._c_index:
-            self._c_index = load_file(self.index_path)["c"]
+            self._c_index = load_file(self.index_path)[1]
 
         return self._c_index
 
@@ -339,14 +333,14 @@ class Schedule:
             save_file(self.updates_path, sc_changes)
 
     def _update_index_files(self, sp_lessons: dict) -> None:
-        """Обновляет файлы c_index и l_index
+        """Обновляет файл индексов.
 
         Args:
             sp_lessons (dict): Уроки в расписании
         """
         logger.info("Udate index files...")
-        index = {"l": get_index(sp_lessons),
-                 "c": get_index(sp_lessons, lessons_mode=False)}
+        index = [get_index(sp_lessons),
+                 get_index(sp_lessons, lessons_mode=False)]
         save_file(self.index_path, index)
 
     def _process_update(self, t: dict) -> None:
@@ -414,27 +408,18 @@ class Schedule:
         Returns:
             dict: Результаты поиска
         """
+        logger.info("Search {} in Schedule", target)
         res = {}
+        index = self.c_index if target in self.c_index else self.l_index
 
-        if target in self.c_index:
-            index = self.c_index
-            index_type = "class_index"
-        else:
-            index = self.l_index
-            index_type = "lessons_index"
+        for day, data in enumerate(index.get(target, [])):
+            for obj, obj_data in data.items():
+                for another, i in obj_data.items():
+                    if obj not in res:
+                        res[obj] = [[[] for x in range(8)] for x in range(6)]
 
-        logger.info("Search {} in {}", target, index_type)
-        if target in index:
-            # k - номер кабинета/предмет cs - словарь классов
-            for k, cs in index[target].items():
-                if k not in res:
-                    res[k] = [[[] for x in range(8)] for x in range(6)]
-
-                for class_let, days in cs.items():
-                    for day, ns in enumerate(days):
-                        for n in ns:
-                            res[k][day][n].append(class_let)
-
+                    for x in i:
+                        res[obj][day][x].append(another)
         return res
 
 
@@ -463,7 +448,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.4 (43)"
+        res = "Версия sp: 4.5 (44)"
         res += f"\n:: Участников: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -671,7 +656,7 @@ class SPMessages:
 
         return self.send_lessons([today], cl)
 
-    def count_lessons(self, cabinets: Optional[bool] = False, cl: Optional[str] = "") -> str:
+    def count_lessons(self, cabinets: Optional[bool] = False, cl: Optional[str] = None) -> str:
         """Подсчитывает число уроков/кабинетов.
 
         Args:
@@ -685,34 +670,26 @@ class SPMessages:
         if cl:
             cl = self.get_class(cl)
 
+        index = self.sc.c_index if cabinets else self.sc.l_index
         message = ""
         res = {}
 
-        if cabinets:
-            index = self.sc.c_index
-        else:
-            index = self.sc.l_index
+        for obj, days in index.items():
+            cnt = Counter()
+            for day, another in enumerate(days):
+                for a_k, a_v in another.items():
+                    if cl:
+                        cnt[a_k] += len(a_v.get(cl, []))
+                    else:
+                        cnt[a_k] += sum(map(len, a_v.values()))
 
-        # Считаем частоту предметов/кабинетов
-        # -----------------------------------
-
-        for obj, v in index.items():
-            another = {}
-            for a_k, a_v in v.items():
-                if cl:
-                    c = sum(map(len, a_v.get(cl, [])))
-                else:
-                    c = sum(map(lambda x: sum(map(len, x)), a_v.values()))
-
-                if c:
-                    another[a_k] = c
-
-            c = sum(another.values())
+            c = cnt.total()
             if c:
                 if str(c) not in res:
                     res[str(c)] = {}
 
-                res[str(c)][obj] = another
+                res[str(c)][obj] = cnt
+
 
         # Собираем сообщение
         # ------------------
@@ -731,6 +708,8 @@ class SPMessages:
             message += f"\n\n🔘 {k} раз(а):"
 
             for obj, another in v.items():
+                another = {k:v for k, v in another.items() if v != 0}
+
                 if len(v) > 1:
                     message += "\n--"
 
@@ -750,7 +729,7 @@ class SPMessages:
     # Поиск в расписании
     # ==================
 
-    def search_lesson(self, lesson: str, days: Optional[list[int]] = [], cl: Optional[str] = ""):
+    def search_lesson(self, lesson: str, days: Optional[list[int]] = [], cl: Optional[str] = None):
         """Поиск упоминаний об уроке.
         Когда (день), где (кабинет), для кого (класс), каким уроком.
 
@@ -768,7 +747,7 @@ class SPMessages:
             message += f"\n🏫 Доступные предметы: {'; '.join(self.sc.l_index)}"
             return message
 
-        if cl:
+        if cl is not None:
             cl = self.get_class(cl)
 
         res = self.sc.search(lesson)
@@ -816,7 +795,7 @@ class SPMessages:
 
         return message
 
-    def search_cabinet(self, cabinet: str, lesson: Optional[str] = "", days: Optional[list[int]] = [], cl: Optional[str] = ""):
+    def search_cabinet(self, cabinet: str, lesson: Optional[str] = "", days: Optional[list[int]] = [], cl: Optional[str] = None):
         """Поиск упоминаний о кабинете.
         Когда (день), что (урок), для кого (класс), каким уроком.
 
