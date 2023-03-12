@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.4 (sp v4.3)
+Ver: 1.4.1 (sp v4.4)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -154,7 +154,7 @@ HOME_MESSAGE = """💡 Некоторые примеры:
 INFO_MESSAGE = """
 О боте:
 :: Автор: @milinuri
-:: Версия: 1.4 (🔶Testing)
+:: Версия: 1.4.1 (🔶Testing)
 
 👀 По всем вопросам к @milinuri"""
 
@@ -339,7 +339,7 @@ async def callback_handler(callback: types.CallbackQuery):
         cabinets = True if "cabinets" in args else False
         cl = sp.user["class_let"] if "cl" in args else None
         text = sp.count_lessons(cabinets= cabinets, cl= cl)
-        markup = markup_generator(sp, counter_markup, exclude= "count",
+        markup = markup_generator(sp, counter_markup, exclude= callback.data,
                                   row_width= 4)
         await callback.message.edit_text(text= text, reply_markup=markup)
 
