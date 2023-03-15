@@ -2,7 +2,7 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.5
+Ver: 4.6
 
 Modules:
      csv: Чтение CSV файла расписания
@@ -19,10 +19,11 @@ import hashlib
 import json
 import requests
 
-from pathlib import Path
-from datetime import datetime
-from typing import Optional
 from collections import Counter
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+from typing import Optional
 
 from loguru import logger
 
@@ -44,10 +45,8 @@ timetable = [["08:00", "08:45"],
              ["14:35", "15:20"]]
 
 days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
+days_parts = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 
-
-# Управление файлами
-# ==================
 
 def save_file(path: Path, data: dict) -> dict:
     """Записывает данные в файл.
@@ -145,6 +144,55 @@ def parse_lessons(csv_file: str) -> dict:
     return lessons
 
 
+class Filters:
+    """Набор фильтров для получени расписания."""
+    def __init__(self, sc, cl: Optional[list] = None,
+                 days: Optional[list] = None, lessons: Optional[list] = None,
+                 cabinets: Optional[list] = None):
+        super(Filters, self).__init__()
+        self.sc = sc or []
+        self._days = days or []
+        self.cl = cl or []
+        self.lessons = lessons or []
+        self.cabinets = cabinets or []
+
+    @property
+    def days(self) -> set:
+        return set(filter(lambda x: x < 6, self._days))
+
+    def get_cl(self):
+        return self.cl if self.cl else [self.sc.cl]
+
+    def parse_args(self, args: list) -> None:
+        weekday = datetime.today().weekday()
+
+        for arg in args:
+            if not arg:
+                continue
+
+            if arg == "сегодня":
+                self._days.append(weekday)
+
+            elif arg == "завтра":
+                self._days.append(weekday+1)
+
+            elif arg.startswith("недел"):
+                self._days = [0, 1, 2, 3, 4, 5]
+
+            elif arg in self.sc.lessons:
+                self.cl.append(arg)
+
+            elif arg in self.sc.l_index:
+                self.lessons.append(arg)
+
+            elif arg in self.sc.c_index:
+                self.cabinets.append(arg)
+
+            else:
+                # Если начало слова совпадает: пятниц... -а, -у, -ы...
+                self._days += [i for i, k in enumerate(days_parts) if arg.startswith(k)]
+
+
 # Вспомогательные функции
 # =======================
 
@@ -229,7 +277,10 @@ def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
                     res[x][day][another][k].append(n)
     return res
 
-
+def clear_empty_list(l: list) -> list:
+    while l and not l[-1]:
+        del l[-1]
+    return l
 
 # Вспомогательныек функции отображения
 # ====================================
@@ -266,16 +317,64 @@ def send_cl_updates(cl_updates: list) -> str:
 
     return message
 
+def send_update(update: dict) -> str:
+    """Собирает сообщение со списком изменений в расписании.
+
+    Args:
+        update (ТИП): Словарь изменений в расписании
+        cl (str, optional): Список изменений для выбранного класса
+
+    Returns:
+        ТИП: Готовое сообщение с изменениями в расписании
+    """
+    t = datetime.fromtimestamp(update["time"]).strftime("%d.%m %H:%M")
+    message = f"⏰ Примерно {t}:\n"
+
+    for day, day_updates in enumerate(update["updates"]):
+        if not day_updates:
+            continue
+
+        message += f"\n🔷 На {days_names[day]}\n"
+        for u_cl, cl_updates in day_updates.items():
+            message += f"Для {u_cl}:"
+            message += "\n" if len(cl_updates) > 1 else " "
+            message += send_cl_updates(cl_updates)
+
+    return message
+
+def send_day_lessons(today: int, lessons: list) -> str:
+    """Собирает сообщение с расписанием уроков на день.
+
+    Args:
+        today (int): Для какого дня
+        lessons (list): Список уроков на день
+
+    Returns:
+        str: Сообщение с расписанием на день
+    """
+    message = f"\n🔶 На {days_names[today]}:"
+    for i, x in enumerate(lessons):
+        tt = f" {timetable[i][0]}" if i < len(timetable) else f"{x+1}"
+        message += f"\n{tt} | "
+
+        if isinstance(x, list):
+            message += "; ".join(x)
+        else:
+            message += x
+
+    return message
+
+
 
 class Schedule:
     """Описание расписания уроков и способы взаимодействия с ним."""
 
-    def __init__(self, sc_file: Optional[str] = sc_path,
-                updates_file: Optional[str] = sc_updates_path,
-                index_path: Optional[str] = index_path):
+    def __init__(self, cl: str):
         super(Schedule, self).__init__()
-        self.sc_path = Path(sc_file)
-        self.updates_path = Path(updates_file)
+        self.cl = cl
+
+        self.sc_path = Path(sc_path)
+        self.updates_path = Path(sc_updates_path)
         self.index_path = Path(index_path)
 
         self._l_index = None
@@ -283,7 +382,6 @@ class Schedule:
         self._updates = None
         self.schedule = self.get()
         self.lessons = self.schedule["lessons"]
-
 
     @property
     def l_index(self) -> dict:
@@ -399,35 +497,19 @@ class Schedule:
     # Получение данных из расписания
     # ==============================
 
-    def search(self, target: str) -> dict:
-        """Поиск данных в расписании.
+    def get_class(self, cl: str) -> str:
+        """Вовращает введённый класс или класс по умолчанию."""
+        return cl if cl in self.lessons else self.cl
 
-        Args:
-            target (str): Цель для поиск, кабинет или название урока
-
-        Returns:
-            dict: Результаты поиска
-        """
-        logger.info("Search {} in Schedule", target)
-        res = {}
-        index = self.c_index if target in self.c_index else self.l_index
-
-        for day, data in enumerate(index.get(target, [])):
-            for obj, obj_data in data.items():
-                for another, i in obj_data.items():
-                    if obj not in res:
-                        res[obj] = [[[] for x in range(8)] for x in range(6)]
-
-                    for x in i:
-                        res[obj][day][x].append(another)
-        return res
+    def get_lessons(self, cl: Optional[str] = None) -> dict:
+        """Получает расписание уроков на неделю для класса."""
+        return self.lessons[self.get_class(cl)]
 
 
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
 
-    def __init__(self, uid: str, sc: Schedule,
-                 users_path: Optional[str] = users_path):
+    def __init__(self, uid: str):
         """
         Args:
             uid (str): Кто пользуется расписанием
@@ -437,10 +519,9 @@ class SPMessages:
         super(SPMessages, self).__init__()
 
         self.uid = uid
-        self.sc = sc
         self._users_path = Path(users_path)
-
         self.user = self.get_user()
+        self.sc = Schedule(self.user["class_let"])
 
 
     def send_status(self):
@@ -448,8 +529,8 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.5 (44)"
-        res += f"\n:: Участников: {len(load_file(self._users_path))}"
+        res = "Версия sp: 4.6 (48)"
+        res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
         res += f"\n:: Обновлено: {last_parse.strftime('%d %h в %H:%M')}"
@@ -459,6 +540,52 @@ class SPMessages:
         res += f"\n:: Классы: {', '.join(self.sc.lessons)}"
 
         return res
+
+    def send_users_stats(self) -> str:
+        """Отправяет сллюзегте с информацией о пользователях.
+
+        Returns:
+            str: Сообщение с информацией о пользователях
+        """
+        now = datetime.timestamp(datetime.now())
+        users = load_file(self._users_path)
+
+        # Сбор статистики о пользователях
+        cl_cnt = Counter()
+        active_users = 0
+        for k, v in users.items():
+            # Активным считается пользователь, у которого время
+            # последнего запроса расписания не позднее трёх суток
+            if now - v["last_parse"] > 259200:
+                continue
+
+            active_users += 1
+            cl_cnt[v["class_let"]] += 1
+
+
+        # Сборка сообщения
+        # ----------------
+
+        message = f"✨ Всего пользователей {len(users)}:"
+        active_users_pr = round(active_users / len(users) * 100, 2)
+        message += f"\n💡 Из них активны: {active_users} [{active_users_pr}%]\n"
+        for i, data in enumerate(sorted(cl_cnt.items(), key= lambda x: x[1],
+                                        reverse=True)):
+            k, v = data
+
+            if i+1 == 1:
+                medal = "🥇"
+            elif i+1 == 2:
+                medal = "🥈"
+            elif i+1 == 3:
+                medal = "🥉"
+            else:
+                medal = ""
+
+            pr = round(v / active_users * 100, 2)
+            message += f"\n-- {medal if medal else i+1} - {k}: {v} ({pr}%)"
+
+        return message
 
 
     # Управление данными пользователя
@@ -490,37 +617,21 @@ class SPMessages:
             self.user["set_class"] = True
             self.user["last_parse"] = self.sc.schedule["last_parse"]
             self.save_user()
-            message = f"✏ Установлен класс {cl}"
-
+            message = f"✏ Записан класс: {cl}"
         else:
-            message = "🔎 Укажите свой класс в формате \"1А\"."
+            message = "🔎 Укажите класс в формате \"1А\"."
             message += f"\n🏫 Доступные классы: {'; '.join(self.sc.lessons)}"
 
         return message
 
-
-    # Получение данных из расписания
-    # ==============================
-
-    def get_class(self, cl: str) -> str:
-        """Проверяет наличие класса.
-        Вовращает введённый класс или класс пользователя."""
-        return cl if cl in self.sc.lessons else self.user["class_let"]
-
-    def get_lessons(self, cl: str = "") -> dict:
-        """Получает расписание уроков на неделю для класса."""
-        return self.sc.lessons[self.get_class(cl)]
-
     def get_lessons_updates(self) -> set:
         """Возвращает дни, для которых изменилось расписание."""
-
         # Если расписание не обновилось, значит и хеши дней тоже
         if self.sc.schedule["last_parse"] == self.user["last_parse"]:
             return set()
 
         logger.info("Get lessons updates")
         updates = load_file(self.sc.updates_path)
-        lessons = self.get_lessons()
         days = []
 
         # Обновление времени последней проверки расписания
@@ -544,95 +655,41 @@ class SPMessages:
     # Отображение расписания
     # ======================
 
-    def send_update(self, update: dict) -> str:
-        """Собирает сообщение со списком изменений в расписании.
+    def send_lessons(self, flt: Filters) -> str:
+        """Собирает сообщение с расписанием уроков.
 
         Args:
-            update (ТИП): Словарь изменений в расписании
-            cl (str, optional): Список изменений для выбранного класса
-
-        Returns:
-            ТИП: Готовое сообщение с изменениями в расписании
-        """
-        t = datetime.fromtimestamp(update["time"]).strftime("%d.%m %H:%M")
-        message = f"⏰ Примерно {t}:\n"
-
-        for day, day_updates in enumerate(update["updates"]):
-            if not day_updates:
-                continue
-
-            message += f"\n🔷 На {days_names[day]}\n"
-            for u_cl, cl_updates in day_updates.items():
-                message += f"Для {u_cl}:"
-                message += "\n" if len(cl_updates) > 1 else " "
-                message += send_cl_updates(cl_updates)
-
-        return message
-
-    def send_day_lessons(self, today: int, cl: Optional[str] = None) -> str:
-        """Сообщение с расписанием уроков на день.
-
-        Args:
-            today (int): День недели (0-5)
-            cl (str, optional): Для какого класса
-
-        Returns:
-            str: Сообщение с расписанием на день
-        """
-        if today > 5:
-            today = 0
-
-        cl = self.get_class(cl)
-        lessons = self.get_lessons(cl)[today]
-        message = f"\n🔶 На {days_names[today]}:"
-
-        # Собираем сообщение с расписанием
-        for i, x in enumerate(lessons):
-            tt = ""
-            if i < len(timetable):
-                tt = f" {timetable[i][0]}"
-
-            message += f"\n{i+1}{tt} | {x}"
-
-        return message
-
-    def send_lessons(self, days: list[int], cl: Optional[str] = None) -> str:
-        """Сообщение с расписанием уроков.
-
-        Args:
-            day (list[int]): Для каких дней расписание
-            cl (str, optional): Для каких классов
+            flt (Filters): Набор фильтров для уточнения
 
         Returns:
             str: Сообение с расписание уроков
         """
+        message = ""
+        for cl in flt.get_cl():
+            message += f"\n🏫 Для {cl}:"
+            lessons = self.sc.get_lessons(cl)
 
-        days = set(filter(lambda x: x < 6, days)) or {0}
-        cl = self.get_class(cl)
-        message = f"🏫 Для {cl}:"
-
-        for day in days:
-            message += f"{self.send_day_lessons(day, cl)}\n"
+            for day in flt.days:
+                message += f"{send_day_lessons(day, lessons[day])}"
+            message += "\n"
 
         # Обновления в расписаниии
         # ------------------------
 
-        if self.user["set_class"]:
+        if self.user["class_let"] in flt.get_cl():
             updates = self.get_lessons_updates()
-
             if updates:
                 message += f"\n🎉 Изменилось расписание!"
-
-                updates = updates - days
+                updates = updates - flt.days
                 if len(updates) < 3:
+                    lessons = self.sc.get_lessons()
                     for day in updates:
-                        message += f"{self.send_day_lessons(day)}\n"
+                        message += f"{send_day_lessons(day, lessons[day])}\n"
                 else:
                     message += f"\nНа {', '.join(map(lambda x: days_names[x], updates))}."
-
         return message
 
-    def send_today_lessons(self, cl: Optional[str] = "") -> str:
+    def send_today_lessons(self, flt: Filters) -> str:
         """Сообщение с расписанием на сегодня/завтра.
         Есои уроки закончились, выводится расписание на завтра.
 
@@ -645,16 +702,15 @@ class SPMessages:
 
         now = datetime.now()
         today = min(now.weekday(), 5)
-        lessons = self.get_lessons(cl)
-        hour = int(timetable[len(lessons[today])-1][1].split(':')[0])
 
-        if now.hour >= hour:
+        if now.hour > 14:
             today += 1
 
         if today > 5:
             today = 0
 
-        return self.send_lessons([today], cl)
+        flt._days = [today]
+        return self.send_lessons(flt)
 
     def count_lessons(self, cabinets: Optional[bool] = False, cl: Optional[str] = None) -> str:
         """Подсчитывает число уроков/кабинетов.
@@ -668,7 +724,7 @@ class SPMessages:
             str: Сообщение с результатами
         """
         if cl:
-            cl = self.get_class(cl)
+            cl = self.sc.get_class(cl)
 
         index = self.sc.c_index if cabinets else self.sc.l_index
         message = ""
@@ -683,7 +739,7 @@ class SPMessages:
                     else:
                         cnt[a_k] += sum(map(len, a_v.values()))
 
-            c = cnt.total()
+            c = sum(cnt.values())
             if c:
                 if str(c) not in res:
                     res[str(c)] = {}
@@ -729,147 +785,104 @@ class SPMessages:
     # Поиск в расписании
     # ==================
 
-    def search_lesson(self, lesson: str, days: Optional[list[int]] = [], cl: Optional[str] = None):
+    def search_lesson(self, lesson: str, flt: Filters) -> str:
         """Поиск упоминаний об уроке.
         Когда (день), где (кабинет), для кого (класс), каким уроком.
 
         Args:
             lesson (str): Урок, который нужно найти
-            days (list[int], optional): Для каких дней нужно найти
-            cl (str, optional): Для какого класса нужно найти
+            flt (Filters): Набор фильтров для уточнения результатов
 
         Returns:
             str: результаты поиска
         """
+        res = [[[] for x in range(8)] for x in range(6)]
+        days = self.sc.l_index.get(lesson, {})
 
-        if lesson not in self.sc.l_index:
-            message = f"❗Неправильно указан предмет."
-            message += f"\n🏫 Доступные предметы: {'; '.join(self.sc.l_index)}"
-            return message
+        for day, cabinets in enumerate(days):
+            if flt.days and day not in flt.days:
+                continue
 
-        if cl is not None:
-            cl = self.get_class(cl)
+            for cabinet, classes in cabinets.items():
+                for cl, i in classes.items():
+                    if flt.cl and cl not in flt.cl:
+                        continue
 
-        res = self.sc.search(lesson)
-        days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
+                    for x in i:
+                        if flt.cl:
+                            res[day][x].append(f"{cabinet}")
+                        else:
+                            res[day][x].append(f"{cl}: {cabinet}")
 
         # Собираем сообщение
         # ------------------
 
-        search_str = f"🔎 Поиск [{lesson}]"
-        if days == {0, 1, 2, 3, 4, 5}:
-            search_str += f" за неделю"
-        elif days:
-            search_str += f" за {', '.join(map(lambda x: days_names[x], days))}"
+        message = f"🔎 поиск [{lesson}]"
+        if flt.cl:
+            message += f" ({', '.join(flt.cl)})"
+        if flt.days:
+            message += f"\n* На: {', '.join(map(lambda x: days_names[x], flt.days))}"
 
-        if cl:
-            search_str += f" для {cl}"
-
-        message = search_str
-
-        # Пробегаемся по результатам поиска
-        for cabinet, v in res.items():
-            cabinet_str = ""
-
-            # Пробегаемся по указанным дням
-            for day in days:
-                ln = v[day]
-                day_str = ""
-
-                for i, cs in enumerate(ln):
-                    if cl and cl not in cs:
-                        continue
-
-                    if cs:
-                        tt = ""
-
-                        if i < len(timetable):
-                            tt = f' {timetable[i][0]}'
-
-                        day_str += f"\n{i+1}{tt}| {', '.join(cs)}"
-
-                if day_str:
-                    cabinet_str += f'\n⏰ На {days_names[day]}:{day_str}'
-            if cabinet_str:
-                message += f"\n\n🔶 Кабинет {cabinet}:{cabinet_str}"
+        for day, lessons in enumerate(res):
+            lessons = clear_empty_list(lessons)
+            if not lessons:
+                continue
+            message += "\n"
+            message += send_day_lessons(day, lessons)
 
         return message
 
-    def search_cabinet(self, cabinet: str, lesson: Optional[str] = "", days: Optional[list[int]] = [], cl: Optional[str] = None):
+    def search_cabinet(self, cabinet: str, flt: Filters) -> str:
         """Поиск упоминаний о кабинете.
         Когда (день), что (урок), для кого (класс), каким уроком.
 
-        :param cabinet: Кабинет, который нужно найти
-        :param lesson: Для какого урока отображать результат
-        :param days: Для каких дней отображать результат поиска
-        :param cl: Для какого класса отображать результаты
+        Args:
+            cabinet (str): Кабинет, который нужно найти
+            flt (Filters): Набор фильтров для уточнения результатов
 
-        :returns: Сообщение с результатами поиска."""
+        Returns:
+            str: Сообщение с результатами поиска
+        """
 
-        if cabinet not in self.sc.c_index:
-            message = f"❗Неправильно указан кабинет."
-            message += f"\n🏫 Доступные кабинеты: {'; '.join(self,c_index)}"
-            return message
+        res = [[[] for x in range(8)] for x in range(6)]
+        days = self.sc.c_index.get(cabinet, {})
 
+        for day, lessons in enumerate(days):
+            if flt.days and day not in flt.days:
+                continue
 
-        if cl is not None:
-            cl = self.get_class(cl)
-        days = set(filter(lambda x: x < 6, days or [0, 1, 2, 3, 4, 5]))
-        data = self.sc.search(cabinet)
+            for lesson, classes in lessons.items():
+                if flt.lessons and lesson not in flt.lessons:
+                    continue
+
+                for cl, i in classes.items():
+                    if flt.cl and cl not in flt.cl:
+                        continue
+
+                    for x in i:
+                        if flt.lessons:
+                            res[day][x].append(f"{cl}")
+                        elif flt.cl:
+                            res[day][x].append(f"{lesson}")
+                        else:
+                            res[day][x].append(f"{lesson}: {cl}")
 
         # Собираем сообщение
         # ------------------
 
-        message = f"🔎 Поиск кабнета [{cabinet}]"
-        if days == {0, 1, 2, 3, 4, 5}:
-            message += f" за неделю"
-        elif days:
-            message += f" за {', '.join(map(lambda x: days_names[x], days))}"
-
-        if cl:
-            message += f" для {cl}"
-
-        if lesson:
-            message += f" ({lesson})"
-
-         # Пробегаемся по результатам поиска
-        res = [[[] for x in range(8)] for x in range(6)]
-        for l, v in data.items():
-            if lesson and lesson != l:
-                continue
-
-            # Пробегаемся по указанным дням
-            for day in days:
-                ln = v[day]
-
-                for i, cs in enumerate(ln):
-                    if cl and cl not in cs:
-                        continue
-
-                    if cs:
-                        res[day][i].append(f"{l}:{', '.join(cs)}")
+        message = f"🔎 поиск [{cabinet}]"
+        if flt.cl:
+            message += f" ({', '.join(flt.cl)})"
+        if flt.lessons:
+            message += f" ({', '.join(flt.lessons)})"
+        if flt.days:
+            message += f"\n* На: {', '.join(map(lambda x: days_names[x], flt.days))}"
 
         for day, lessons in enumerate(res):
-            if lessons:
-                while lessons:
-                    if not lessons[-1]:
-                        lessons.pop()
-                    else:
-                        break
-
-                day_str = ""
-                for i, l in enumerate(lessons):
-                    tt = ""
-
-                    if i < len(timetable):
-                        tt = f'В {timetable[i][0]} '
-
-                    if l:
-                        day_str += f"\n{i+1} {tt}| {', '.join(l)}"
-                    else:
-                        day_str += f"\n{i+1} {tt}| ==="
-
-                if day_str:
-                    message += f"\n\n🔶На {days_names[day]}:{day_str}"
+            lessons = clear_empty_list(lessons)
+            if not lessons:
+                continue
+            message += "\n"
+            message += send_day_lessons(day, lessons)
 
         return message
