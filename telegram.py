@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.4.1 (sp v4.4)
+Ver: 1.6 (sp v4.6)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -10,14 +10,15 @@ updates - Изменения в расписании
 counter - Счётчик уроков/кабинетов
 set_class - Изменить класс
 help - Главное меню
-info - ⚙Информация о боте
+info - Информация о боте
+users - Статистика пользователей
 """
 
 from sp import SPMessages
 from sp import Schedule
 from sp import load_file
-
-import re
+from sp import send_update
+from sp import Filters
 
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +44,36 @@ days_names = ["понедельник", "вторник", "среда",
               "четверг", "пятница", "суббота", "сегодня", "неделя"]
 
 
+# Тексты сообщений
+# ================
+
+HOME_MESSAGE = """💡 Некоторые примеры:
+-- 7в 6а
+-- уроки 6а на вторник среду
+-- расписание на завтра для 8б
+-- 312 на вторник
+-- химия 228
+
+🏫 Вы можете использовать:
+-- Класс: для которого нужно расписание.
+-- Дни: понедельник-суббота, сегодня, завтра, неделя.
+-- Урок: Все его упоминания.
+-- Кабинет: Расписание от его лица
+🌟 Порядок и форма не важны, балуйтесь!"""
+
+INFO_MESSAGE = """
+:: Версия бота: 1.6
+
+👀 По всем вопросам к @milinuri"""
+
+SET_CLASS_MESSAGE = """
+⚠️ Для полноценной работы бота ему нужно знать ваш класс (1а).
+Например для быстрого просмотра расписания, счётчиков.
+Пожалуйста, введите следуюшим сообщением ваш класс.
+
+💡 Вы всегда сможете изменить класс например командой /set_class"""
+
+
 # Определение клавиатур бота
 # ==========================
 
@@ -57,7 +88,6 @@ counter_markup = [{"home": "◁", "count": "Уроки", "count cl": "Уроки
 home_murkup = [{"other": "🔧", "updates last 0 {cl}": "🔔", "sc {cl}": "📚"}]
 other_markup = [{"home": "◁", "set_class": "Сменить класс"},
                 {"count": "Счётчик",}]
-
 
 def markup_generator(sp: SPMessages, pattern: dict, cl: Optional[str] = None,
                      exclude: Optional[str] = None,
@@ -127,42 +157,10 @@ def gen_select_day_markup(cl: str) -> InlineKeyboardMarkup:
         InlineKeyboardMarkup: inline-клавиатура для выбора для недели
     """
     markup = InlineKeyboardMarkup()
-
     for i, x in enumerate(days_names):
         markup.insert(InlineKeyboardButton(text= x,
                                            callback_data= f"sc_day {cl} {i}"))
     return markup
-
-
-# Тексты сообщений
-# ================
-
-HOME_MESSAGE = """💡 Некоторые примеры:
--- 7в
--- уроки 6а на вторник среду
--- расписание на завтра для 8б
--- 312 на вторник
--- химия 228
-
-🏫 Вы можете использовать:
--- Класс: для которого нужно расписание.
--- Дни: понедельник-суббота, сегодня, завтра, неделя.
--- Урок: Все его упоминания.
--- Кабинет: Расписание от его лица
-🌟 Порадок и форма не имеют значения!"""
-
-INFO_MESSAGE = """
-О боте:
-:: Автор: @milinuri
-:: Версия: 1.4.1 (🔶Testing)
-
-👀 По всем вопросам к @milinuri"""
-
-SET_CLASS_MESSAGE = """
-⚠️ Для полноценной работы бота ему нужно знать ваш класс.
-💡 Вы всегда сможете изменить класс командой /set_class
-
-Пожалуйста, следуюшим сообщением введите класс..."""
 
 
 # Опеределение команд бота
@@ -170,7 +168,7 @@ SET_CLASS_MESSAGE = """
 
 @dp.message_handler(commands= ["start"])
 async def start_command(message: types.Message):
-    sp = SPMessages(str(message.chat.id), Schedule())
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     await message.delete()
 
@@ -183,7 +181,7 @@ async def start_command(message: types.Message):
 
 @dp.message_handler(commands= ["help"])
 async def help_command(message: types.Message):
-    sp = SPMessages(str(message.chat.id), Schedule())
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     markup = markup_generator(sp, home_murkup)
     await message.answer(text= HOME_MESSAGE, reply_markup= markup)
@@ -191,25 +189,25 @@ async def help_command(message: types.Message):
 
 @dp.message_handler(commands= ["info"])
 async def info_command(message: types.Message):
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
-    sp = SPMessages(str(message.chat.id), Schedule())
     await message.answer(text= sp.send_status()+INFO_MESSAGE,
                          reply_markup= to_home_markup)
 
 
 @dp.message_handler(commands= ["updates"])
 async def updates_command(message: types.Message):
-    sp = SPMessages(str(message.chat.id), Schedule())
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
-    updates = sp.sc.get_updates()
+    updates = sp.sc.updates
     markup = gen_updates_markup(len(updates)-1, updates)
-    await message.answer(text= sp.send_updates(updates[-1]), 
+    await message.answer(text= send_update(updates[-1]),
                         reply_markup= markup)
 
 
 @dp.message_handler(commands= ["counter"])
 async def lessons_command(message: types.Message):
-    sp = SPMessages(str(message.chat.id), Schedule())
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     markup = markup_generator(sp, counter_markup,
                               exclude= "count", row_width= 4)
@@ -219,7 +217,7 @@ async def lessons_command(message: types.Message):
 
 @dp.message_handler(commands= ["set_class"])
 async def set_class_command(message: types.Message):
-    sp = SPMessages(str(message.chat.id), Schedule())
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     sp.user["set_class"] = False
     sp.save_user()
@@ -228,7 +226,7 @@ async def set_class_command(message: types.Message):
 
 @dp.message_handler(commands= ["sc"])
 async def sc_command(message: types.Message):
-    sp = SPMessages(str(message.chat.id), Schedule())
+    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
 
     if sp.user["set_class"]:
@@ -238,72 +236,46 @@ async def sc_command(message: types.Message):
         await message.answer(text= SET_CLASS_MESSAGE)
 
 
+@dp.message_handler(commands= ["users"])
+async def users_command(message: types.Message):
+    sp = SPMessages(str(message.chat.id))
+    logger.info(message.chat.id)
+    await message.answer(text= sp.send_users_stats(),
+                         reply_markup=to_home_markup)
+
+
 # Главный обработчик сообщений
 # ============================
 
 @dp.message_handler()
 async def main_handler(message: types.Message):
     uid = str(message.chat.id)
-    sc = Schedule()
-    sp = SPMessages(uid, sc)
+    sp = SPMessages(uid)
     logger.info("{} {}", uid, message.text)
 
     if sp.user["set_class"]:
-        args = message.text.lower().strip().split()
-        weekday = datetime.today().weekday()
-        days = []
-        cl = None
-        lesson = None
-        cabinet = None
+        args = message.text.strip().lower().split()
+        flt = Filters(sp.sc)
+        flt.parse_args(args)
 
-        # Обработка входящего сообщения
-        # -----------------------------
+        logger.info(f"answer С:{flt.cabinets} L:{flt.lessons} D:{flt.days} CL:{flt.cl}")
+        if flt.cabinets:
+            for cabinet in flt.cabinets:
+                res = sp.search_cabinet(cabinet, flt)
+                await message.answer(text= res, reply_markup= to_home_markup)
 
-        for arg in args:
-            if arg == "сегодня":
-                days.append(weekday)
+        elif flt.lessons:
+            for lesson in flt.lessons:
+                res = sp.search_lesson(lesson, flt)
+                await message.answer(text= res, reply_markup= to_home_markup)
 
-            elif arg == "завтра":
-                days.append(datetime.today().weekday()+1)
-
-            elif arg.startswith("недел"):
-                days = [0, 1, 2, 3, 4, 5]
-
-            elif arg in sc.lessons:
-                cl = arg
-
-            elif arg in sc.l_index:
-                lesson = arg
-
-            elif arg in sc.c_index:
-                cabinet = arg
-
+        elif flt.cl or flt.days:
+            if flt.days:
+                await message.answer(text= sp.send_lessons(flt))
             else:
-                # Если начало слова совпадает: пятниц... -а, -у, -ы...
-                days += [i for i, k in enumerate(days_str) if arg.startswith(k)]
-
-        # Отправка сообщения
-        # ------------------
-
-        logger.info(f"answer С:{cabinet} L:{lesson} D:{days} CL:{cl}")
-        if cabinet:
-            res = sp.search_cabinet(cabinet, lesson, days, cl)
-            await message.answer(text= res, reply_markup= to_home_markup)
-
-        elif lesson:
-            res = sp.search_lesson(lesson, days, cl)
-            await message.answer(text= res, reply_markup= to_home_markup)
-
-        elif cl or days:
-            markup = markup_generator(sp, week_markup, cl= cl)
-            if days:
-                await message.answer(text= sp.send_lessons(days= days, cl= cl),
-                                     reply_markup= markup)
-            else:
-                await message.answer(text= sp.send_today_lessons(cl= cl),
-                                     reply_markup= markup)
+                await message.answer(text= sp.send_today_lessons(flt))
         else:
-            await message.answer(text= "👀 Кажется, это пустой запрос...?")
+            await message.answer(text= "👀 Кажется, тут пустой запрос...?")
 
 
     # Устаеновка класса по умолчанию
@@ -313,7 +285,7 @@ async def main_handler(message: types.Message):
         text = message.text.lower()
         await message.answer(text= sp.set_class(text))
 
-        if text in sc.lessons:
+        if text in sp.sc.lessons:
             logger.info(f"Set class {text} ")
             markup = markup_generator(sp, home_murkup)
             await message.answer(text= HOME_MESSAGE, reply_markup= markup)
@@ -326,7 +298,7 @@ async def main_handler(message: types.Message):
 async def callback_handler(callback: types.CallbackQuery):
     header, *args = callback.data.split()
     uid = str(callback.message.chat.id)
-    sp = SPMessages(uid, Schedule())
+    sp = SPMessages(uid)
     logger.info("{}: {} {}", uid, header, args)
 
     # Вызов справки
@@ -345,13 +317,14 @@ async def callback_handler(callback: types.CallbackQuery):
 
     # Расписание на сегодня
     if header == "sc":
-        text = sp.send_today_lessons(cl= args[0])
+        text = sp.send_today_lessons(Filters(sp.sc, cl= [args[0]]))
         markup = markup_generator(sp, week_markup, cl= args[0])
         await callback.message.edit_text(text= text, reply_markup= markup)
 
     # Расписание на неделю
     if header == "week":
-        text = sp.send_lessons(days= [0, 1, 2, 3, 4, 5], cl= args[0])
+        flt = Filters(sp.sc, days = [0, 1, 2, 3, 4, 5], cl = [args[0]])
+        text = sp.send_lessons(flt)
         markup = markup_generator(sp, sc_markup, cl= args[0])
         await callback.message.edit_text(text= text, reply_markup= markup)
 
@@ -363,17 +336,18 @@ async def callback_handler(callback: types.CallbackQuery):
 
     # Расписани на определённый день
     if header == "sc_day":
-        cl = args[0]
         day = int(args[1])
+        flt = Filters(sp.sc, days = [day], cl = [args[0]])
 
         if day == 6:
-            text = sp.send_today_lessons(cl= cl)
+            text = sp.send_today_lessons(flt)
         elif day == 7:
-            text = sp.send_lessons(days=[0, 1, 2, 3, 4, 5], cl= cl)
+            flt._days = [0, 1, 2, 3, 4, 5]
+            text = sp.send_lessons(flt)
         else:
-            text = sp.send_lessons(days= [day], cl=cl)
+            text = sp.send_lessons(flt)
 
-        markup = markup_generator(sp, sc_markup, cl= cl)
+        markup = markup_generator(sp, sc_markup, cl= args[0])
         await callback.message.edit_text(text= text, reply_markup= markup)
 
     # Вызов меню обновлений
@@ -391,7 +365,7 @@ async def callback_handler(callback: types.CallbackQuery):
         elif args[0] == "last":
             i = len(updates)-1
 
-        text += sp.send_update(updates[i])
+        text += send_update(updates[i])
         markup = gen_updates_markup(i, updates)
         await callback.message.edit_text(text= text, reply_markup= markup)
 
