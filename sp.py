@@ -499,6 +499,37 @@ class Schedule:
         """Получает расписание уроков на неделю для класса."""
         return self.lessons[self.get_class(cl)]
 
+    def get_updates(self, flt: Filters, offset: Optional[int] = None) -> list:
+        """Получает список изменений расписания.
+
+        Args:
+            flt (Filters): Набор фильтров для уточнения результатов
+        """
+        updates = []
+
+        for update in self.updates:
+            if update is None:
+                continue
+
+            if offset is not None and update["time"] < offset:
+                continue
+
+            new_update = [{} for x in range(6)]
+            for day, day_updates in enumerate(update["updates"]):
+                if flt.days and day not in flt.days:
+                    continue
+
+                for cl, cl_updates in day_updates.items():
+                    if flt.cl and cl not in flt.cl:
+                        continue
+
+                    new_update[day][cl] = cl_updates
+
+            if sum(map(len, new_update)):
+                updates.append({"time": update["time"], "updates": new_update})
+
+        return updates
+
 
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
@@ -523,7 +554,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6 (50)"
+        res = "Версия sp: 4.6 (52)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -626,32 +657,20 @@ class SPMessages:
 
         return message
 
-    def get_lessons_updates(self) -> set:
+    def get_lessons_updates(self) -> list:
         """Возвращает дни, для которых изменилось расписание."""
-        # Если расписание не обновилось, значит и хеши дней тоже
         if self.sc.schedule["last_parse"] == self.user["last_parse"]:
-            return set()
+            return []
 
         logger.info("Get lessons updates")
-        updates = load_file(self.sc.updates_path)
-        days = []
+        flt = Filters(self.sc, cl= [self.user["class_let"]])
+        updates = self.sc.get_updates(flt, self.user["last_parse"])
 
         # Обновление времени последней проверки расписания
         self.user["last_parse"] = self.sc.schedule["last_parse"]
         self.save_user()
 
-        # Пробегаемся по списку измененийй
-        for x in updates:
-            # Пропускаем изменния, которые мы уже смотрели
-            if x is None or x["time"] < self.user["last_parse"]:
-                continue
-
-            # Пробеаемся по каждой записи с изменениями
-            for day, day_updates in enumerate(x["updates"]):
-                if self.user["class_let"] in day_updates:
-                    days.append(day)
-
-        return set(days)
+        return updates
 
 
     # Отображение расписания
@@ -676,20 +695,14 @@ class SPMessages:
             message += "\n"
 
         # Обновления в расписаниии
-        # ------------------------
-
         if self.user["class_let"] in flt.get_cl():
             updates = self.get_lessons_updates()
+
             if updates:
-                message += f"\n🎉 Изменилось расписание!"
-                updates = updates - flt.days
-                if len(updates) < 3:
-                    lessons = self.sc.get_lessons()
-                    for day in updates:
-                        message += f"\n📅 На {days_names[day]}:"
-                        message += f"{send_day_lessons(lessons[day])}\n"
-                else:
-                    message += f"\nНа {', '.join(map(lambda x: days_names[x], updates))}."
+                message += f"\nИзменилось расписание! 🎉"
+
+                for update in self.get_lessons_updates():
+                    message += f"\n{send_update(update)}"
 
         return message
 
