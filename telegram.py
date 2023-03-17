@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.6 (sp v4.6)
+Ver: 1.6.1 (sp v4.6)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -62,7 +62,7 @@ HOME_MESSAGE = """💡 Некоторые примеры:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.6
+:: Версия бота: 1.6.1
 
 👀 По всем вопросам к @milinuri"""
 
@@ -230,7 +230,8 @@ async def sc_command(message: types.Message):
     logger.info(message.chat.id)
 
     if sp.user["set_class"]:
-        await message.answer(text= sp.send_today_lessons(),
+        flt = Filters(sp.sc)
+        await message.answer(text= sp.send_today_lessons(flt),
                              reply_markup= markup_generator(sp, week_markup))
     else:
         await message.answer(text= SET_CLASS_MESSAGE)
