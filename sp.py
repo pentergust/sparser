@@ -342,28 +342,22 @@ def send_update(update: dict) -> str:
 
     return message
 
-def send_day_lessons(today: int, lessons: list) -> str:
+def send_day_lessons(lessons: list) -> str:
     """Собирает сообщение с расписанием уроков на день.
 
     Args:
-        today (int): Для какого дня
         lessons (list): Список уроков на день
 
     Returns:
         str: Сообщение с расписанием на день
     """
-    message = f"\n🔶 На {days_names[today]}:"
+    message = ""
     for i, x in enumerate(lessons):
         tt = f" {timetable[i][0]}" if i < len(timetable) else f"{x+1}"
         message += f"\n{tt} | "
-
-        if isinstance(x, list):
-            message += "; ".join(x)
-        else:
-            message += x
+        message += "; ".join(x) if isinstance(x, list) else x
 
     return message
-
 
 
 class Schedule:
@@ -672,13 +666,13 @@ class SPMessages:
         Returns:
             str: Сообение с расписание уроков
         """
+        lessons = {x: self.sc.get_lessons(x) for x in flt.get_cl()}
         message = ""
-        for cl in flt.get_cl():
-            message += f"\n🏫 Для {cl}:"
-            lessons = self.sc.get_lessons(cl)
-
-            for day in flt.days:
-                message += f"{send_day_lessons(day, lessons[day])}"
+        for day in flt.days:
+            message += f"\n📅 На {days_names[day]}:"
+            for cl, cl_lessons in lessons.items():
+                message += f"\n🔶 Для {cl}:"
+                message += f"{send_day_lessons(cl_lessons[day])}"
             message += "\n"
 
         # Обновления в расписаниии
@@ -692,9 +686,11 @@ class SPMessages:
                 if len(updates) < 3:
                     lessons = self.sc.get_lessons()
                     for day in updates:
-                        message += f"{send_day_lessons(day, lessons[day])}\n"
+                        message += f"\n📅 На {days_names[day]}:"
+                        message += f"{send_day_lessons(lessons[day])}\n"
                 else:
                     message += f"\nНа {', '.join(map(lambda x: days_names[x], updates))}."
+
         return message
 
     def send_today_lessons(self, flt: Filters) -> str:
@@ -837,8 +833,8 @@ class SPMessages:
             lessons = clear_empty_list(lessons)
             if not lessons:
                 continue
-            message += "\n"
-            message += send_day_lessons(day, lessons)
+            message += f"\n\n📅 На {days_names[day]}:"
+            message += send_day_lessons(lessons)
 
         return message
 
@@ -892,7 +888,7 @@ class SPMessages:
             lessons = clear_empty_list(lessons)
             if not lessons:
                 continue
-            message += "\n"
-            message += send_day_lessons(day, lessons)
+            message += f"\n\n📅 На {days_names[day]}:"
+            message += send_day_lessons(lessons)
 
         return message
