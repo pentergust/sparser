@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.6.1 (sp v4.6)
+Ver: 1.7 (sp v4.6)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -62,7 +62,7 @@ HOME_MESSAGE = """💡 Некоторые примеры:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.6.1
+:: Версия бота: 1.7
 
 👀 По всем вопросам к @milinuri"""
 
@@ -122,13 +122,15 @@ def markup_generator(sp: SPMessages, pattern: dict, cl: Optional[str] = None,
 
     return markup
 
-def gen_updates_markup(update_index: int, updates: list) -> InlineKeyboardMarkup:
+def gen_updates_markup(update_index: int, updates: list,
+                       cl: Optional[str] = None) -> InlineKeyboardMarkup:
     """Собирает inline-клввиатуру для постраничного просмотра списка
     изменений расписания.
 
     Args:
         update_index (int): Номер текущей страницы обновлений
         updates (list): Список всех страниц
+        cl (str, optional): Для какого класс собрать клавиатуру
 
     Returns:
         InlineKeyboardMarkup: Готовая inline-клавиатура
@@ -142,7 +144,7 @@ def gen_updates_markup(update_index: int, updates: list) -> InlineKeyboardMarkup
         }
 
     for k, v in markup_pattern.items():
-        k += f" {update_index}"
+        k += f" {update_index} {cl}"
         markup.insert(InlineKeyboardButton(text= v, callback_data= k))
 
     return markup
@@ -353,21 +355,31 @@ async def callback_handler(callback: types.CallbackQuery):
 
     # Вызов меню обновлений
     if header == "updates":
-        i = int(args[1])
+        flt = Filters(sp.sc)
         text = "🔔 Изменения в расписании:\n"
-        updates = sp.sc.updates
 
-        if args[0] == "next":
+        if args[0] == "switch":
+            cl = sp.user["class_let"] if args[2] == "None" else None
+        else:
+            cl = None if args[1] == "None" else args[2]
+
+        if cl is not None:
+            flt.cl = [cl]
+
+        updates = sp.sc.get_updates(flt)
+        i = max(min(int(args[1]), len(updates)-1), 0)
+
+        if args[0] in ["last", "switch"]:
+            i = len(updates)-1
+
+        elif args[0] == "next":
             i = (i+1) % len(updates)
 
         elif args[0] == "back":
             i = (i-1) % len(updates)
 
-        elif args[0] == "last":
-            i = len(updates)-1
-
         text += send_update(updates[i])
-        markup = gen_updates_markup(i, updates)
+        markup = gen_updates_markup(i, updates, cl)
         await callback.message.edit_text(text= text, reply_markup= markup)
 
     # Вызоы меню инстрментов
