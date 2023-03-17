@@ -529,7 +529,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6 (48)"
+        res = "Версия sp: 4.6 (49)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -551,40 +551,48 @@ class SPMessages:
         users = load_file(self._users_path)
 
         # Сбор статистики о пользователях
-        cl_cnt = Counter()
-        active_users = 0
+        active_cnt = Counter()
+        users_cnt = Counter()
         for k, v in users.items():
+            users_cnt[v["class_let"]] += 1
+
             # Активным считается пользователь, у которого время
             # последнего запроса расписания не позднее трёх суток
             if now - v["last_parse"] > 259200:
                 continue
 
-            active_users += 1
-            cl_cnt[v["class_let"]] += 1
+            active_cnt[v["class_let"]] += 1
 
 
         # Сборка сообщения
         # ----------------
 
         message = f"✨ Всего пользователей {len(users)}:"
+        active_users = sum(active_cnt.values())
         active_users_pr = round(active_users / len(users) * 100, 2)
         message += f"\n💡 Из них активны: {active_users} [{active_users_pr}%]\n"
-        for i, data in enumerate(sorted(cl_cnt.items(), key= lambda x: x[1],
-                                        reverse=True)):
-            k, v = data
+        for i, item in enumerate(active_cnt.most_common()):
+            k, v = item
 
             if i+1 == 1:
-                medal = "🥇"
+                pos = "🥇"
             elif i+1 == 2:
-                medal = "🥈"
+                pos = "🥈"
             elif i+1 == 3:
-                medal = "🥉"
+                pos = "🥉"
             else:
-                medal = ""
+                pos = f"{i+1}. "
 
-            pr = round(v / active_users * 100, 2)
-            message += f"\n-- {medal if medal else i+1} - {k}: {v} ({pr}%)"
+            upr = round(v / active_users * 100, 2)
+            apr = round(v / users_cnt[k] * 100, 2)
+            apr_str = f" ({apr}%)" if apr < 90 else ""
+            message += f"\n{pos}{k} [{upr}%]: {v}/{users_cnt[k]}{apr_str}"
 
+
+        message += "\n\n❄️ Неактивные пользователи:\n"
+        inactive_users = users_cnt - active_cnt
+        for k, v in inactive_users.most_common():
+            message += f" {k}:{v}"
         return message
 
 
