@@ -33,7 +33,7 @@ users_path = "sp_data/users.json"
 sc_path = "sp_data/sc.json"
 sc_updates_path = "sp_data/updates.json"
 index_path = "sp_data/index.json"
-user_data = {"class_let":"9г", "set_class": False, "last_parse": 0,
+user_data = {"class_let":None, "set_class": False, "last_parse": 0,
              "check_updates": 0}
 timetable = [["08:00", "08:45"],
              ["08:55", "09:40"],
@@ -282,6 +282,7 @@ def clear_empty_list(l: list) -> list:
         del l[-1]
     return l
 
+
 # Вспомогательныек функции отображения
 # ====================================
 
@@ -497,7 +498,7 @@ class Schedule:
 
     def get_lessons(self, cl: Optional[str] = None) -> dict:
         """Получает расписание уроков на неделю для класса."""
-        return self.lessons[self.get_class(cl)]
+        return self.lessons.get(self.get_class(cl), [[], [], [], [], [], []])
 
     def get_updates(self, flt: Filters, offset: Optional[int] = None) -> list:
         """Получает список изменений расписания.
@@ -554,7 +555,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6 (52)"
+        res = "Версия sp: 4.6 (53)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -612,7 +613,6 @@ class SPMessages:
             apr = round(v / users_cnt[k] * 100, 2)
             apr_str = f" ({apr}%)" if apr < 90 else ""
             message += f"\n{pos}{k} [{upr}%]: {v}/{users_cnt[k]}{apr_str}"
-
 
         message += "\n\n❄️ Неактивные пользователи:\n"
         inactive_users = users_cnt - active_cnt

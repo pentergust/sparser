@@ -39,9 +39,8 @@ API_TOKEN = load_file(Path("sp_data/token.json"),
 bot = Bot(API_TOKEN)
 dp = Dispatcher(bot)
 logger.add("sp_data/telegram.log")
-days_str = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
-days_names = ["понедельник", "вторник", "среда",
-              "четверг", "пятница", "суббота", "сегодня", "неделя"]
+days_names = ["понедельник", "вторник", "среда", "четверг", "пятница",
+              "суббота", "сегодня", "неделя"]
 
 
 # Тексты сообщений
@@ -62,15 +61,16 @@ HOME_MESSAGE = """💡 Некоторые примеры:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.7
+:: Версия бота: 1.7.1
 
 👀 По всем вопросам к @milinuri"""
 
 SET_CLASS_MESSAGE = """
-⚠️ Для полноценной работы бота ему нужно знать ваш класс (1а).
-Например для быстрого просмотра расписания, счётчиков.
+🌟 Для полноценной работы боту нужно знать ваш класс (1а).
+Например: для быстрого просмотра расписания, списка изменений счётчиков.
 Пожалуйста, введите следуюшим сообщением ваш класс.
 
+⚠️ Для пропуска выбора класса воспользуйтесь /pass
 💡 Вы всегда сможете изменить класс например командой /set_class"""
 
 
@@ -85,7 +85,7 @@ sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}
 counter_markup = [{"home": "◁", "count": "Уроки", "count cl": "Уроки {cl}",
                    "count abinets": "Классы",
                    "count cabinets cl": "Классы {cl}"}]
-home_murkup = [{"other": "🔧", "updates last 0 {cl}": "🔔", "sc {cl}": "📚"}]
+home_murkup = [{"other": "🔧", "updates last 0 None": "🔔", "sc {cl}": "📚"}]
 other_markup = [{"home": "◁", "set_class": "Сменить класс"},
                 {"count": "Счётчик",}]
 
@@ -114,8 +114,14 @@ def markup_generator(sp: SPMessages, pattern: dict, cl: Optional[str] = None,
             if exclude is not None and callback_data == exclude:
                 continue
 
-            callback_data = callback_data.replace("{cl}", cl)
-            text = text.replace("{cl}", cl)
+            if cl is None and "{cl}" in callback_data:
+                continue
+
+            if cl is None and "{cl}" in text:
+                continue
+
+            callback_data = callback_data.replace("{cl}", cl or "")
+            text = text.replace("{cl}", cl or "")
 
             row.append(InlineKeyboardButton(text= text, callback_data= callback_data))
         markup.row(*row)
@@ -202,9 +208,13 @@ async def updates_command(message: types.Message):
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     updates = sp.sc.updates
-    markup = gen_updates_markup(len(updates)-1, updates)
-    await message.answer(text= send_update(updates[-1]),
-                        reply_markup= markup)
+    markup = gen_updates_markup(max(len(updates)-1, 0), updates)
+    if len(updates):
+        text = send_update(updates[-1])
+    else:
+        text = "Нет новых обновлений."
+
+    await message.answer(text= text, reply_markup= markup)
 
 
 @dp.message_handler(commands= ["counter"])
@@ -225,13 +235,26 @@ async def set_class_command(message: types.Message):
     sp.save_user()
     await message.answer(text= SET_CLASS_MESSAGE)
 
+@dp.message_handler(commands= ["pass"])
+async def pass_commend(message: types.Message):
+    sp = SPMessages(str(message.chat.id))
+    logger.info(message.chat.id)
+    if not sp.user["set_class"]:
+        sp.user["set_class"] = True
+        sp.save_user()
+        markup = markup_generator(sp, home_murkup)
+        await message.answer(text= HOME_MESSAGE, reply_markup= markup)
 
 @dp.message_handler(commands= ["sc"])
 async def sc_command(message: types.Message):
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
 
-    if sp.user["set_class"]:
+    if not sp.user["class_let"]:
+        text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
+        await message.answer(text= text, reply_markup= to_home_markup)
+
+    elif sp.user["set_class"]:
         flt = Filters(sp.sc)
         await message.answer(text= sp.send_today_lessons(flt),
                              reply_markup= markup_generator(sp, week_markup))
@@ -356,31 +379,39 @@ async def callback_handler(callback: types.CallbackQuery):
     # Вызов меню обновлений
     if header == "updates":
         flt = Filters(sp.sc)
-        text = "🔔 Изменения в расписании:\n"
+        text = "🔔 Изменения "
 
         if args[0] == "switch":
             cl = sp.user["class_let"] if args[2] == "None" else None
         else:
             cl = None if args[1] == "None" else args[2]
 
-        if cl is not None:
+        if cl is not None and sp.user["set_class"]:
+            text += f"для {cl}:\n"
             flt.cl = [cl]
+        else:
+            text += "в расписании:\n"
 
         updates = sp.sc.get_updates(flt)
         i = max(min(int(args[1]), len(updates)-1), 0)
 
-        if args[0] in ["last", "switch"]:
-            i = len(updates)-1
+        if len(updates):
+            if args[0] in ["last", "switch"]:
+                i = len(updates)-1
 
-        elif args[0] == "next":
-            i = (i+1) % len(updates)
+            elif args[0] == "next":
+                i = (i+1) % len(updates)
 
-        elif args[0] == "back":
-            i = (i-1) % len(updates)
+            elif args[0] == "back":
+                i = (i-1) % len(updates)
 
-        text += send_update(updates[i])
+            text += send_update(updates[i])
+        else:
+            text += "Нет новых обновлений."
+
         markup = gen_updates_markup(i, updates, cl)
-        await callback.message.edit_text(text= text, reply_markup= markup)
+        if text != callback.message.text:
+            await callback.message.edit_text(text= text, reply_markup= markup)
 
     # Вызоы меню инстрментов
     if header == "other":
