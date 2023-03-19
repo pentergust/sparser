@@ -171,6 +171,29 @@ def gen_select_day_markup(cl: str) -> InlineKeyboardMarkup:
     return markup
 
 
+def send_home_message(sp: SPMessages) -> str:
+    """Отпавляет сообщение со справкой об использовании бота.
+
+    Args:
+        sp (SPMessages): Генератор сообщений
+
+    Returns:
+        str: Готовое сообщение
+    """
+    cl = sp.user["class_let"]
+
+    if cl:
+        message = f"💎 Ваш класс: {cl}."
+    elif sp.user["set_class"]:
+        message = f"🌟 Вы не привязаны к классу."
+    else:
+        message = SET_CLASS_MESSAGE
+
+    message += "\n\n"
+    message += HOME_MESSAGE
+
+    return message
+
 # Опеределение команд бота
 # ========================
 
@@ -182,7 +205,7 @@ async def start_command(message: types.Message):
 
     if sp.user["set_class"]:
         markup = markup_generator(sp, home_murkup)
-        await message.answer(text= HOME_MESSAGE, reply_markup= markup)
+        await message.answer(text= send_home_message(), reply_markup= markup)
     else:
         await message.answer(text= SET_CLASS_MESSAGE)
 
@@ -192,7 +215,7 @@ async def help_command(message: types.Message):
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     markup = markup_generator(sp, home_murkup)
-    await message.answer(text= HOME_MESSAGE, reply_markup= markup)
+    await message.answer(text= send_home_message(sp), reply_markup= markup)
 
 
 @dp.message_handler(commands= ["info"])
@@ -243,7 +266,7 @@ async def pass_commend(message: types.Message):
         sp.user["set_class"] = True
         sp.save_user()
         markup = markup_generator(sp, home_murkup)
-        await message.answer(text= HOME_MESSAGE, reply_markup= markup)
+        await message.answer(text= send_home_message(sp), reply_markup= markup)
 
 @dp.message_handler(commands= ["sc"])
 async def sc_command(message: types.Message):
@@ -314,7 +337,8 @@ async def main_handler(message: types.Message):
         if text in sp.sc.lessons:
             logger.info(f"Set class {text} ")
             markup = markup_generator(sp, home_murkup)
-            await message.answer(text= HOME_MESSAGE, reply_markup= markup)
+            await message.answer(text= send_home_message(sp),
+                                 reply_markup= markup)
 
 
 # Обработчик inline-кнопок
@@ -330,7 +354,8 @@ async def callback_handler(callback: types.CallbackQuery):
     # Вызов справки
     if header == "home":
         markup = markup_generator(sp, home_murkup)
-        await callback.message.edit_text(text=HOME_MESSAGE, reply_markup= markup)
+        await callback.message.edit_text(text=send_home_message(sp),
+                                         reply_markup= markup)
 
     # Вызов счётчика
     if header == "count":
