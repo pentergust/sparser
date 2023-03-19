@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.7 (sp v4.6)
+Ver: 1.7.1 (sp v4.6)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -67,7 +67,7 @@ INFO_MESSAGE = """
 
 SET_CLASS_MESSAGE = """
 🌟 Для полноценной работы боту нужно знать ваш класс (1а).
-Например: для быстрого просмотра расписания, списка изменений счётчиков.
+Например: для быстрого просмотра расписания, списка изменений, счётчиков.
 Пожалуйста, введите следуюшим сообщением ваш класс.
 
 ⚠️ Для пропуска выбора класса воспользуйтесь /pass
@@ -85,7 +85,9 @@ sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}
 counter_markup = [{"home": "◁", "count": "Уроки", "count cl": "Уроки {cl}",
                    "count abinets": "Классы",
                    "count cabinets cl": "Классы {cl}"}]
-home_murkup = [{"other": "🔧", "updates last 0 None": "🔔", "sc {cl}": "📚"}]
+home_murkup = [{"other": "🔧Инструменты",
+                "updates last 0 None": "🔔Изменения",
+                "sc {cl}": "📚Уроки {cl}"}]
 other_markup = [{"home": "◁", "set_class": "Сменить класс"},
                 {"count": "Счётчик",}]
 
@@ -205,7 +207,7 @@ async def start_command(message: types.Message):
 
     if sp.user["set_class"]:
         markup = markup_generator(sp, home_murkup)
-        await message.answer(text= send_home_message(), reply_markup= markup)
+        await message.answer(text= send_home_message(sp), reply_markup= markup)
     else:
         await message.answer(text= SET_CLASS_MESSAGE)
 
@@ -409,7 +411,7 @@ async def callback_handler(callback: types.CallbackQuery):
         if args[0] == "switch":
             cl = sp.user["class_let"] if args[2] == "None" else None
         else:
-            cl = None if args[1] == "None" else args[2]
+            cl = None if args[2] == "None" else args[2]
 
         if cl is not None and sp.user["set_class"]:
             text += f"для {cl}:\n"
