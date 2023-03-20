@@ -2,7 +2,7 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.6
+Ver: 4.6.1
 
 Modules:
      csv: Чтение CSV файла расписания
@@ -416,7 +416,7 @@ class Schedule:
             b (dict): Новое расписание
         """
         logger.info("Update diff file...")
-        sc_changes = load_file(self.updates_path, [None for x in range(15)])
+        sc_changes = load_file(self.updates_path, [None for x in range(30)])
 
         # Если есть изменения, записываем их
         updates = get_sc_updates(a.get("lessons", {}), b["lessons"])
@@ -555,7 +555,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6 (53)"
+        res = "Версия sp: 4.6.1 (54)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -700,8 +700,7 @@ class SPMessages:
 
             if updates:
                 message += f"\nИзменилось расписание! 🎉"
-
-                for update in self.get_lessons_updates():
+                for update in updates:
                     message += f"\n{send_update(update)}"
 
         return message
