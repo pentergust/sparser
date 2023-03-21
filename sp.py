@@ -3,15 +3,6 @@
 
 Author: Milinuri Nirvalen
 Ver: 4.6.1
-
-Modules:
-     csv: Чтение CSV файла расписания
- hashlib: Работа с хеш-суммами
-    json: Управление файлами
-requests: Загрузка файла расписания
-    Path: Проверка существования файла
-datetime: Работа с датой и временем
-  loguru: Ведение журнала отладки
 """
 
 import csv
@@ -21,6 +12,7 @@ import requests
 
 from collections import Counter
 from datetime import datetime
+from datetime import time
 from pathlib import Path
 from typing import Any
 from typing import Optional
@@ -35,14 +27,18 @@ sc_updates_path = "sp_data/updates.json"
 index_path = "sp_data/index.json"
 user_data = {"class_let":None, "set_class": False, "last_parse": 0,
              "check_updates": 0}
-timetable = [["08:00", "08:45"],
-             ["08:55", "09:40"],
-             ["09:55", "10:40"],
-             ["10:55", "11:40"],
-             ["11:50", "12:35"],
-             ["12:45", "13:30"],
-             ["13:40", "14:25"],
-             ["14:35", "15:20"]]
+
+# Расписание уроков: начало (час, минуты), конец (час, минуты)
+timetable = [
+    [8, 0, 8, 45],
+    [8, 55, 9, 40],
+    [9, 55, 10, 40],
+    [10, 55, 11, 40],
+    [11, 50, 12, 35],
+    [12, 45, 13, 30],
+    [13, 40, 14, 25],
+    [14, 35, 15, 20],
+]
 
 days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
 days_parts = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
@@ -286,6 +282,29 @@ def clear_empty_list(l: list) -> list:
 # Вспомогательныек функции отображения
 # ====================================
 
+def get_tt_pos() -> int:
+    """Получает номер текущего урока исходя из времени.
+
+    Returns:
+        int: Номер текущего урока
+    """
+    now = datetime.now().time()
+    last_end = None
+
+    for i, x in enumerate(timetable):
+        start = time(x[0], x[1])
+        end = time(x[2], x[3])
+
+        if last_end is not None and now > last_end and now < start:
+            return i-1
+
+        if now >= start and now < end:
+            return i
+
+        last_end = end
+
+    return -1
+
 def send_cl_updates(cl_updates: list) -> str:
     """Возвращет сообщение списка изменений для класса.
     В зависимости от изменений вид сообщений немного отличается.
@@ -352,11 +371,33 @@ def send_day_lessons(lessons: list) -> str:
     Returns:
         str: Сообщение с расписанием на день
     """
+
     message = ""
+    tt_pos = get_tt_pos()
+
     for i, x in enumerate(lessons):
-        tt = f" {timetable[i][0]}" if i < len(timetable) else f"{x+1}"
-        message += f"\n{tt} | "
-        message += "; ".join(x) if isinstance(x, list) else x
+        message += "\n"
+        message += "🔹" if i == tt_pos else ''
+        message += f"{i+1}."
+
+        if i < len(timetable):
+            tt = timetable[i]
+            if i > tt_pos:
+                message += time(tt[0], tt[1]).strftime(" %H:%M")
+            message += time(tt[2], tt[3]).strftime(" - %H:%M")
+
+            if i < tt_pos:
+                message += " ┃ "
+            elif i == tt_pos:
+                message += " > "
+            else:
+                message += " │ "
+
+        else:
+            message += " ┃ "
+
+        lessons_str = "; ".join(x) if isinstance(x, list) else x
+        message += lessons_str
 
     return message
 
@@ -555,7 +596,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6.1 (54)"
+        res = "Версия sp: 4.6.1 (55)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -719,7 +760,7 @@ class SPMessages:
         now = datetime.now()
         today = min(now.weekday(), 5)
         lessons = max(map(lambda x: len(self.sc.get_lessons(x)), flt.get_cl()))
-        hour = int(timetable[lessons-1][1].split(':')[0])
+        hour = timetable[lessons-1][2]
 
         if now.hour >= hour:
             today += 1
