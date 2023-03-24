@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.7.1 (sp v4.6)
+Ver: 1.7.2 (sp v4.6)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -61,7 +61,7 @@ HOME_MESSAGE = """💡 Некоторые примеры:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.7.1
+:: Версия бота: 1.7.2
 
 👀 По всем вопросам к @milinuri"""
 
@@ -83,7 +83,7 @@ to_home_markup = InlineKeyboardMarkup().add(
 week_markup = [{"home": "🏠", "week {cl}": "На неделю", "select_day {cl}":"▷"}]
 sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}": "▷"}]
 counter_markup = [{"home": "◁", "count": "Уроки", "count cl": "Уроки {cl}",
-                   "count abinets": "Классы",
+                   "count сabinets": "Классы",
                    "count cabinets cl": "Классы {cl}"}]
 home_murkup = [{"other": "🔧Инструменты",
                 "updates last 0 None": "🔔Изменения",
@@ -196,11 +196,12 @@ def send_home_message(sp: SPMessages) -> str:
 
     return message
 
+
 # Опеределение команд бота
 # ========================
 
 @dp.message_handler(commands= ["start"])
-async def start_command(message: types.Message):
+async def start_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     await message.delete()
@@ -213,7 +214,7 @@ async def start_command(message: types.Message):
 
 
 @dp.message_handler(commands= ["help"])
-async def help_command(message: types.Message):
+async def help_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     markup = markup_generator(sp, home_murkup)
@@ -221,7 +222,7 @@ async def help_command(message: types.Message):
 
 
 @dp.message_handler(commands= ["info"])
-async def info_command(message: types.Message):
+async def info_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     await message.answer(text= sp.send_status()+INFO_MESSAGE,
@@ -229,7 +230,7 @@ async def info_command(message: types.Message):
 
 
 @dp.message_handler(commands= ["updates"])
-async def updates_command(message: types.Message):
+async def updates_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     updates = sp.sc.updates
@@ -243,7 +244,7 @@ async def updates_command(message: types.Message):
 
 
 @dp.message_handler(commands= ["counter"])
-async def lessons_command(message: types.Message):
+async def lessons_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     markup = markup_generator(sp, counter_markup,
@@ -253,7 +254,7 @@ async def lessons_command(message: types.Message):
 
 
 @dp.message_handler(commands= ["set_class"])
-async def set_class_command(message: types.Message):
+async def set_class_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     sp.user["set_class"] = False
@@ -261,7 +262,7 @@ async def set_class_command(message: types.Message):
     await message.answer(text= SET_CLASS_MESSAGE)
 
 @dp.message_handler(commands= ["pass"])
-async def pass_commend(message: types.Message):
+async def pass_commend(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     if not sp.user["set_class"]:
@@ -271,7 +272,7 @@ async def pass_commend(message: types.Message):
         await message.answer(text= send_home_message(sp), reply_markup= markup)
 
 @dp.message_handler(commands= ["sc"])
-async def sc_command(message: types.Message):
+async def sc_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
 
@@ -288,7 +289,7 @@ async def sc_command(message: types.Message):
 
 
 @dp.message_handler(commands= ["users"])
-async def users_command(message: types.Message):
+async def users_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     await message.answer(text= sp.send_users_stats(),
@@ -299,7 +300,7 @@ async def users_command(message: types.Message):
 # ============================
 
 @dp.message_handler()
-async def main_handler(message: types.Message):
+async def main_handler(message: types.Message) -> None:
     uid = str(message.chat.id)
     sp = SPMessages(uid)
     logger.info("{} {}", uid, message.text)
@@ -347,7 +348,7 @@ async def main_handler(message: types.Message):
 # ========================
 
 @dp.callback_query_handler()
-async def callback_handler(callback: types.CallbackQuery):
+async def callback_handler(callback: types.CallbackQuery) -> None:
     header, *args = callback.data.split()
     uid = str(callback.message.chat.id)
     sp = SPMessages(uid)
