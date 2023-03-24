@@ -2,7 +2,7 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.6.1
+Ver: 4.6.2
 """
 
 import csv
@@ -282,28 +282,10 @@ def clear_empty_list(l: list) -> list:
 # Вспомогательныек функции отображения
 # ====================================
 
-def get_tt_pos() -> int:
-    """Получает номер текущего урока исходя из времени.
-
-    Returns:
-        int: Номер текущего урока
-    """
+def get_complited_lessons() -> list[int]:
+    """Возвращает номера завершённых уроков."""
     now = datetime.now().time()
-    last_end = None
-
-    for i, x in enumerate(timetable):
-        start = time(x[0], x[1])
-        end = time(x[2], x[3])
-
-        if last_end is not None and now > last_end and now < start:
-            return i-1
-
-        if now >= start and now < end:
-            return i
-
-        last_end = end
-
-    return -1
+    return [i for i, x in enumerate(timetable) if now >= time(x[0], x[1])]
 
 def send_cl_updates(cl_updates: list) -> str:
     """Возвращет сообщение списка изменений для класса.
@@ -373,31 +355,26 @@ def send_day_lessons(lessons: list) -> str:
     """
 
     message = ""
-    tt_pos = get_tt_pos()
+    complited_lessons = get_complited_lessons()
 
     for i, x in enumerate(lessons):
         message += "\n"
-        message += "🔹" if i == tt_pos else ''
+        message += "🔹" if i == complited_lessons[-1] else ''
         message += f"{i+1}."
 
-        if i < len(timetable):
-            tt = timetable[i]
-            if i > tt_pos:
-                message += time(tt[0], tt[1]).strftime(" %H:%M")
-            message += time(tt[2], tt[3]).strftime(" - %H:%M")
+        tt = timetable[i]
+        if i not in complited_lessons:
+            message += time(tt[0], tt[1]).strftime(" %H:%M")
+        message += time(tt[2], tt[3]).strftime(" - %H:%M")
 
-            if i < tt_pos:
-                message += " ┃ "
-            elif i == tt_pos:
-                message += " > "
-            else:
-                message += " │ "
-
-        else:
+        if i == complited_lessons[-1]:
+            message += " > "
+        elif i in complited_lessons:
             message += " ┃ "
+        else:
+            message += " │ "
 
-        lessons_str = "; ".join(x) if isinstance(x, list) else x
-        message += lessons_str
+        message += "; ".join(x) if isinstance(x, list) else x
 
     return message
 
@@ -596,7 +573,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6.1 (55)"
+        res = "Версия sp: 4.6.2 (56)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
