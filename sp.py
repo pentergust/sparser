@@ -2,7 +2,7 @@
 Самостоятельный парсер школьного расписания уроков.
 
 Author: Milinuri Nirvalen
-Ver: 4.6.3
+Ver: 4.7
 """
 
 import csv
@@ -11,6 +11,7 @@ import json
 import requests
 
 from collections import Counter
+from collections import deque
 from datetime import datetime
 from datetime import time
 from pathlib import Path
@@ -25,19 +26,13 @@ users_path = "sp_data/users.json"
 sc_path = "sp_data/sc.json"
 sc_updates_path = "sp_data/updates.json"
 index_path = "sp_data/index.json"
-user_data = {"class_let":None, "set_class": False, "last_parse": 0,
+default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
              "check_updates": 0}
 
 # Расписание уроков: начало (час, минуты), конец (час, минуты)
 timetable = [
-    [8, 0, 8, 45],
-    [8, 55, 9, 40],
-    [9, 55, 10, 40],
-    [10, 55, 11, 40],
-    [11, 50, 12, 35],
-    [12, 45, 13, 30],
-    [13, 40, 14, 25],
-    [14, 35, 15, 20],
+    [8, 0, 8, 45], [8, 55, 9, 40], [9, 55, 10, 40], [10, 55, 11, 40],
+    [11, 50, 12, 35], [12, 45, 13, 30], [13, 40, 14, 25], [14, 35, 15, 20],
 ]
 
 days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
@@ -54,7 +49,6 @@ def save_file(path: Path, data: dict) -> dict:
     Returns:
         dict: Данные для записи
     """
-
     if not path.exists():
         path.parents[0].mkdir(parents=True, exist_ok=True)
 
@@ -62,7 +56,7 @@ def save_file(path: Path, data: dict) -> dict:
         f.write(json.dumps(data, indent=4, ensure_ascii=False))
     return data
 
-def load_file(path: Path, data: Optional[dict] = {}):
+def load_file(path: Path, data: Optional[dict]={}):
     """Читает данные из файла.
 
     Args:
@@ -72,7 +66,6 @@ def load_file(path: Path, data: Optional[dict] = {}):
     Returns:
         dict: Данные из файла/данные для записи
     """
-
     if path.is_file():
         with open(path) as f:
             return json.loads(f.read())
@@ -111,13 +104,10 @@ def parse_lessons(csv_file: str) -> dict:
     lessons = {}
     day = 0
     last_row = 8
-
-    logger.info("Read CSV file...")
     reader = list(csv.reader(csv_file.decode("utf-8").splitlines()))
 
     # Получаем словарь с классами и их столбцами в расписании
     cl_index = {v.lower(): k for k, v in enumerate(reader[1]) if v.strip()}
-
     for i, row in enumerate(reader[2:]):
         # Если второй элемент в ряду указывает на номер урока
         if row[1].isdigit():
@@ -135,16 +125,15 @@ def parse_lessons(csv_file: str) -> dict:
             logger.info("CSV file reading completed")
             break
 
-    logger.info("cleanup...")
-    lessons = {k: list(map(clear_day_lessons, v)) for k, v in lessons.items()}
-    return lessons
+    return {k: list(map(clear_day_lessons, v)) for k, v in lessons.items()}
 
 
 class Filters:
     """Набор фильтров для получени расписания."""
-    def __init__(self, sc, cl: Optional[list] = None,
-                 days: Optional[list] = None, lessons: Optional[list] = None,
-                 cabinets: Optional[list] = None):
+    def __init__(self, sc, cl: Optional[list]=None,
+                 days: Optional[list]=None,
+                 lessons: Optional[list]=None,
+                 cabinets: Optional[list]=None):
         super(Filters, self).__init__()
         self.sc = sc or []
         self._days = days or []
@@ -156,7 +145,7 @@ class Filters:
     def days(self) -> set:
         return set(filter(lambda x: x < 6, self._days))
 
-    def get_cl(self):
+    def get_cl(self) -> list:
         return self.cl if self.cl else [self.sc.cl]
 
     def parse_args(self, args: list) -> None:
@@ -208,9 +197,8 @@ def get_sc_updates(a: dict, b: dict) -> list:
     Returns:
         list: Список изменений в расписании
     """
-
-    # Пробегаемся по новому расписанию
     updates = [{} for x in range(6)]
+
     for k, v in b.items():
         if not k in a:
             continue
@@ -273,11 +261,6 @@ def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:
                     res[x][day][another][k].append(n)
     return res
 
-def clear_empty_list(l: list) -> list:
-    while l and not l[-1]:
-        del l[-1]
-    return l
-
 
 # Вспомогательныек функции отображения
 # ====================================
@@ -300,22 +283,23 @@ def send_cl_updates(cl_updates: list) -> str:
     message = ""
     for u in cl_updates:
         if str(u[1]) == "None":
-            message += f"🔹{u[0]} +{u[2]}\n"
+            message += f"{u[0]}: ++{u[2]}\n"
             continue
 
+        message += f"{u[0]}: "
         ol, oc = str(u[1]).split(':')
         l, c = str(u[2]).split(':')
 
         if ol == "---":
-            message += f"🔹{u[0]}: +{u[2]}\n"
+            message += f"++{u[2]}\n"
         elif l == "---":
-            message += f"🔸{u[0]}: -{u[1]}\n"
+            message += f"--{u[1]}\n"
         elif oc == c:
-            message += f"{u[0]}: {ol} -> {l}:{c}\n"
+            message += f"{ol} -> {l}:{c}\n"
         elif ol == l:
-            message += f"{u[0]}: {l}:({oc} -> {c})\n"
+            message += f"{l}: ({oc} -> {c})\n"
         else:
-            message += f"{u[0]}: {u[1]} -> {u[2]}\n"
+            message += f"{u[1]} -> {u[2]}\n"
 
     return message
 
@@ -338,7 +322,7 @@ def send_update(update: dict) -> str:
 
         message += f"\n🔷 На {days_names[day]}\n"
         for u_cl, cl_updates in day_updates.items():
-            message += f"Для {u_cl}:"
+            message += f"🔸 Для {u_cl}:"
             message += "\n" if len(cl_updates) > 1 else " "
             message += send_cl_updates(cl_updates)
 
@@ -353,14 +337,12 @@ def send_day_lessons(lessons: list) -> str:
     Returns:
         str: Сообщение с расписанием на день
     """
-
     message = ""
     complited_lessons = get_complited_lessons()
 
     for i, x in enumerate(lessons):
-        message += "\n"
-        message += "🔹" if i == complited_lessons[-1] else ''
-        message += f"{i+1}."
+        cursor = "🔹" if i == complited_lessons[-1] else ''
+        message += f"\n{cursor}{i+1}."
 
         tt = timetable[i]
         if i not in complited_lessons:
@@ -399,14 +381,16 @@ def send_search_res(flt: Filters, res: dict) -> str:
         message += f"\n* На: {', '.join(map(lambda x: days_names[x], flt.days))}"
 
     for day, lessons in enumerate(res):
-        lessons = clear_empty_list(lessons)
         if not lessons:
             continue
+
+        while not lessons[-1]:
+            del lessons[-1]
+
         message += f"\n\n📅 На {days_names[day]}:"
         message += send_day_lessons(lessons)
 
     return message
-
 
 
 class Schedule:
@@ -428,28 +412,23 @@ class Schedule:
 
     @property
     def l_index(self) -> dict:
-        """Получает информацию об уроках в расписании.
-        Имена уроков, для кого и когда."""
+        """Информация об уроках. Имена, для кого, когда."""
         if not self._l_index:
             self._l_index = load_file(self.index_path)[0]
-
         return self._l_index
 
     @property
     def c_index(self) -> dict:
-        """Получает информацию о кабинетах в расписании.
-        Какие уроки проводятся, для кого и когда."""
+        """Информацию о кабинетах. Какие уроки, для кого, когда."""
         if not self._c_index:
             self._c_index = load_file(self.index_path)[1]
-
         return self._c_index
 
     @property
     def updates(self) -> list:
-        """Возврвщает список изменений в расписании."""
+        """Список изменений в расписании."""
         if self._updates is None:
             self._updates = load_file(self.updates_path)
-
         return self._updates
 
 
@@ -464,14 +443,11 @@ class Schedule:
             b (dict): Новое расписание
         """
         logger.info("Update diff file...")
-        sc_changes = load_file(self.updates_path, [None for x in range(30)])
-
-        # Если есть изменения, записываем их
+        sc_changes = deque(load_file(self.updates_path, []), 30)
         updates = get_sc_updates(a.get("lessons", {}), b["lessons"])
         if sum(map(len, updates)):
-            sc_changes.pop(0)
             sc_changes.append({"time": b["last_parse"], "updates": updates})
-            save_file(self.updates_path, sc_changes)
+            save_file(self.updates_path, list(sc_changes))
 
     def _update_index_files(self, sp_lessons: dict) -> None:
         """Обновляет файл индексов.
@@ -480,8 +456,7 @@ class Schedule:
             sp_lessons (dict): Уроки в расписании
         """
         logger.info("Udate index files...")
-        index = [get_index(sp_lessons),
-                 get_index(sp_lessons, lessons_mode=False)]
+        index = [get_index(sp_lessons), get_index(sp_lessons, False)]
         save_file(self.index_path, index)
 
     def _process_update(self, t: dict) -> None:
@@ -523,7 +498,7 @@ class Schedule:
             save_file(self.sc_path, t)
 
     def get(self) -> dict:
-        """Получает и обновляет расписание.
+        """Получает и запускает процесс обновления расписания.
 
         Returns:
             dict: Расписание уроков
@@ -618,7 +593,6 @@ class Schedule:
                             res[day][x].append(f"{obj}")
                         else:
                             res[day][x].append(f"{cl}: {obj}")
-
         return res
 
 
@@ -639,13 +613,12 @@ class SPMessages:
         self.user = self.get_user()
         self.sc = Schedule(self.user["class_let"])
 
-
     def send_status(self):
         """Возвращает некоторую информауию о парсере."""
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 4.6.3 (57)"
+        res = "Версия sp: 4.7 (58)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -654,61 +627,7 @@ class SPMessages:
         res += f"\n:: Предметов: ~{len(self.sc.l_index)}"
         res += f"\n:: Кабинетов: ~{len(self.sc.c_index)}"
         res += f"\n:: Классы: {', '.join(self.sc.lessons)}"
-
         return res
-
-    def send_users_stats(self) -> str:
-        """Отправяет сллюзегте с информацией о пользователях.
-
-        Returns:
-            str: Сообщение с информацией о пользователях
-        """
-        now = datetime.timestamp(datetime.now())
-        users = load_file(self._users_path)
-
-        # Сбор статистики о пользователях
-        active_cnt = Counter()
-        users_cnt = Counter()
-        for k, v in users.items():
-            users_cnt[v["class_let"]] += 1
-
-            # Активным считается пользователь, у которого время
-            # последнего запроса расписания не позднее трёх суток
-            if now - v["last_parse"] > 259200:
-                continue
-
-            active_cnt[v["class_let"]] += 1
-
-
-        # Сборка сообщения
-        # ----------------
-
-        message = f"✨ Всего пользователей {len(users)}:"
-        active_users = sum(active_cnt.values())
-        active_users_pr = round(active_users / len(users) * 100, 2)
-        message += f"\n💡 Из них активны: {active_users} [{active_users_pr}%]\n"
-        for i, item in enumerate(active_cnt.most_common()):
-            k, v = item
-
-            if i+1 == 1:
-                pos = "🥇"
-            elif i+1 == 2:
-                pos = "🥈"
-            elif i+1 == 3:
-                pos = "🥉"
-            else:
-                pos = f"{i+1}. "
-
-            upr = round(v / active_users * 100, 2)
-            apr = round(v / users_cnt[k] * 100, 2)
-            apr_str = f" ({apr}%)" if apr < 90 else ""
-            message += f"\n{pos}{k} [{upr}%]: {v}/{users_cnt[k]}{apr_str}"
-
-        message += "\n\n❄️ Неактивные пользователи:\n"
-        inactive_users = users_cnt - active_cnt
-        for k, v in inactive_users.most_common():
-            message += f" {k}:{v}"
-        return message
 
 
     # Управление данными пользователя
@@ -716,7 +635,7 @@ class SPMessages:
 
     def get_user(self) -> dict:
         """Возвращает данные пользователя или данные по умолчанию."""
-        return load_file(self._users_path).get(self.uid, user_data)
+        return load_file(self._users_path).get(self.uid, default_user_data)
 
     def save_user(self) -> None:
         """Записывает данные пользователя в self._users_path."""
@@ -725,27 +644,24 @@ class SPMessages:
         save_file(self._users_path, users)
         logger.info("Save user: {}", self.uid)
 
-    def set_class(self, cl: str) -> str:
+    def reset_user(self) -> None:
+        """ЦУдаляет даныне о пользователе"""
+        users = load_file(self._users_path, {})
+        users.update({self.uid: default_user_data})
+        save_file(self._users_path, users)
+        logger.info("Reset user: {}", self.uid)
+
+    def set_class(self, cl: str) -> None:
         """Изменяет класс пользователя.
 
         Args:
             cl (str): Целевой класс пользователя
-
-        Returns:
-            str: Сообщение с результатом работы
         """
-
         if cl in self.sc.lessons:
             self.user["class_let"] = cl
             self.user["set_class"] = True
             self.user["last_parse"] = self.sc.schedule["last_parse"]
             self.save_user()
-            message = f"✏ Записан класс: {cl}"
-        else:
-            message = "🔎 Укажите класс в формате \"1А\"."
-            message += f"\n🏫 Доступные классы: {'; '.join(self.sc.lessons)}"
-
-        return message
 
     def get_lessons_updates(self) -> list:
         """Возвращает дни, для которых изменилось расписание."""
@@ -759,7 +675,6 @@ class SPMessages:
         # Обновление времени последней проверки расписания
         self.user["last_parse"] = self.sc.schedule["last_parse"]
         self.save_user()
-
         return updates
 
 
@@ -785,14 +700,11 @@ class SPMessages:
             message += "\n"
 
         # Обновления в расписаниии
-        if self.user["class_let"] in flt.get_cl():
-            updates = self.get_lessons_updates()
-
-            if updates:
-                message += f"\nИзменилось расписание! 🎉"
-                for update in updates:
-                    message += f"\n{send_update(update)}"
-
+        updates = self.get_lessons_updates()
+        if updates:
+            message += f"\nУ вас изменилось расписание! 🎉"
+            for update in updates:
+                message += f"\n{send_update(update)}"
         return message
 
     def send_today_lessons(self, flt: Filters) -> str:
@@ -821,33 +733,12 @@ class SPMessages:
         return self.send_lessons(flt)
 
     def search_lesson(self, lesson: str, flt: Filters) -> str:
-        """Поиск упоминаний об уроке.
-        Когда (день), где (кабинет), для кого (класс), каким уроком.
-        Оставлена для обратной совместимости.
-
-        Args:
-            lesson (str): Урок, который нужно найти
-            flt (Filters): Набор фильтров для уточнения результатов
-
-        Returns:
-            str: результаты поиска
-        """
+        """Поиск упоминаний об уроке. Для обратной совместимости."""
         res = self.sc.search(lesson, flt)
         return send_search_res(flt, res)
 
     def search_cabinet(self, cabinet: str, flt: Filters) -> str:
-        """Поиск упоминаний о кабинете.
-        Когда (день), что (урок), для кого (класс), каким уроком.
-        Оставлена для обратной совместимости.
-
-        Args:
-            cabinet (str): Кабинет, который нужно найти
-            flt (Filters): Набор фильтров для уточнения результатов
-
-        Returns:
-            str: Сообщение с результатами поиска
-        """
-
+        """Поиск упоминаний о кабинете. Для обратной совместимости."""
         res = self.sc.search(cabinet, flt, cabinets_mode=True)
         return send_search_res(flt, res)
 
