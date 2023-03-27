@@ -13,11 +13,11 @@ help - Главное меню
 info - Информация о боте
 """
 
-from sp import Filters
-from sp import SPMessages
-from sp import Schedule
-from sp import load_file
-from sp import send_update
+from sp.filters import Filters
+from sp.spm import SPMessages
+from sp.spm import send_update
+from sp.parser import Schedule
+from sp.utils import load_file
 
 from pathlib import Path
 from typing import Optional
