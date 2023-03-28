@@ -35,6 +35,12 @@ timetable = [
 def get_complited_lessons() -> list[int]:
     """Возвращает номера завершённых уроков."""
     now = datetime.now().time()
+    first_lesson = time(*timetable[0][:1])
+    last_lesson = time(*timetable[-1][2:])
+
+    if now >= last_lesson or now < first_lesson:
+        return [-1]
+
     return [i for i, x in enumerate(timetable) if now >= time(x[0], x[1])]
 
 def send_cl_updates(cl_updates: list) -> str:
@@ -108,13 +114,13 @@ def send_day_lessons(lessons: list) -> str:
     complited_lessons = get_complited_lessons()
 
     for i, x in enumerate(lessons):
-        cursor = "🔹" if i == complited_lessons[-1] else ''
-        message += f"\n{cursor}{i+1}."
+        cursor = "🔹" if i == complited_lessons[-1] else f"{i+1}."
+        message += f"\n{cursor}"
 
         tt = timetable[i]
         if i not in complited_lessons:
-            message += time(tt[0], tt[1]).strftime(" %H:%M")
-        message += time(tt[2], tt[3]).strftime(" - %H:%M")
+            message += time(tt[0], tt[1]).strftime(" %H:%M -")
+        message += time(tt[2], tt[3]).strftime(" %H:%M")
 
         if i == complited_lessons[-1]:
             message += " > "
@@ -182,7 +188,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.0.1 (61)"
+        res = "Версия sp: 5.0.2 (62)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
