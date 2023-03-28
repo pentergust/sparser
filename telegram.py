@@ -31,7 +31,6 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.types import ReplyKeyboardRemove
 from loguru import logger
 
-
 API_TOKEN = load_file(Path("sp_data/token.json"),
                       {"token": "YOUR TG API TOKEN"})["token"]
 bot = Bot(API_TOKEN)
@@ -59,7 +58,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.8
+:: Версия бота: 1.8.1
 
 👀 По всем вопросам к @milinuri"""
 
@@ -81,7 +80,7 @@ to_home_markup = InlineKeyboardMarkup().add(
 week_markup = [{"home": "🏠", "week {cl}": "На неделю", "select_day {cl}":"▷"}]
 sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}": "▷"}]
 counter_markup = [{"home": "◁", "count": "Уроки", "count cl": "Уроки {cl}",
-                   "count сabinets": "Классы",
+                   "count cabinets": "Классы",
                    "count cabinets cl": "Классы {cl}"}]
 home_murkup = [{"other": "🔧Инструменты",
                 "updates last 0 None": "🔔Изменения",
@@ -233,7 +232,7 @@ async def updates_command(message: types.Message) -> None:
     await message.answer(text=text, reply_markup=markup)
 
 @dp.message_handler(commands=["counter"])
-async def lessons_command(message: types.Message) -> None:
+async def counter_command(message: types.Message) -> None:
     """Отправялет счётчик уроков/кабинетов."""
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
