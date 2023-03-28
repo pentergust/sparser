@@ -1,7 +1,6 @@
 """Набло фильтров для уточнения получения расписания.
 
 Author: Milinuri Nirvalen
-Ver: 5.0
 """
 from datetime import datetime
 from typing import Optional

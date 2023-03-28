@@ -2,7 +2,6 @@
 Самостоятельный парсер школьного расписания.
 
 Author: Milinuri Nirvalen
-Ver: 5.0
 """
 from .filters import Filters
 from .utils import load_file

@@ -2,7 +2,6 @@
 Генератор текстовых сообщений с использованием Schedule.
 
 Auyhor: Milinuri Nirvalen
-Ver: 5.0
 """
 from .filters import Filters
 from .utils import load_file
@@ -152,7 +151,7 @@ def send_search_res(flt: Filters, res: dict) -> str:
         if not lessons:
             continue
 
-        while not lessons[-1]:
+        while lessons and not lessons[-1]:
             del lessons[-1]
 
         message += f"\n\n📅 На {days_names[day]}:"
@@ -183,7 +182,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.0 (60)"
+        res = "Версия sp: 5.0.1 (61)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
