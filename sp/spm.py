@@ -4,6 +4,7 @@
 Auyhor: Milinuri Nirvalen
 """
 from .filters import Filters
+from .filters import construct_filters
 from .utils import load_file
 from .utils import save_file
 from .parser import Schedule
@@ -188,7 +189,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.0.2 (62)"
+        res = "Версия sp: 5.1-Beta (63)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -239,7 +240,7 @@ class SPMessages:
             return []
 
         logger.info("Get lessons updates")
-        flt = Filters(self.sc, cl= [self.user["class_let"]])
+        flt = construct_filters(self.sc, cl=self.user["class_let"])
         updates = self.sc.get_updates(flt, self.user["last_parse"])
 
         # Обновление времени последней проверки расписания
@@ -260,7 +261,8 @@ class SPMessages:
         Returns:
             str: Сообение с расписание уроков
         """
-        lessons = {x: self.sc.get_lessons(x) for x in flt.get_cl()}
+        cl = flt.cl or [self.user["class_let"]]
+        lessons = {x: self.sc.get_lessons(x) for x in cl}
         message = ""
         for day in flt.days:
             message += f"\n📅 На {days_names[day]}:"
@@ -290,7 +292,8 @@ class SPMessages:
 
         now = datetime.now()
         today = min(now.weekday(), 5)
-        lessons = max(map(lambda x: len(self.sc.get_lessons(x)), flt.get_cl()))
+        cl = flt.cl or [self.user["class_let"]]
+        lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
         hour = timetable[lessons-1][2]
 
         if now.hour >= hour:
@@ -299,7 +302,7 @@ class SPMessages:
         if today > 5:
             today = 0
 
-        flt._days = [today]
+        flt = construct_filters(self.sc, cl=flt.cl, days=today)
         return self.send_lessons(flt)
 
     def search_lesson(self, lesson: str, flt: Filters) -> str:
