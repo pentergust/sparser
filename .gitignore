@@ -1,6 +1,9 @@
 # Python
-venv/
+/venv
 __pycache__/
 
 # Sparser
-sp_data/
+/sp_data
+
+# Experimental
+*_ex*.*
