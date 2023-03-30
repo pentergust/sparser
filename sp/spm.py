@@ -150,15 +150,13 @@ def send_search_res(flt: Filters, res: dict) -> str:
         message += f" ({', '.join(flt.cl)})"
     if flt.lessons:
         message += f" ({', '.join(flt.lessons)})"
-    if flt.days:
-        message += f"\n* На: {', '.join(map(lambda x: days_names[x], flt.days))}"
 
     for day, lessons in enumerate(res):
-        if not lessons:
-            continue
-
         while lessons and not lessons[-1]:
             del lessons[-1]
+
+        if not lessons:
+            continue
 
         message += f"\n\n📅 На {days_names[day]}:"
         message += send_day_lessons(lessons)
@@ -188,7 +186,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.0.2 (62)"
+        res = "Версия sp: 5.0.3 (63)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
