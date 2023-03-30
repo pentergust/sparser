@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.8 (sp v4.7)
+Ver: 1.8.2 (sp v4.7)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -16,7 +16,6 @@ info - Информация о боте
 from sp.filters import Filters
 from sp.spm import SPMessages
 from sp.spm import send_update
-from sp.parser import Schedule
 from sp.utils import load_file
 
 from pathlib import Path
@@ -28,8 +27,8 @@ from aiogram import executor
 from aiogram import types
 from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
-from aiogram.types import ReplyKeyboardRemove
 from loguru import logger
+
 
 API_TOKEN = load_file(Path("sp_data/token.json"),
                       {"token": "YOUR TG API TOKEN"})["token"]
@@ -58,7 +57,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.8.1
+:: Версия бота: 1.8.2
 
 👀 По всем вопросам к @milinuri"""
 
@@ -289,7 +288,7 @@ async def main_handler(message: types.Message) -> None:
 
         # Чтобы не превращать бота в машину для спама
         # Будет использоваться последний урок/кабинет из фильтра
-        if len(flt.cabinets) or len(flt.lessons):
+        if len(flt.cabinets):
             res = sp.search_cabinet(flt.cabinets[-1], flt)
             await message.answer(text=res, reply_markup=to_home_markup)
 
