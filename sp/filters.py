@@ -1,4 +1,5 @@
-"""Набло фильтров для уточнения получения расписания.
+"""
+Набор фильтров для уточнения получения расписания.
 
 Author: Milinuri Nirvalen
 """
@@ -6,11 +7,9 @@ from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
 
-days_parts = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 
-def to_list(arg) -> list:
-    return [arg] if isinstance(arg, (str, int)) else arg
-
+days_names = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
+short_days_names = ["пн", "вт", "ср", "чт", "пт", "сб"]
 
 @dataclass
 class Filters:
@@ -20,6 +19,9 @@ class Filters:
     lessons: set
     cabinets: set
 
+
+def to_list(arg) -> list:
+    return [arg] if isinstance(arg, (str, int)) else arg
 
 def construct_filters(sc,  cl: Optional[set]=None,
                       days: Optional[set]=None, lessons: Optional[set]=None,
@@ -98,6 +100,7 @@ def parse_filters(sc, args: list[str]) -> Filters:
 
         else:
             # Если начало слова совпадает: пятниц... -а, -у, -ы...
-            days += [i for i, k in enumerate(days_parts) if arg.startswith(k)]
+            days += [i for i, k in enumerate(days_names) if arg.startswith(k)]
+            days += [i for i, k in enumerate(short_days_names) if arg.startswith(k)]
 
     return construct_filters(sc, cl, days, lessons, cabinets)
