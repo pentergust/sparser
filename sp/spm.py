@@ -1,7 +1,7 @@
 """
 Генератор текстовых сообщений с использованием Schedule.
 
-Auyhor: Milinuri Nirvalen
+Author: Milinuri Nirvalen
 """
 from .filters import Filters
 from .filters import construct_filters
@@ -57,10 +57,11 @@ def send_cl_updates(cl_updates: list) -> str:
     message = ""
     for u in cl_updates:
         if str(u[1]) == "None":
-            message += f"{u[0]}: ++{u[2]}\n"
+            message += f"{u[0]+1}: ++{u[2]}\n"
             continue
 
-        message += f"{u[0]}: "
+        logger.debug(u)
+        message += f"{u[0]+1}: "
         ol, oc = str(u[1]).split(':')
         l, c = str(u[2]).split(':')
 
@@ -187,7 +188,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.1 (65)"
+        res = "Версия sp: 5.1.1 (66)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
