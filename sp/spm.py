@@ -60,7 +60,6 @@ def send_cl_updates(cl_updates: list) -> str:
             message += f"{u[0]+1}: ++{u[2]}\n"
             continue
 
-        logger.debug(u)
         message += f"{u[0]+1}: "
         ol, oc = str(u[1]).split(':')
         l, c = str(u[2]).split(':')
