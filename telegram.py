@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.8.2 (sp v4.7)
+Ver: 1.9 (sp v5.1)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -14,6 +14,8 @@ info - Информация о боте
 """
 
 from sp.filters import Filters
+from sp.filters import parse_filters
+from sp.filters import construct_filters
 from sp.spm import SPMessages
 from sp.spm import send_update
 from sp.utils import load_file
@@ -44,20 +46,20 @@ days_names = ["понедельник", "вторник", "среда", "чет�
 
 HOME_MESSAGE = """💡 Некоторые примеры запросов:
 -- 7в 6а
--- уроки 6а на вторник среду
+-- уроки 6а на вторник ср
 -- расписание на завтра для 8б
 -- 312 на вторник пятницу
 -- химия 228 6а вторник
 
 🏫 В запросе вы можете использовать:
 -- Класс: для которого нужно расписание.
--- Дни: понедельник-суббота, сегодня, завтра, неделя.
+-- Дни: понедельник-суббота (пн-сб), сегодня, завтра, неделя.
 -- Урок: Все его упоминания.
 -- Кабинет: Расписание от его лица.
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.8.2
+:: Версия бота: 1.9
 
 👀 По всем вопросам к @milinuri"""
 
@@ -264,7 +266,7 @@ async def sc_command(message: types.Message) -> None:
     logger.info(message.chat.id)
 
     if sp.user["class_let"]:
-        flt = Filters(sp.sc)
+        flt = construct_filters(sp.sc)
         await message.answer(text=sp.send_today_lessons(flt),
                              reply_markup=markup_generator(sp, week_markup))
     else:
@@ -283,8 +285,7 @@ async def main_handler(message: types.Message) -> None:
     logger.info("{} {}", uid, text)
 
     if sp.user["set_class"]:
-        flt = Filters(sp.sc)
-        flt.parse_args(text.split())
+        flt = parse_filters(sp.sc, text.split())
 
         # Чтобы не превращать бота в машину для спама
         # Будет использоваться последний урок/кабинет из фильтра
@@ -339,13 +340,13 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
     # Расписание на сегодня
     elif header == "sc":
-        text = sp.send_today_lessons(Filters(sp.sc, cl=[args[0]]))
+        text = sp.send_today_lessons(construct_filters(sp.sc, cl=[args[0]]))
         markup = markup_generator(sp, week_markup, cl=args[0])
         await callback.message.edit_text(text=text, reply_markup=markup)
 
     # Расписание на неделю
     elif header == "week":
-        flt = Filters(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=[args[0]])
+        flt = construct_filters(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=args[0])
         text = sp.send_lessons(flt)
         markup = markup_generator(sp, sc_markup, cl=args[0])
         await callback.message.edit_text(text=text, reply_markup=markup)
@@ -359,7 +360,7 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
     # Расписани на определённый день
     elif header == "sc_day":
         day = int(args[1])
-        flt = Filters(sp.sc, days=[day], cl=[args[0]])
+        flt = construct_filters(sp.sc, days=day, cl=args[0])
 
         if day == 6:
             text = sp.send_today_lessons(flt)
@@ -374,7 +375,6 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
     # Отправка списка изменений
     elif header == "updates":
-        flt = Filters(sp.sc)
         text = "🔔 Изменения "
 
         # Смена режима просмотра: только для класса/всего расписния
@@ -386,9 +386,10 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
         # Доплняем шапку сообщения
         if cl is not None and sp.user["set_class"]:
             text += f"для {cl}:\n"
-            flt.cl = [cl]
+            flt = construct_filters(sp.sc, cl=args[2])
         else:
             text += "в расписании:\n"
+            flt = construct_filters(sp.sc)
 
         updates = sp.sc.get_updates(flt)
         i = max(min(int(args[1]), len(updates)-1), 0)
