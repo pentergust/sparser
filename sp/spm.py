@@ -180,7 +180,7 @@ def send_counter(groups: dict, target: Optional[str]=None) -> str:
 
     for group, res in sorted(groups.items(), key=lambda x: x[0], reverse=True):
         group_plural_form = plural_form(group, ["раз", "раза", "раз"])
-        message += f"\n\n🔘 {group} {group_plural_form}:"
+        message += f"\n🔘 {group} {group_plural_form}:"
 
         if target is not None:
             for obj, cnt in res.items():
@@ -198,6 +198,8 @@ def send_counter(groups: dict, target: Optional[str]=None) -> str:
                         message += f" 🔹{' '.join(k)}"
                     else:
                         message += f" 🔹{cnt_group}:{' '.join(k)}"
+
+            message += "\n"
 
         else:
             message += f" {', '.join(res)}"
@@ -227,7 +229,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.2 (67)"
+        res = "Версия sp: 5.2 (68)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"

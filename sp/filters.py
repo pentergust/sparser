@@ -80,6 +80,9 @@ def parse_filters(sc, args: list[str]) -> Filters:
         if not arg:
             continue
 
+        if arg == "?":
+            cl.append(sc.cl)
+
         if arg == "сегодня":
             days.append(weekday)
 
