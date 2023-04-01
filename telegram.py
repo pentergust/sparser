@@ -2,21 +2,27 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.9.1 (sp v5.1)
+Ver: 1.9 (sp v5.2)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
 updates - Изменения в расписании
-counter - Счётчик уроков/кабинетов
+counter - Счётчики
 set_class - Изменить класс
 help - Главное меню
 info - Информация о боте
 """
 
+from sp.counters import cl_counter
+from sp.counters import days_counter
+from sp.counters import group_counter_res
+from sp.counters import index_counter
 from sp.filters import Filters
-from sp.filters import parse_filters
 from sp.filters import construct_filters
+from sp.filters import parse_filters
+from sp.parser import Schedule
 from sp.spm import SPMessages
+from sp.spm import send_counter
 from sp.spm import send_update
 from sp.utils import load_file
 
@@ -80,9 +86,6 @@ to_home_markup = InlineKeyboardMarkup().add(
 
 week_markup = [{"home": "🏠", "week {cl}": "На неделю", "select_day {cl}":"▷"}]
 sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}": "▷"}]
-counter_markup = [{"home": "◁", "count": "Уроки", "count cl": "Уроки {cl}",
-                   "count cabinets": "Классы",
-                   "count cabinets cl": "Классы {cl}"}]
 home_murkup = [{"other": "🔧Инструменты",
                 "updates last 0 None": "🔔Изменения",
                 "sc {cl}": "📚Уроки {cl}"}]
@@ -170,6 +173,73 @@ def select_day_markup(cl: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=x, callback_data=f"sc_day {cl} {i}"))
     return markup
 
+def gen_counters_markup(counter: str, target: str) -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(row_width=4)
+
+    row = []
+    counters = {"cl": "по классам",
+                "days": "По дням",
+                "lessons": "По урокам",
+                "cabinets": "По кабинетам"}
+
+    for k, v in counters.items():
+        if counter == k:
+            continue
+
+        row.append(InlineKeyboardButton(text=v,
+                                        callback_data=f"count {k} {target}"))
+    markup.add(*row)
+
+    row = []
+    targets = {"cl": "Классы",
+               "days": "дни",
+               "lessons": "Уроки",
+               "cabinets": "Кабинеты",
+               "main": "Общее"}
+
+    for k, v in targets.items():
+        if target == k:
+            continue
+
+        if counter == k:
+            continue
+
+        if k == "main" and counter not in ["lessons", "cabinets"]:
+            continue
+
+        if counter in ["lessons", "cabinets"] and k in ["lessons", "cabinets"]:
+            continue
+
+        row.append(InlineKeyboardButton(text=v,
+                                        callback_data=f"count {counter} {k}"))
+    markup.add(*row)
+
+    return markup
+
+
+# Вспомогательные функции
+# =======================
+
+def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
+    flt = construct_filters(sc)
+
+    if counter == "cl":
+        if target == "lessons":
+            flt = construct_filters(sc, cl=sc.cl)
+        res = cl_counter(sc, flt)
+    elif counter == "days":
+        res = days_counter(sc, flt)
+    elif counter == "lessons":
+        res = index_counter(sc, flt)
+    else:
+        res = index_counter(sc, flt, cabinets_mode=True)
+
+    groups = group_counter_res(res)
+    message = f"✨ Счётчик {counter}/{target}:"
+    message += send_counter(groups, target=target)
+    return message
+
+
 
 def send_home_message(sp: SPMessages) -> str:
     """Отпавляет сообщение со справкой об использовании бота.
@@ -237,8 +307,9 @@ async def counter_command(message: types.Message) -> None:
     """Отправялет счётчик уроков/кабинетов."""
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
-    markup = markup_generator(sp, counter_markup, exclude="count", row_width=4)
-    await message.answer(text=sp.count_lessons(), reply_markup=markup)
+    message = get_counter_message(sp.sc, "lessons", "main")
+    markup = gen_counters_markup("lessons", "main")
+    await message.answer(text=message, reply_markup=markup)
 
 @dp.message_handler(commands=["set_class"])
 async def set_class_command(message: types.Message) -> None:
@@ -331,11 +402,11 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
     # Счётчик уроков/кабинетов
     elif header == "count":
-        cabinets = True if "cabinets" in args else False
-        cl = sp.user["class_let"] if "cl" in args else None
-        text = sp.count_lessons(cabinets=cabinets, cl=cl)
-        markup = markup_generator(sp, counter_markup, exclude=callback.data,
-                                  row_width=4)
+        if args[0] == args[1]:
+            args[1] = None
+
+        text = get_counter_message(sp.sc, args[0], args[1])
+        markup = gen_counters_markup(args[0], args[1])
         await callback.message.edit_text(text=text, reply_markup=markup)
 
     # Расписание на сегодня
@@ -423,6 +494,9 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
         sp.user["set_class"] = False
         sp.save_user()
         await callback.message.edit_text(text=SET_CLASS_MESSAGE)
+
+    else:
+        logger.warning("Unknown header - {}", header)
 
     await callback.answer()
 
