@@ -46,3 +46,19 @@ def load_file(path: Path, data: Optional[dict]=None):
 
     else:
         return {}
+
+
+def plural_form(n: int, v: list[str]) -> str:
+    """Возвращает просклонённое слово в зависимости от числа.
+
+    plural_form(difference.days, ("день", "дня", "дней"))
+
+    Args:
+        n (int): Число
+        v (list[str]): Варианты слова (для 1, для 2, для 5)
+
+    Returns:
+        str: ПРосклонённое слово в зависимости от числа
+    """
+    return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]]
+
