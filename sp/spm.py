@@ -187,7 +187,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.1.1 (66)"
+        res = "Версия sp: 5.1.2 (67)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -287,18 +287,21 @@ class SPMessages:
         Returns:
             str: Сообщыение с расписанием на сегодня/завтра
         """
-
         now = datetime.now()
-        today = min(now.weekday(), 5)
-        cl = flt.cl or [self.user["class_let"]]
-        lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
-        hour = timetable[lessons-1][2]
+        today = now.weekday()
 
-        if now.hour >= hour:
-            today += 1
-
-        if today > 5:
+        if today == 6:
             today = 0
+        else:
+            cl = flt.cl or [self.user["class_let"]]
+            lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
+            hour = timetable[lessons-1][2]
+
+            if now.hour >= hour:
+                today += 1
+
+            if today > 5:
+                today = 0
 
         flt = construct_filters(self.sc, cl=flt.cl, days=today)
         return self.send_lessons(flt)
