@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.9.1 (sp v5.1)
+Ver: 1.10 (sp v5.1)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -30,11 +30,25 @@ from aiogram import types
 from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
 from loguru import logger
+from gotify import AsyncGotify
 
 
-API_TOKEN = load_file(Path("sp_data/token.json"),
-                      {"token": "YOUR TG API TOKEN"})["token"]
-bot = Bot(API_TOKEN)
+config = load_file(Path("sp_data/telegram.json"),
+    {"token": "YOUR TG API TOKEN",
+    "gotify": {
+        "enabled": False,
+        "base_url": None,
+        "app_token": None
+    }})
+
+if config["gotify"]["enabled"]:
+    gotify = AsyncGotify(
+        base_url=config["gotify"]["base_url"],
+        app_token=config["gotify"]["app_token"])
+else:
+    gotify = None
+
+bot = Bot(config["token"])
 dp = Dispatcher(bot)
 logger.add("sp_data/telegram.log")
 days_names = ["понедельник", "вторник", "среда", "четверг", "пятница",
@@ -59,7 +73,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.9.1
+:: Версия бота: 1.10
 
 👀 По всем вопросам к @milinuri"""
 
@@ -425,6 +439,19 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
         await callback.message.edit_text(text=SET_CLASS_MESSAGE)
 
     await callback.answer()
+
+
+@dp.errors_handler()
+async def errors_handler(update: types.Update, exception: Exception):
+    try:
+        raise exception
+    except Exception as e:
+        logger.exception("Cause exception {} in u:{}", e, update)
+        if gotify is not None:
+            await gotify.create_message(str(e),
+                title="Oops!",
+                priority=5)
+    return True
 
 
 # Запуск бота
