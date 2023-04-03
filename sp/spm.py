@@ -7,7 +7,9 @@ from .filters import Filters
 from .filters import construct_filters
 from .utils import load_file
 from .utils import save_file
+from .utils import plural_form
 from .parser import Schedule
+from .counters import reverse_counter
 
 from collections import Counter
 from datetime import datetime
@@ -164,6 +166,46 @@ def send_search_res(flt: Filters, res: dict) -> str:
 
     return message
 
+def send_counter(groups: dict, target: Optional[str]=None) -> str:
+    """Возвращает сообщение с результами работы счётчика.
+
+    Args:
+        groups (dict): Сгруппированные резульаты работы счётчика
+        target (str, optional): Вторичный ключ для отображения
+
+    Returns:
+        str: Сообщение с результатами работы счётчика
+    """
+    message = ""
+
+    for group, res in sorted(groups.items(), key=lambda x: x[0], reverse=True):
+        group_plural_form = plural_form(group, ["раз", "раза", "раз"])
+        message += f"\n🔘 {group} {group_plural_form}:"
+
+        if target is not None:
+            for obj, cnt in res.items():
+                if len(res) > 1:
+                    message += "\n--"
+
+                message += f" {obj}:"
+                cnt_groups = reverse_counter(cnt.get(target, {}))
+
+                for cnt_group, k in sorted(cnt_groups.items(),
+                                    key=lambda x: x[0], reverse=True):
+                    if cnt_group == 1:
+                        message += f" 🔸{' '.join(k)}"
+                    elif cnt_group == group:
+                        message += f" 🔹{' '.join(k)}"
+                    else:
+                        message += f" 🔹{cnt_group}:{' '.join(k)}"
+
+            message += "\n"
+
+        else:
+            message += f" {', '.join(res)}"
+
+    return message
+
 
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
@@ -187,7 +229,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.1.2 (67)"
+        res = "Версия sp: 5.2 (68)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -315,72 +357,3 @@ class SPMessages:
         """Поиск упоминаний о кабинете. Для обратной совместимости."""
         res = self.sc.search(cabinet, flt, cabinets_mode=True)
         return send_search_res(flt, res)
-
-
-    def count_lessons(self, cabinets: Optional[bool] = False, cl: Optional[str] = None) -> str:
-        """Подсчитывает число уроков/кабинетов.
-
-        Args:
-            cabinets (bool, optional): Подсчитывать кабинеты
-                вместо уроков
-            cl (str, optional): Для какого класса произвести подсчёт
-
-        Returns:
-            str: Сообщение с результатами
-        """
-        if cl:
-            cl = self.sc.get_class(cl)
-
-        index = self.sc.c_index if cabinets else self.sc.l_index
-        res = {}
-
-        for obj, days in index.items():
-            cnt = Counter()
-            for day, another in enumerate(days):
-                for a_k, a_v in another.items():
-                    if cl:
-                        cnt[a_k] += len(a_v.get(cl, []))
-                    else:
-                        cnt[a_k] += sum(map(len, a_v.values()))
-
-            c = sum(cnt.values())
-            if c:
-                if str(c) not in res:
-                    res[str(c)] = {}
-
-                res[str(c)][obj] = cnt
-
-
-        # Собираем сообщение
-        # ------------------
-
-        message = "✨ Самые частые "
-        if cabinets:
-            message += "кабинеты"
-        else:
-            message += "уроки"
-
-        if cl:
-            message += f" у {cl}"
-
-
-        for k, v in sorted(res.items(), key=lambda x: int(x[0]), reverse=True):
-            message += f"\n\n🔘 {k} раз(а):"
-
-            for obj, another in v.items():
-                another = {k:v for k, v in another.items() if v != 0}
-
-                if len(v) > 1:
-                    message += "\n--"
-
-                message += f" {obj}"
-
-                for c, n in sorted(another.items(), key=lambda x: x[1], reverse=True):
-                    if n == 1 and len(another) > 1:
-                        message += f" 🔸{c}"
-                    elif n > 1 and len(another) > 1:
-                        message += f" 🔹{c}:{n}"
-                    else:
-                        message += f" {c}"
-
-        return message
