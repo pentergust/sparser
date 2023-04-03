@@ -23,7 +23,7 @@ from loguru import logger
 
 users_path = "sp_data/users.json"
 default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
-             "check_updates": 0, "join_date": 0}
+             "join_date": 0}
 days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
 
 # Расписание уроков: начало (час, минуты), конец (час, минуты)
@@ -230,7 +230,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.2.1 (70)"
+        res = "Версия sp: 5.2.1 (71)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
