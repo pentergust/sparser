@@ -329,18 +329,21 @@ class SPMessages:
         Returns:
             str: Сообщыение с расписанием на сегодня/завтра
         """
-
         now = datetime.now()
-        today = min(now.weekday(), 5)
-        cl = flt.cl or [self.user["class_let"]]
-        lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
-        hour = timetable[lessons-1][2]
+        today = now.weekday()
 
-        if now.hour >= hour:
-            today += 1
-
-        if today > 5:
+        if today == 6:
             today = 0
+        else:
+            cl = flt.cl or [self.user["class_let"]]
+            lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
+            hour = timetable[lessons-1][2]
+
+            if now.hour >= hour:
+                today += 1
+
+            if today > 5:
+                today = 0
 
         flt = construct_filters(self.sc, cl=flt.cl, days=today)
         return self.send_lessons(flt)

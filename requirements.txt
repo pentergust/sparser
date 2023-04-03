@@ -1,3 +1,7 @@
-aiogram
+# Sparser
 loguru
 requests
+
+# Telegram
+aiogram
+gotify
