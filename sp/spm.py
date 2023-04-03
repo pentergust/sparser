@@ -8,6 +8,7 @@ from .filters import construct_filters
 from .utils import load_file
 from .utils import save_file
 from .utils import plural_form
+from .utils import check_keys
 from .parser import Schedule
 from .counters import reverse_counter
 
@@ -22,7 +23,7 @@ from loguru import logger
 
 users_path = "sp_data/users.json"
 default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
-             "check_updates": 0}
+             "check_updates": 0, "join_date": 0}
 days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
 
 # Расписание уроков: начало (час, минуты), конец (час, минуты)
@@ -229,7 +230,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.2 (68)"
+        res = "Версия sp: 5.2.1 (70)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -246,7 +247,12 @@ class SPMessages:
 
     def get_user(self) -> dict:
         """Возвращает данные пользователя или данные по умолчанию."""
-        return load_file(self._users_path).get(self.uid, default_user_data)
+        user = load_file(self._users_path).get(self.uid)
+
+        if user is None:
+            return default_user_data
+        else:
+            return check_keys(user, default_user_data)
 
     def save_user(self) -> None:
         """Записывает данные пользователя в self._users_path."""
@@ -269,6 +275,7 @@ class SPMessages:
             cl (str): Целевой класс пользователя
         """
         if cl in self.sc.lessons:
+            self.user["join_date"] = datetime.now().timestamp()
             self.user["class_let"] = cl
             self.user["set_class"] = True
             self.user["last_parse"] = self.sc.schedule["last_parse"]
@@ -276,6 +283,9 @@ class SPMessages:
 
     def get_lessons_updates(self) -> list:
         """Возвращает дни, для которых изменилось расписание."""
+        if self.user["class_let"] is None:
+            return []
+
         if self.sc.schedule["last_parse"] == self.user["last_parse"]:
             return []
 

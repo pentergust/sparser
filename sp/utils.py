@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from loguru import logger
 
 def save_file(path: Path, data: dict) -> dict:
     """Записывает данные в файл.
@@ -47,6 +48,24 @@ def load_file(path: Path, data: Optional[dict]=None):
     else:
         return {}
 
+def check_keys(data: dict, model: dict) -> dict:
+    """Проверяет ключи словоря с шаблоном.
+    Дополняет отцуцтвуюшие ключи.
+
+    Args:
+        data (dict): Исходный словарь
+        model (dict): Шаблон для проверки
+
+    Returns:
+        dict: Проверенный словарь
+    """
+    res = data.copy()
+
+    for k, v in model.items():
+        if k not in res or res[k] is None:
+            res[k] = v
+
+    return res
 
 def plural_form(n: int, v: list[str]) -> str:
     """Возвращает просклонённое слово в зависимости от числа.
