@@ -381,9 +381,9 @@ async def counter_command(message: types.Message) -> None:
     """Отправялет счётчик уроков/кабинетов."""
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
-    message = get_counter_message(sp.sc, "lessons", "main")
+    text = get_counter_message(sp.sc, "lessons", "main")
     markup = gen_counters_markup(sp, "lessons", "main")
-    await message.answer(text=message, reply_markup=markup)
+    await message.answer(text=text, reply_markup=markup)
 
 @dp.message_handler(commands=["sc"])
 async def sc_command(message: types.Message) -> None:
