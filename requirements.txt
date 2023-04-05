@@ -1,6 +1,7 @@
 # Sparser
 loguru
 requests
+ujson
 
 # Telegram
 aiogram

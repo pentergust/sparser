@@ -2,13 +2,11 @@
 Вспомогательные функции для работы.
 
 Author: Muilinuri Nirvalen
-Ver: 5.0
 """
-import json
-
 from pathlib import Path
 from typing import Optional
 
+import ujson
 from loguru import logger
 
 def save_file(path: Path, data: dict) -> dict:
@@ -25,7 +23,7 @@ def save_file(path: Path, data: dict) -> dict:
         path.parents[0].mkdir(parents=True, exist_ok=True)
 
     with open(path, 'w') as f:
-        f.write(json.dumps(data, indent=4, ensure_ascii=False))
+        f.write(ujson.dumps(data, indent=4, ensure_ascii=False))
     return data
 
 def load_file(path: Path, data: Optional[dict]=None):
@@ -40,7 +38,7 @@ def load_file(path: Path, data: Optional[dict]=None):
     """
     if path.is_file():
         with open(path) as f:
-            return json.loads(f.read())
+            return ujson.loads(f.read())
 
     elif data is not None:
         return save_file(path, data)
