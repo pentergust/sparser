@@ -230,7 +230,7 @@ class SPMessages:
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.2.1 (71)"
+        res = "Версия sp: 5.2.2 (72)"
         res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: Класс: {self.user['class_let']}"
@@ -250,7 +250,7 @@ class SPMessages:
         user = load_file(self._users_path).get(self.uid)
 
         if user is None:
-            return default_user_data
+            return default_user_data.copy()
         else:
             return check_keys(user, default_user_data)
 
@@ -264,7 +264,7 @@ class SPMessages:
     def reset_user(self) -> None:
         """ЦУдаляет даныне о пользователе"""
         users = load_file(self._users_path, {})
-        users.update({self.uid: default_user_data})
+        users.update({self.uid: default_user_data.copy()})
         save_file(self._users_path, users)
         logger.info("Reset user: {}", self.uid)
 
