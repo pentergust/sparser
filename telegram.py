@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.10.1 (sp v5.2.1)
+Ver: 1.11 (sp v5.3)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -81,7 +81,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.10
+:: Версия бота: 1.11
 
 👀 По всем вопросам к @milinuri."""
 
@@ -120,7 +120,8 @@ home_murkup = [{"other": "🔧Ещё",
                 "updates last 0 None": "🔔Изменения",
                 "sc {cl}": "📚Уроки {cl}"}]
 other_markup = [{"home": "◁", "set_class": "Сменить класс"},
-                {"count lessons main": "📊Счётчики",}]
+                {"count lessons main": "📊Счётчики",
+                 "notify info": "🔔Уведомления"}]
 
 def markup_generator(sp: SPMessages, pattern: dict, cl: Optional[str]=None,
         exclude: Optional[str]=None, row_width: Optional[int]=3
@@ -259,9 +260,69 @@ def gen_counters_markup(sp: SPMessages, counter: str, target: str) -> InlineKeyb
 
     return markup
 
+def get_notifications_markup(sp: SPMessages, enabled: bool,
+        hours: Optional[list[int]] = None) -> InlineKeyboardMarkup:
+    """Возвращетс клавиатуру для настройки уведомлений.
+
+    Args:
+        sp (SPMessages): Генератор сообщенийц
+        enabled (bool): Включены ли уведомления
+        hours (list, optional): В какой час отправлять уведомления
+
+    Returns:
+        InlineKeyboardMarkup: Готовая клавитура для настройки
+    """
+    markup = InlineKeyboardMarkup(row_width=6)
+
+    if not enabled:
+        markup.add(InlineKeyboardButton(text="🔔Включить уведомления",
+                                        callback_data="notify on"))
+
+    else:
+        markup.add(InlineKeyboardButton(text="🔕Отключить уведомления",
+                                        callback_data="notify off"))
+
+        hour_buttons = []
+        for x in range(6, 24):
+            if str(x) not in hours:
+                hour_buttons.append(InlineKeyboardButton(text=x,
+                                        callback_data=f"notify add {x}"))
+        markup.add(*hour_buttons)
+
+        if hours:
+            markup.add(InlineKeyboardButton(text="❌Сборсить уведомления",
+                                            callback_data="notify reset"))
+
+    markup.add(InlineKeyboardButton(text="🏠Домой", callback_data="home"))
+    return markup
 
 # Вспомогательные функции
 # =======================
+
+def send_notification_message(sp: SPMessages, enabled: bool,
+        hours: Optional[list[int]] = None) -> str:
+    """Отправляет сообщение с информацией об уведомлениях.
+
+    Args:
+        sp (SPMessages): Генератор сообщений
+        enabled (bool): Включены ли уведомления
+        hours (list, optional): В какой час отправлять уведомления
+    """
+    if enabled:
+        message = "🔔 уведомления включены."
+        message += "\nВы будете знать, если изменилось расписание."
+
+        if hours:
+            message += "\n\nВам будет отправлено расписание в: "
+            message += ", ".join(map(str, set(hours)))
+        else:
+            message += "\n\nНиже вы можете указать время для оповещения."
+            message += "\nВ указанное время бот отправит вам ваше расписание."
+    else:
+        message = "🔕 уведомления отключены."
+        message += "\n\nТишина и спокойствие."
+
+    return message
 
 def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
     """Собирает сообщение с результатами работы счётчиков.
@@ -398,6 +459,19 @@ async def sc_command(message: types.Message) -> None:
     else:
         text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
         await message.answer(text=text)
+
+@dp.message_handler(commands=["notify"])
+async def notify_command(message: types.Message) -> None:
+    """Отправляет расписание на сегодня/завтра."""
+    sp = SPMessages(str(message.chat.id))
+    logger.info(message.chat.id)
+
+    enabled = sp.user["notifications"]
+    hours = sp.user["hours"]
+
+    text = send_notification_message(sp, enabled, hours)
+    markup = get_notifications_markup(sp, enabled, hours)
+    await message.answer(text=text, reply_markup=markup)
 
 
 # Главный обработчик сообщений
@@ -557,6 +631,34 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
         logger.info("{}: Reset user", uid)
         sp.reset_user()
         await callback.message.edit_text(text=SET_CLASS_MESSAGE)
+
+    elif header == "notify":
+        command, *arg_hours = args
+        logger.info("{}: notify {} {}", uid, command, arg_hours)
+
+        if command == "on":
+            sp.user["notifications"] = True
+            sp.save_user()
+        elif command == "off":
+            sp.user["notifications"] = False
+            sp.save_user()
+        elif command == "add":
+            for x in arg_hours:
+                if x not in sp.user["hours"]:
+                    sp.user["hours"].append(x)
+
+            sp.save_user()
+
+        elif command == "reset":
+            sp.user["hours"] = []
+            sp.save_user()
+
+        enabled = sp.user["notifications"]
+        hours = sp.user["hours"]
+
+        text = send_notification_message(sp, enabled, hours)
+        markup = get_notifications_markup(sp, enabled, hours)
+        await callback.message.edit_text(text=text, reply_markup=markup)
 
     else:
         logger.warning("Unknown header - {}", header)
