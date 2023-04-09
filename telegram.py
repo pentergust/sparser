@@ -2,7 +2,7 @@
 Telegram обёртка над SParser.
 
 Author: Milinuri Nirvalen
-Ver: 1.11 (sp v5.3)
+Ver: 1.11.1 (sp v5.3)
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -81,9 +81,9 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.11
+:: Версия бота: 1.11.1
 
-👀 По всем вопросам к @milinuri."""
+👀 Сопровождающий @milinuri."""
 
 SET_CLASS_MESSAGE = """
 Для полноценной работы желательно указать ваш класс.
@@ -573,13 +573,14 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
     elif header == "sc_day":
         logger.info("{}: sc: {}", uid, args)
         day = int(args[1])
+
+        if day == 7:
+            day = [0, 1, 2, 3, 4, 5]
+
         flt = construct_filters(sp.sc, days=day, cl=args[0])
 
         if day == 6:
             text = sp.send_today_lessons(flt)
-        elif day == 7:
-            flt._days = [0, 1, 2, 3, 4, 5]
-            text = sp.send_lessons(flt)
         else:
             text = sp.send_lessons(flt)
 
