@@ -28,12 +28,14 @@ from sp.utils import load_file
 
 from pathlib import Path
 from typing import Optional
+from contextlib import suppress
 
 from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram import executor
 from aiogram import types
 from aiogram.types import InlineKeyboardButton
+from aiogram.utils.exceptions import MessageNotModified
 from aiogram.types import InlineKeyboardMarkup
 from loguru import logger
 from gotify import AsyncGotify
@@ -81,7 +83,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.11.1
+:: Версия бота: 1.11.2
 
 👀 Сопровождающий @milinuri."""
 
@@ -524,15 +526,13 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
     sp = SPMessages(uid)
 
     if header == "home":
+        text = send_home_message(sp)
         markup = markup_generator(sp, home_murkup)
-        await callback.message.edit_text(text=send_home_message(sp),
-                                         reply_markup=markup)
 
     # Вызоы меню инстрментов
     elif header == "other":
         text = sp.send_status() + INFO_MESSAGE
         markup = markup_generator(sp, other_markup)
-        await callback.message.edit_text(text=text, reply_markup=markup)
 
     # Счётчик уроков/кабинетов
     elif header == "count":
@@ -546,14 +546,12 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
         text = get_counter_message(sp.sc, args[0], args[1])
         markup = gen_counters_markup(sp, args[0], args[1])
-        await callback.message.edit_text(text=text, reply_markup=markup)
 
     # Расписание на сегодня
     elif header == "sc":
         logger.info("{}: Sc", uid)
         text = sp.send_today_lessons(construct_filters(sp.sc, cl=[args[0]]))
         markup = markup_generator(sp, week_markup, cl=args[0])
-        await callback.message.edit_text(text=text, reply_markup=markup)
 
     # Расписание на неделю
     elif header == "week":
@@ -561,13 +559,11 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
         flt = construct_filters(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=args[0])
         text = sp.send_lessons(flt)
         markup = markup_generator(sp, sc_markup, cl=args[0])
-        await callback.message.edit_text(text=text, reply_markup=markup)
 
     # Клавиатура для выбора дня
     elif header == "select_day":
+        text = f"📅 на ...\n🔶 Для {args[0]}:"
         markup = select_day_markup(args[0])
-        await callback.message.edit_text(text=f"📅 на ...\n🔶 Для {args[0]}:",
-                                         reply_markup=markup)
 
     # Расписани на определённый день
     elif header == "sc_day":
@@ -581,11 +577,10 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
         if day == 6:
             text = sp.send_today_lessons(flt)
+            markup = markup_generator(sp, week_markup, cl=args[0])
         else:
             text = sp.send_lessons(flt)
-
-        markup = markup_generator(sp, sc_markup, cl=args[0])
-        await callback.message.edit_text(text=text, reply_markup=markup)
+            markup = markup_generator(sp, sc_markup, cl=args[0])
 
     # Отправка списка изменений
     elif header == "updates":
@@ -623,15 +618,14 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
         else:
             text += "Нет новых обновлений."
 
-        if text != callback.message.text:
-            markup = gen_updates_markup(i, updates, cl)
-            await callback.message.edit_text(text=text, reply_markup=markup)
+        markup = gen_updates_markup(i, updates, cl)
 
     # Смена класса пользователя
     elif header == "set_class":
         logger.info("{}: Reset user", uid)
         sp.reset_user()
-        await callback.message.edit_text(text=SET_CLASS_MESSAGE)
+        text = SET_CLASS_MESSAGE
+        markup = to_home_markup
 
     elif header == "notify":
         command, *arg_hours = args
@@ -659,10 +653,14 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
         text = send_notification_message(sp, enabled, hours)
         markup = get_notifications_markup(sp, enabled, hours)
-        await callback.message.edit_text(text=text, reply_markup=markup)
 
     else:
+        text = "👀 Упс, эта клавиатура устарела."
+        markup = to_home_markup
         logger.warning("Unknown header - {}", header)
+
+    with suppress(MessageNotModified):
+        await callback.message.edit_text(text=text, reply_markup=markup)
 
     await callback.answer()
 
