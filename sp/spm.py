@@ -211,7 +211,7 @@ def send_counter(groups: dict, target: Optional[str]=None) -> str:
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
 
-    def __init__(self, uid: str):
+    def __init__(self, uid: str) -> None:
         """
         Args:
             uid (str): Кто пользуется расписанием
@@ -225,20 +225,27 @@ class SPMessages:
         self.user = self.get_user()
         self.sc = Schedule(self.user["class_let"])
 
-    def send_status(self):
+    def send_status(self) -> str:
         """Возвращает некоторую информауию о парсере."""
         last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
 
-        res = "Версия sp: 5.3 (74)"
-        res += f"\n:: Пользователей: {len(load_file(self._users_path))}"
+        notify_count = 0
+        users = load_file(self._users_path, {})
+        for k, v in users.items():
+            if v.get("notifications"):
+                notify_count += 1
+
+        res = "Версия sp: 5.3.1 (75)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
-        res += f"\n:: Класс: {self.user['class_let']}"
-        res += f"\n:: Обновлено: {last_parse.strftime('%d %h в %H:%M')}"
-        res += f"\n:: Проверка: {next_update.strftime('%d %h в %H:%M')}"
-        res += f"\n:: Предметов: ~{len(self.sc.l_index)}"
-        res += f"\n:: Кабинетов: ~{len(self.sc.c_index)}"
-        res += f"\n:: Классы: {', '.join(self.sc.lessons)}"
+        res += f"\n:: {next_update.strftime('%d %h в %H:%M')} проверено"
+        res += f"\n:: {last_parse.strftime('%d %h в %H:%M')} обновлено"
+        res += f"\n:: {len(users)} пользователей"
+        res += f"\n:: {notify_count} с оповещениями"
+        res += f"\n:: {self.user['class_let']} класс"
+        res += f"\n:: ~{len(self.sc.l_index)} предметов"
+        res += f"\n:: ~{len(self.sc.c_index)} кабинетов"
+        res += f"\n:: {', '.join(self.sc.lessons)}"
         return res
 
 
