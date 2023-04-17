@@ -23,7 +23,7 @@ from loguru import logger
 
 users_path = "sp_data/users.json"
 default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
-             "join_date": 0, "notifications": False, "hours": []}
+             "join_date": 0, "notifications": True, "hours": []}
 days_names = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"]
 
 # Расписание уроков: начало (час, минуты), конец (час, минуты)
@@ -236,7 +236,7 @@ class SPMessages:
             if v.get("notifications"):
                 notify_count += 1
 
-        res = "Версия sp: 5.3.3 (77)"
+        res = "Версия sp: 5.3.4 (78)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: {next_update.strftime('%d %h в %H:%M')} проверено"
         res += f"\n:: {last_parse.strftime('%d %h в %H:%M')} обновлено"
