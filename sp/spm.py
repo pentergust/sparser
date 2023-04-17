@@ -236,7 +236,7 @@ class SPMessages:
             if v.get("notifications"):
                 notify_count += 1
 
-        res = "Версия sp: 5.3.2 (76)"
+        res = "Версия sp: 5.3.3 (77)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: {next_update.strftime('%d %h в %H:%M')} проверено"
         res += f"\n:: {last_parse.strftime('%d %h в %H:%M')} обновлено"

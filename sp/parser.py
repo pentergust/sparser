@@ -261,7 +261,7 @@ class Schedule:
                 self._update_diff_file(old_t, t)
                 self._update_index_files(t["lessons"])
 
-            t["next_update"] = timestamp + 3600
+            t["next_update"] = timestamp + 1800
             save_file(self.sc_path, t)
 
     def get(self) -> dict:
