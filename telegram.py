@@ -26,19 +26,20 @@ from sp.spm import send_counter
 from sp.spm import send_update
 from sp.utils import load_file
 
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional
-from contextlib import suppress
 
 from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram import executor
 from aiogram import types
 from aiogram.types import InlineKeyboardButton
-from aiogram.utils.exceptions import MessageNotModified
 from aiogram.types import InlineKeyboardMarkup
-from loguru import logger
+from aiogram.utils.exceptions import MessageCantBeDeleted
+from aiogram.utils.exceptions import MessageNotModified
 from gotify import AsyncGotify
+from loguru import logger
 
 
 config = load_file(Path("sp_data/telegram.json"),
@@ -83,7 +84,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.11.2
+:: Версия бота: 1.11.3
 
 👀 Сопровождающий @milinuri."""
 
@@ -387,7 +388,8 @@ def send_home_message(sp: SPMessages) -> str:
 async def start_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
-    await message.delete()
+    with suppress(MessageCantBeDeleted):
+        await message.delete()
 
     if sp.user["set_class"]:
         markup = markup_generator(sp, home_murkup)
