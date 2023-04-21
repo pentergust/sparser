@@ -1,16 +1,19 @@
 """
-Telegram обёртка над SParser.
-
-Author: Milinuri Nirvalen
-Ver: 1.11.1 (sp v5.3)
+Telegram бот для доступа к SPMessages.
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
 updates - Изменения в расписании
-counter - Счётчики
+counter - Счётчики уроков/кабинетов
+notify - Настроить уведомления
 set_class - Изменить класс
 help - Главное меню
 info - Информация о боте
+
+TODO: Разделить код бота на несколько файлов
+
+Author: Milinuri Nirvalen
+Ver: 1.12 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -89,7 +92,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.11.5
+:: Версия бота: 1.12
 
 👀 Сопровождающий @milinuri."""
 
@@ -116,6 +119,7 @@ RESTRICTIONS_MESSAGE = """Всё перечисленное будет недо�
 -- Подстановка класса в запросах.
 -- просмотр списка изменений для класса.
 -- Счётчик "по классам/уроки".
+-- Система уведомлений.
 
 🌟 На этом все отличия заканчиваются."""
 
@@ -307,6 +311,7 @@ def get_notifications_markup(sp: SPMessages, enabled: bool,
 
     markup.add(InlineKeyboardButton(text="🏠Домой", callback_data="home"))
     return markup
+
 
 # Вспомогательные функции
 # =======================
@@ -551,9 +556,6 @@ async def main_handler(message: types.Message) -> None:
         text = process_request(sp, text)
         await message.answer(text=text)
 
-    # Устаеновка класса по умолчанию
-    # ==============================
-
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
         sp.set_class(text)
@@ -712,14 +714,11 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
 @dp.errors_handler()
 async def errors_handler(update: types.Update, exception: Exception):
-    try:
-        raise exception
-    except Exception as e:
-        logger.exception("Cause exception {} in u:{}", e, update)
-        if gotify is not None:
-            await gotify.create_message(str(e),
-                title="Oops!",
-                priority=5)
+    logger.exception("Cause exception {} in u:{}", exception, update)
+    if gotify is not None:
+        await gotify.create_message(
+            str(exception), title="Oops!", priority=5
+        )
     return True
 
 
