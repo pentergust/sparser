@@ -389,6 +389,32 @@ def send_home_message(sp: SPMessages) -> str:
 
     return message
 
+def process_request(sp: SPMessages, request_text: str) -> str:
+    """Обрабатывает текстовый запрос к расписанию.
+
+    Args:
+        sp (SPMessages): Экземпляр генератора сообщений
+        request_text (str): Текст запроса к расписанию
+
+    Returns:
+        str: Результат запроса к расписанию
+    """
+
+    flt = parse_filters(sp.sc, request_text.split())
+
+    # Чтобы не превращать бота в машину для спама
+    # Будет использоваться последний урок/кабинет из фильтра
+    if len(flt.cabinets):
+        res = sp.search_cabinet(list(flt.cabinets)[-1], flt)
+    elif len(flt.lessons):
+        res = sp.search_lesson(list(flt.lessons)[-1], flt)
+    elif flt.cl or flt.days:
+        text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
+    else:
+        text = "👀 Кажется это пустой запрос..."
+
+    return text
+
 
 # Опеределение команд бота
 # ========================
@@ -480,7 +506,16 @@ async def sc_command(message: types.Message) -> None:
     sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
 
-    if sp.user["class_let"]:
+    if message.reply_to_message and message.reply_to_message.from_user.id != bot.id:
+        content = message.reply_to_message.text
+    else:
+        content = message.get_args()
+
+    if content:
+        text = process_request(sp, content)
+        await message.answer(text=text)
+
+    elif sp.user["class_let"]:
         flt = construct_filters(sp.sc)
         await message.answer(text=sp.send_today_lessons(flt),
                              reply_markup=markup_generator(sp, week_markup))
@@ -513,24 +548,8 @@ async def main_handler(message: types.Message) -> None:
     logger.info("{} {}", uid, text)
 
     if sp.user["set_class"]:
-        flt = parse_filters(sp.sc, text.split())
-
-        # Чтобы не превращать бота в машину для спама
-        # Будет использоваться последний урок/кабинет из фильтра
-        if len(flt.cabinets):
-            res = sp.search_cabinet(list(flt.cabinets)[-1], flt)
-            await message.answer(text=res, reply_markup=to_home_markup)
-
-        elif len(flt.lessons):
-            res = sp.search_lesson(list(flt.lessons)[-1], flt)
-            await message.answer(text=res, reply_markup=to_home_markup)
-
-        elif flt.cl or flt.days:
-            text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
-            await message.answer(text=text)
-        else:
-            await message.answer(text="👀 Кажется это пустой запрос...")
-
+        text = process_request(sp, text)
+        await message.answer(text=text)
 
     # Устаеновка класса по умолчанию
     # ==============================
