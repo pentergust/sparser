@@ -13,7 +13,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.12 (sp v5.3)
+Ver: 1.12.1 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -92,7 +92,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.12
+:: Версия бота: 1.12.1
 
 👀 Сопровождающий @milinuri."""
 
@@ -133,11 +133,12 @@ to_home_markup = InlineKeyboardMarkup().add(
 week_markup = [{"home": "🏠", "week {cl}": "На неделю", "select_day {cl}":"▷"}]
 sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}": "▷"}]
 home_murkup = [{"other": "🔧Ещё",
-                "updates last 0 None": "🔔Изменения",
+                "notify info": "🔔Уведомления",
                 "sc {cl}": "📚Уроки {cl}"}]
 other_markup = [{"home": "◁", "set_class": "Сменить класс"},
                 {"count lessons main": "📊Счётчики",
-                 "notify info": "🔔Уведомления"}]
+                "updates last 0 None": "📜Изменения"}]
+
 
 def markup_generator(sp: SPMessages, pattern: dict, cl: Optional[str]=None,
         exclude: Optional[str]=None, row_width: Optional[int]=3
@@ -312,6 +313,25 @@ def get_notifications_markup(sp: SPMessages, enabled: bool,
     markup.add(InlineKeyboardButton(text="🏠Домой", callback_data="home"))
     return markup
 
+def get_home_markup(sp: SPMessages) -> InlineKeyboardMarkup:
+    """Возвращает клавиатуру для сообщения справки.
+    Если класс не указан, возвращает клавиатуру допллнительных опций.
+
+    Args:
+        sp (SPMessages): Экземпляр генератора сообщений
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатуру для сообщения справки
+    """
+    cl = sp.user["class_let"]
+
+    if cl is None:
+        markup = markup_generator(sp, other_markup, exclude="home")
+    else:
+        markup = markup_generator(sp, home_murkup)
+
+    return markup
+
 
 # Вспомогательные функции
 # =======================
@@ -432,7 +452,7 @@ async def start_command(message: types.Message) -> None:
         await message.delete()
 
     if sp.user["set_class"]:
-        markup = markup_generator(sp, home_murkup)
+        markup = get_home_markup(sp)
         await message.answer(text=send_home_message(sp), reply_markup=markup)
     else:
         await message.answer(text=SET_CLASS_MESSAGE)
@@ -468,7 +488,7 @@ async def pass_commend(message: types.Message) -> None:
     if not sp.user["set_class"]:
         sp.user["set_class"] = True
         sp.save_user()
-        markup = markup_generator(sp, home_murkup)
+        markup = get_home_markup(sp)
         await message.answer(text=send_home_message(sp), reply_markup=markup)
 
 @dp.message_handler(commands=["restrictions"])
@@ -559,7 +579,7 @@ async def main_handler(message: types.Message) -> None:
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
         sp.set_class(text)
-        markup = markup_generator(sp, home_murkup)
+        markup = get_home_markup(sp)
         await message.answer(text=send_home_message(sp), reply_markup=markup)
 
 
@@ -574,7 +594,7 @@ async def callback_handler(callback: types.CallbackQuery) -> None:
 
     if header == "home":
         text = send_home_message(sp)
-        markup = markup_generator(sp, home_murkup)
+        markup = get_home_markup(sp)
 
     # Вызоы меню инстрментов
     elif header == "other":
