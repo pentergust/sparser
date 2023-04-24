@@ -13,7 +13,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.12.1 (sp v5.3)
+Ver: 1.13 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -92,7 +92,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.12.1
+:: Версия бота: 1.13
 
 👀 Сопровождающий @milinuri."""
 
@@ -289,29 +289,40 @@ def get_notifications_markup(sp: SPMessages, enabled: bool,
     Returns:
         InlineKeyboardMarkup: Готовая клавитура для настройки
     """
-    markup = InlineKeyboardMarkup(row_width=6)
+    inline_keyboard = [[InlineKeyboardButton(text="◁", callback_data="home")]]
 
     if not enabled:
-        markup.add(InlineKeyboardButton(text="🔔Включить уведомления",
-                                        callback_data="notify on"))
+        inline_keyboard[0].append(
+            InlineKeyboardButton(text="🔔Включить", callback_data="notify on")
+        )
 
     else:
-        markup.add(InlineKeyboardButton(text="🔕Отключить уведомления",
-                                        callback_data="notify off"))
-
-        hour_buttons = []
-        for x in range(6, 24):
-            if str(x) not in hours:
-                hour_buttons.append(InlineKeyboardButton(text=x,
-                                        callback_data=f"notify add {x}"))
-        markup.add(*hour_buttons)
+        inline_keyboard[0].append(
+            InlineKeyboardButton(text="🔕Выключить", callback_data="notify off")
+        )
 
         if hours:
-            markup.add(InlineKeyboardButton(text="❌Сборсить уведомления",
-                                            callback_data="notify reset"))
+            inline_keyboard[0].append(
+                InlineKeyboardButton(text="❌", callback_data="notify reset")
+            )
 
-    markup.add(InlineKeyboardButton(text="🏠Домой", callback_data="home"))
-    return markup
+        hours_line = []
+        for i, x in enumerate(range(6, 24)):
+            if str(x) in hours:
+                continue
+
+            if x % 6 == 0:
+                inline_keyboard.append(hours_line)
+                hours_line = []
+
+            hours_line.append(
+                InlineKeyboardButton(text=x, callback_data=f"notify add {x}")
+            )
+
+        if len(hours_line):
+            inline_keyboard.append(hours_line)
+
+    return InlineKeyboardMarkup(row_width=6, inline_keyboard=inline_keyboard)
 
 def get_home_markup(sp: SPMessages) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру для сообщения справки.
@@ -343,21 +354,23 @@ def send_notification_message(sp: SPMessages, enabled: bool,
     Args:
         sp (SPMessages): Генератор сообщений
         enabled (bool): Включены ли уведомления
-        hours (list, optional): В какой час отправлять уведомления
+        hours (list[int], optional): В какоие часы отправлять расписание
+
+    Returns:
+        str: Сообщение с информацией об уведомлениях.
     """
+    message = "Вы получени уведомление, если расписание изменится.\n"
+
     if enabled:
-        message = "🔔 уведомления включены."
-        message += "\nВы будете знать, если изменилось расписание."
+        message += "\n🔔 уведомления включены."
+        message += "\n\nТакже вы можеете настроить отправку расписания."
+        message += "\nВ указанное время бот отправит расписание вашего класса."
 
         if hours:
-            message += "\n\nВам будет отправлено расписание в: "
+            message += "\n\nРасписани будет отправлено в: "
             message += ", ".join(map(str, set(hours)))
-        else:
-            message += "\n\nНиже вы можете указать время для оповещения."
-            message += "\nВ указанное время бот отправит вам ваше расписание."
     else:
-        message = "🔕 уведомления отключены."
-        message += "\n\nТишина и спокойствие."
+        message += "\n🔕 уведомления отключены."
 
     return message
 
