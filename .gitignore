@@ -4,6 +4,7 @@ __pycache__/
 
 # Sparser
 /sp_data
+.env
 
 # Experimental
 /*_ex.*

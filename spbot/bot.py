@@ -10,10 +10,8 @@ set_class - Изменить класс
 help - Главное меню
 info - Информация о боте
 
-TODO: Разделить код бота на несколько файлов
-
 Author: Milinuri Nirvalen
-Ver: 1.13 (sp v5.3)
+Ver: 2.0-b0 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -28,6 +26,8 @@ from sp.spm import SPMessages
 from sp.spm import send_counter
 from sp.spm import send_update
 from sp.utils import load_file
+
+from spbot import config
 
 from contextlib import suppress
 from pathlib import Path
@@ -46,22 +46,14 @@ from gotify import AsyncGotify
 from loguru import logger
 
 
-config = load_file(Path("sp_data/telegram.json"),
-    {"token": "YOUR TG API TOKEN",
-    "gotify": {
-        "enabled": False,
-        "base_url": None,
-        "app_token": None
-    }})
-
-if config["gotify"]["enabled"]:
+if config.ENABLE_GOTIFY:
     gotify = AsyncGotify(
-        base_url=config["gotify"]["base_url"],
-        app_token=config["gotify"]["app_token"])
+        base_url=config.GOTIFY_BASE_URL,
+        app_token=config.GOTIFY_APP_TOKEN)
 else:
     gotify = None
 
-bot = Bot(config["token"])
+bot = Bot(config.TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 runner = Executor(dp)
 logger.add("sp_data/telegram.log")
@@ -94,7 +86,11 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.13
+:: Версия бота: 2.0-b0
+
+⚠️ Эта сборка бота является частью обновления v2.0.
+Нету никаких гарантий стабильности.
+Пожалуйста, сообщайте о всех найденных багах.
 
 👀 Сопровождающий @milinuri."""
 
@@ -755,4 +751,3 @@ async def errors_handler(update: types.Update, exception: Exception):
             str(exception), title="Oops!", priority=5
         )
     return True
-
