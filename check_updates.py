@@ -8,7 +8,7 @@
 - Удаляет недействительных пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.3 (sp 5.3, telegram 1.12)
+Ver: 0.4 (sp 5.3, telegram 1.12)
 """
 
 from sp.filters import construct_filters
@@ -29,6 +29,7 @@ from aiogram import Dispatcher
 from aiogram import executor
 from aiogram.utils.exceptions import BotKicked
 from aiogram.utils.exceptions import BotBlocked
+from aiogram.utils.exceptions import MigrateToChat
 
 from loguru import logger
 
@@ -36,12 +37,15 @@ from loguru import logger
 dp = Dispatcher(bot)
 logger.add("sp_data/updates.log")
 
+CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
+Настройки чата были перемещены.."""
+
 
 async def process_update(bot, hour: int, uid: str, user: dict) -> None:
     """Проверяет обновления для пользователя (чата).
 
     Args:
-        bot (ТИП): Экземпляр telegram бота
+        bot (ТИП): Экземпляр aiogram бота
         hour (int): Текущий час
         uid (str): ID чата для проверки
         user (dict): Данные пользователя
@@ -63,7 +67,6 @@ async def process_update(bot, hour: int, uid: str, user: dict) -> None:
 
         await bot.send_message(uid, text=message)
 
-
 async def main() -> None:
     hour = datetime.now().hour
     users = load_file(Path(users_path), {})
@@ -77,6 +80,16 @@ async def main() -> None:
         logger.info("User: {}", k)
         try:
            await process_update(bot, hour, k, v)
+
+        except MigrateToChat as e:
+            logger.info("Migrate to chat: {}", e)
+            new_id = e.migrate_to_chat_id
+
+            users[new_id] = users[k]
+            del users[k]
+            await bot.send_message(new_id, CHAT_MIGRATE_MESSAGE)
+            edited = True
+
         except (BotKicked, BotBlocked):
             logger.info("Remove user {}", k)
             edited = True
