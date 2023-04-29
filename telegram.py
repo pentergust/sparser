@@ -13,7 +13,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.13 (sp v5.3)
+Ver: 1.13.1 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -92,7 +92,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.13
+:: Версия бота: 1.13.1
 
 👀 Сопровождающий @milinuri."""
 
@@ -449,7 +449,7 @@ def process_request(sp: SPMessages, request_text: str) -> str:
     elif flt.cl or flt.days:
         text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
     else:
-        text = "👀 Кажется это пустой запрос..."
+        text = None
 
     return text
 
@@ -586,8 +586,12 @@ async def main_handler(message: types.Message) -> None:
     logger.info("{} {}", uid, text)
 
     if sp.user["set_class"]:
-        text = process_request(sp, text)
-        await message.answer(text=text)
+        answer = process_request(sp, text)
+
+        if answer is not None:
+            await message.answer(text=answer)
+        elif message.chat.type == "private":
+            await message.answer(text="👀 Кажется это пустой запрос...")
 
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
