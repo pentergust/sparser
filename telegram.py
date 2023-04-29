@@ -13,7 +13,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.13.2 (sp v5.3)
+Ver: 1.13.3 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -114,7 +114,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.13.2
+:: Версия бота: 1.13.3
 
 👀 Сопровождающий @milinuri."""
 
@@ -624,6 +624,7 @@ async def main_handler(message: types.Message, sp: SPMessages) -> None:
 async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> None:
     header, *args = callback.data.split()
     uid = str(callback.message.chat.id)
+    logger.info("{}: {} -- {}", uid, header, args)
 
     if header == "home":
         text = send_home_message(sp)
@@ -636,8 +637,6 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Счётчик уроков/кабинетов
     elif header == "count":
-        logger.info("{}: count {}", uid, args)
-
         if args[0] == args[1]:
             args[1] = None
 
@@ -649,13 +648,11 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Расписание на сегодня
     elif header == "sc":
-        logger.info("{}: Sc", uid)
         text = sp.send_today_lessons(construct_filters(sp.sc, cl=[args[0]]))
         markup = markup_generator(sp, week_markup, cl=args[0])
 
     # Расписание на неделю
     elif header == "week":
-        logger.info("{}: sc: week", uid, args)
         flt = construct_filters(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=args[0])
         text = sp.send_lessons(flt)
         markup = markup_generator(sp, sc_markup, cl=args[0])
@@ -667,7 +664,6 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Расписани на определённый день
     elif header == "sc_day":
-        logger.info("{}: sc: {}", uid, args)
         day = int(args[1])
 
         if day == 7:
@@ -684,7 +680,6 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Отправка списка изменений
     elif header == "updates":
-        logger.info("{}: updates: {}", uid, args)
         text = "🔔 Изменения "
 
         # Смена режима просмотра: только для класса/всего расписния
@@ -722,14 +717,12 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Смена класса пользователя
     elif header == "set_class":
-        logger.info("{}: Reset user", uid)
         sp.reset_user()
         text = SET_CLASS_MESSAGE
         markup = to_home_markup
 
     elif header == "notify":
         command, *arg_hours = args
-        logger.info("{}: notify {} {}", uid, command, arg_hours)
 
         if command == "on":
             sp.user["notifications"] = True
