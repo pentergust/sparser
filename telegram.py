@@ -13,7 +13,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.13.1 (sp v5.3)
+Ver: 1.13.2 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -41,9 +41,30 @@ from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.exceptions import MessageCantBeDeleted
 from aiogram.utils.exceptions import MessageNotModified
+from aiogram.dispatcher.middlewares import BaseMiddleware
 from gotify import AsyncGotify
 from loguru import logger
 
+
+# Определение Middleware
+# ======================
+
+class SpMiddleware(BaseMiddleware):
+    async def setup_sp(self, data: dict, user: types.User, chat: Optional[types.Chat] = None):
+        cid = chat.id if chat else user.id
+        sp = SPMessages(str(cid))
+
+        data["sp"] = sp
+
+    async def on_pre_process_message(self, message: types.Message, data: dict):
+        await self.setup_sp(data, message.from_user, message.chat)
+
+    async def on_pre_process_callback_query(self, query: types.CallbackQuery, data: dict):
+        await self.setup_sp(data, query.from_user, query.message.chat if query.message else None)
+
+
+# Определеник начальных настроек
+# ==============================
 
 config = load_file(Path("sp_data/telegram.json"),
     {"token": "YOUR TG API TOKEN",
@@ -62,6 +83,7 @@ else:
 
 bot = Bot(config["token"])
 dp = Dispatcher(bot)
+dp.middleware.setup(SpMiddleware())
 logger.add("sp_data/telegram.log")
 days_names = ["понедельник", "вторник", "среда", "четверг", "пятница",
               "суббота", "сегодня", "неделя"]
@@ -92,7 +114,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.13.1
+:: Версия бота: 1.13.2
 
 👀 Сопровождающий @milinuri."""
 
@@ -458,8 +480,7 @@ def process_request(sp: SPMessages, request_text: str) -> str:
 # ========================
 
 @dp.message_handler(commands=["start", "help"])
-async def start_command(message: types.Message) -> None:
-    sp = SPMessages(str(message.chat.id))
+async def start_command(message: types.Message, sp: SPMessages) -> None:
     logger.info(message.chat.id)
     with suppress(MessageCantBeDeleted):
         await message.delete()
@@ -470,33 +491,9 @@ async def start_command(message: types.Message) -> None:
     else:
         await message.answer(text=SET_CLASS_MESSAGE)
 
-@dp.message_handler(commands=["set_class"])
-async def set_class_command(message: types.Message) -> None:
-    """Изменяет класс или удаляет данные о пользователе."""
-    sp = SPMessages(str(message.chat.id))
-    logger.info(message.chat.id)
-
-    if message.reply_to_message and message.reply_to_message.from_user.id != bot.id:
-        content = message.reply_to_message.text
-    else:
-        content = message.get_args()
-
-    if content:
-        if content in sp.sc.lessons:
-            sp.set_class(content)
-            text = f"✏️ Класс изменён на {content}"
-        else:
-            text = "👀 Такого класса не существует."
-    else:
-        sp.reset_user()
-        text = SET_CLASS_MESSAGE
-
-    await message.answer(text=text)
-
 @dp.message_handler(commands=["pass"])
-async def pass_commend(message: types.Message) -> None:
+async def pass_commend(message: types.Message, sp: SPMessages) -> None:
     """Отвязывает пользователя от класса."""
-    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     if not sp.user["set_class"]:
         sp.user["set_class"] = True
@@ -509,16 +506,14 @@ async def restrictions_commend(message: types.Message) -> None:
     await message.answer(text=RESTRICTIONS_MESSAGE)
 
 @dp.message_handler(commands=["info"])
-async def info_command(message: types.Message) -> None:
+async def info_command(message: types.Message, sp: SPMessages) -> None:
     """Отправляет статус парсера и бота."""
-    sp = SPMessages(str(message.chat.id))
     await message.answer(text=sp.send_status()+INFO_MESSAGE,
                          reply_markup=to_home_markup)
 
 @dp.message_handler(commands=["updates"])
-async def updates_command(message: types.Message) -> None:
+async def updates_command(message: types.Message, sp: SPMessages) -> None:
     """Оправляет список изменений в расписании/"""
-    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     updates = sp.sc.updates
     markup = gen_updates_markup(max(len(updates)-1, 0), updates)
@@ -530,18 +525,16 @@ async def updates_command(message: types.Message) -> None:
     await message.answer(text=text, reply_markup=markup)
 
 @dp.message_handler(commands=["counter"])
-async def counter_command(message: types.Message) -> None:
+async def counter_command(message: types.Message, sp: SPMessages) -> None:
     """Отправялет счётчик уроков/кабинетов."""
-    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
     text = get_counter_message(sp.sc, "lessons", "main")
     markup = gen_counters_markup(sp, "lessons", "main")
     await message.answer(text=text, reply_markup=markup)
 
 @dp.message_handler(commands=["sc"])
-async def sc_command(message: types.Message) -> None:
+async def sc_command(message: types.Message, sp: SPMessages) -> None:
     """Отправляет расписание на сегодня/завтра."""
-    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
 
     if message.reply_to_message and message.reply_to_message.from_user.id != bot.id:
@@ -561,10 +554,35 @@ async def sc_command(message: types.Message) -> None:
         text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
         await message.answer(text=text)
 
+
+# Команды для настройки бота
+# ==========================
+
+@dp.message_handler(commands=["set_class"])
+async def set_class_command(message: types.Message, sp: SPMessages) -> None:
+    """Изменяет класс или удаляет данные о пользователе."""
+    logger.info(message.chat.id)
+
+    if message.reply_to_message and message.reply_to_message.from_user.id != bot.id:
+        content = message.reply_to_message.text
+    else:
+        content = message.get_args()
+
+    if content:
+        if content in sp.sc.lessons:
+            sp.set_class(content)
+            text = f"✏️ Класс изменён на {content}"
+        else:
+            text = "👀 Такого класса не существует."
+    else:
+        sp.reset_user()
+        text = SET_CLASS_MESSAGE
+
+    await message.answer(text=text)
+
 @dp.message_handler(commands=["notify"])
-async def notify_command(message: types.Message) -> None:
+async def notify_command(message: types.Message, sp: SPMessages) -> None:
     """Отправляет расписание на сегодня/завтра."""
-    sp = SPMessages(str(message.chat.id))
     logger.info(message.chat.id)
 
     enabled = sp.user["notifications"]
@@ -579,9 +597,8 @@ async def notify_command(message: types.Message) -> None:
 # ============================
 
 @dp.message_handler()
-async def main_handler(message: types.Message) -> None:
+async def main_handler(message: types.Message, sp: SPMessages) -> None:
     uid = str(message.chat.id)
-    sp = SPMessages(uid)
     text = message.text.strip().lower()
     logger.info("{} {}", uid, text)
 
@@ -604,10 +621,9 @@ async def main_handler(message: types.Message) -> None:
 # ========================
 
 @dp.callback_query_handler()
-async def callback_handler(callback: types.CallbackQuery) -> None:
+async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> None:
     header, *args = callback.data.split()
     uid = str(callback.message.chat.id)
-    sp = SPMessages(uid)
 
     if header == "home":
         text = send_home_message(sp)
