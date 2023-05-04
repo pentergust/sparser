@@ -340,7 +340,6 @@ class Schedule:
         else:
             days = self.l_index.get(target, {})
 
-
         for day, objs in enumerate(days):
             if flt.days and day not in flt.days:
                 continue
@@ -354,10 +353,10 @@ class Schedule:
                         continue
 
                     for x in i:
-                        if flt.lessons:
+                        if len(flt.cabinets) == 1 and len(flt.lessons):
                             res[day][x].append(f"{cl}")
-                        elif flt.cl:
+                        elif len(flt.cl) == 1:
                             res[day][x].append(f"{obj}")
                         else:
-                            res[day][x].append(f"{cl}: {obj}")
+                            res[day][x].append(f"{cl}:{obj}")
         return res
