@@ -13,7 +13,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.13.3 (sp v5.3)
+Ver: 1.13.4 (sp v5.3)
 """
 
 from sp.counters import cl_counter
@@ -114,7 +114,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-:: Версия бота: 1.13.3
+:: Версия бота: 1.13.4
 
 👀 Сопровождающий @milinuri."""
 
@@ -465,9 +465,9 @@ def process_request(sp: SPMessages, request_text: str) -> str:
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
     if len(flt.cabinets):
-        res = sp.search_cabinet(list(flt.cabinets)[-1], flt)
+        text = sp.search_cabinet(list(flt.cabinets)[-1], flt)
     elif len(flt.lessons):
-        res = sp.search_lesson(list(flt.lessons)[-1], flt)
+        text = sp.search_lesson(list(flt.lessons)[-1], flt)
     elif flt.cl or flt.days:
         text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
     else:
