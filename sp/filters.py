@@ -3,6 +3,7 @@
 
 Author: Milinuri Nirvalen
 """
+
 from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
@@ -80,7 +81,7 @@ def parse_filters(sc, args: list[str]) -> Filters:
         if not arg:
             continue
 
-        if arg == "?":
+        if arg == "?" and sc.cl is not None:
             cl.append(sc.cl)
 
         if arg == "сегодня":
