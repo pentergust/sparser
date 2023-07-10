@@ -61,6 +61,13 @@ aiogram.utils.exceptions.ValidationError: Token is invalid! It can't contains sp
 
 Замените в файле токен на свой и повторно запустите бота.
 
+Для запуска бота для вк (`v1.1 (sp v5.3)`) вам нужно скопировать файл `.env`.
+```bash
+cp .env.dist .env
+```
+
+После укажите токен от бота в `.env` файле.
+
 
 ## Боты
 
