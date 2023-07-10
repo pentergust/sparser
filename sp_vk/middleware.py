@@ -1,3 +1,11 @@
+"""
+Middleware для бота.
+
+Позволяет передавать экзмепляр SPMessages в обработчики.
+
+Author: Milinuri Nirvalen
+"""
+
 from sp.spm import SPMessages
 
 from vkbottle import BaseMiddleware

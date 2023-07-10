@@ -59,6 +59,20 @@ def get_home_keyboard(sp: SPMessages) -> dict:
 
     return kb.get_json()
 
+def get_main_keyboard(sp: SPMessages) -> dict:
+    """Возрвщает главную клавиатуру бота.
+    Если класс не установлен, возвращает клавиатуру смены класса.
+
+    Args:
+        sp (SPMessages): Экземпляр генератора сообщений.
+
+    Returns:
+        dict: JSON клавиатура.
+    """
+
+    return get_home_keyboard(sp) if sp.user["set_class"] else SET_CLASS
+
+
 def get_notify_keyboad(sp: SPMessages) -> dict:
     """Возвращетс клавиатуру для настройки уведомлений.
 
@@ -96,11 +110,11 @@ def get_notify_keyboad(sp: SPMessages) -> dict:
                 kb.row()
 
             if x in user_hours:
-                kb.add(Text(x, payload={"notify": "remove", "hour": x}),
+                kb.add(Text(x, payload={"notify": "toggle", "hour": x}),
                     color=KeyboardButtonColor.POSITIVE
                 )
             else:
-                kb.add(Text(x, payload={"notify": "add", "hour": x}))
+                kb.add(Text(x, payload={"notify": "toggle", "hour": x}))
 
     return kb.get_json()
 

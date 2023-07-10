@@ -2,13 +2,14 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.0 (9)
+Ver: 1.1 (12)
 """
 
 from sp.filters import construct_filters
 from sp.filters import parse_filters
 from sp.spm import SPMessages
 from sp.spm import send_update
+from sp.spm import send_search_res
 
 from typing import Optional
 
@@ -28,7 +29,7 @@ days_names = ["понедельник", "вторник", "среда", "чет�
 # Вспомогательные функции
 # =======================
 
-def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
+def process_request(sp: SPMessages, request_text: str) -> str:
     """Обрабатывает текстовый запрос к расписанию.
 
     Args:
@@ -44,13 +45,20 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
     if len(flt.cabinets):
-        text = sp.search_cabinet(list(flt.cabinets)[-1], flt)
+        obj = list(flt.cabinets)[-1]
+        res = sp.sc.search(obj, flt, True)
+        text = send_search_res(flt, res)
+
     elif len(flt.lessons):
-        text = sp.search_lesson(list(flt.lessons)[-1], flt)
+        obj = list(flt.lessons)[-1]
+        res = sp.sc.search(obj, flt, False)
+        text = send_search_res(flt, res)
+
     elif flt.cl or flt.days:
         text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
+
     else:
-        text = None
+        text = "👀 Кажется это пустой запрос."
 
     return text
 
@@ -62,6 +70,7 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 @bot.on.message(payload={"cmd": "home"})
 @bot.on.message(payload={"command": "start"})
 async def home_handler(message: Message, sp: SPMessages):
+    """Справка и главная клавиатура."""
     if sp.user["set_class"]:
         await message.answer(messages.send_home_message(sp),
             keyboard=keyboards.get_home_keyboard(sp)
@@ -78,12 +87,13 @@ async def home_handler(message: Message, sp: SPMessages):
 @bot.on.message(command="restrictions")
 @bot.on.message(payload={"cmd": "restrictions"})
 async def restrictions_handler(message: Message):
+    """Список огранчиений при отвязанном классе."""
     await message.answer(messages.RESTRICTIONS)
 
 @bot.on.message(command="info")
 @bot.on.message(payload={"cmd": "info"})
-async def info_command(message: Message, sp: SPMessages):
-    """Отправляет статус парсера и бота."""
+async def info_handler(message: Message, sp: SPMessages):
+    """Cтатус парсера и бота."""
     await message.answer(sp.send_status()+messages.INFO)
 
 
@@ -94,23 +104,14 @@ async def info_command(message: Message, sp: SPMessages):
 async def set_class_hadler(message: Message, sp: SPMessages, args: tuple[str]):
     """Явно устанавливает класс пользователя."""
     cl = args[0].lower().strip()
-    if cl in ("-", "pass"):
-        sp.user["class_let"] = None
-        sp.user["set_class"] = True
-        sp.save_user()
-        text = messages.send_home_message(sp)
-        kb = keyboards.get_home_keyboard(sp)
+    res = sp.set_class(None if cl in ("-", "pass") else cl)
 
-    elif cl in sp.sc.lessons:
-        sp.set_class(cl)
+    if res is True:
         text = messages.send_home_message(sp)
-        kb = keyboards.get_home_keyboard(sp)
-
     else:
         text = "👀 Такого класса не существует."
-        kb = keyboards.SET_CLASS
 
-    await message.answer(text, keyboard=kb)
+    await message.answer(text, keyboard=keyboards.get_main_keyboard(sp))
 
 @bot.on.message(command="set_class")
 @bot.on.message(payload={"cmd": "set_class"})
@@ -118,12 +119,14 @@ async def reset_user_hadler(message: Message, sp: SPMessages):
     """Неявное изменение класса пользоватлея."""
     if message.reply_message is not None:
         cl = message.reply_message.text
-        if cl in sp.sc.lessons:
-            sp.set_class(cl)
-            text = f"✏️ Класс изменён на {cl}"
+        res = sp.set_class(cl)
+
+        if res:
+            text = messages.send_home_message(sp)
             kb = keyboards.get_home_keyboard(sp)
         else:
             text = "👀 Такого класса не существует."
+            kb = keyboards.get_main_keyboard(sp)
     else:
         sp.reset_user()
         text = messages.SET_CLASS
@@ -153,11 +156,7 @@ async def sc_handler(message: Message, sp: SPMessages):
 
     if message.reply_message is not None:
         request = message.reply_message.text.strip().lower()
-        answer = process_request(sp, request)
-        if answer is not None:
-            text = answer
-        else:
-            text = "👀 Кажется это пустой запрос..."
+        text = process_request(sp, request)
 
     elif sp.user["class_let"]:
         payload = message.get_payload_json()
@@ -221,29 +220,20 @@ async def switch_notify_handler(message: Message, sp: SPMessages):
         keyboard=keyboards.get_notify_keyboad(sp)
     )
 
-@bot.on.message(payload_contains={"notify": "add"})
-async def add_notify_hour_handler(message: Message, sp: SPMessages):
-    """Добавляет час для отправки оповещений."""
+@bot.on.message(payload_contains={"notify": "toggle"})
+async def toggle_notify_hour_handler(message: Message, sp: SPMessages):
+    """Переключает отправку уведомлений в укзаанный час."""
     hour = int(message.get_payload_json()["hour"])
-    if hour not in sp.user["hours"]:
-        sp.user["hours"].append(hour)
-        sp.save_user()
 
-    await message.answer(f"🔔 Включено оповещение в {hour} часов.",
-        keyboard=keyboards.get_notify_keyboad(sp)
-    )
-
-@bot.on.message(payload_contains={"notify": "remove"})
-async def remove_notify_hour_handler(message: Message, sp: SPMessages):
-    """Удаляет час для отправки оповещений."""
-    hour = int(message.get_payload_json()["hour"])
     if hour in sp.user["hours"]:
         sp.user["hours"].remove(hour)
-        sp.save_user()
+        text = f"🔕 Отключено оповещение в {hour} часов."
+    else:
+        sp.user["hours"].append(hour)
+        text = f"🔔 Включено оповещение в {hour} часов."
 
-    await message.answer(f"🔔 Отключено оповещение в {hour} часов.",
-        keyboard=keyboards.get_notify_keyboad(sp)
-    )
+    sp.save_user()
+    await message.answer(text, keyboard=keyboards.get_notify_keyboad(sp))
 
 @bot.on.message(payload={"notify": "reset"})
 async def reset_nofify_handler(message: Message, sp: SPMessages):
@@ -384,19 +374,14 @@ async def back_updates_handler(message: Message, sp: SPMessages):
 # Обработка текстовых запросов
 # ============================
 
-@bot.on.message()
+@bot.on.private_message()
 async def message_handler(message: Message, sp: SPMessages):
-    """Обработчик текстовых запросов к боту."""
+    """Обработчик текстовых запросов к расписнаию."""
     uid = str(message.peer_id)
     text = message.text.strip().lower()
 
     if sp.user["set_class"]:
-        answer = process_request(sp, text)
-
-        if answer is not None:
-            await message.answer(answer)
-        elif message.peer_id == message.from_id:
-            await message.answer("👀 Кажется это пустой запрос...")
+        await message.answer(process_request(sp, text))
 
     elif text in sp.sc.lessons:
         sp.set_class(text)
