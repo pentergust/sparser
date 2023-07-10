@@ -137,7 +137,7 @@ def send_day_lessons(lessons: list) -> str:
 
     return message
 
-def send_search_res(flt: Filters, res: dict) -> str:
+def send_search_res(flt: Filters, res: list) -> str:
     """Собирает сообщение с результатами поиска в расписании.
 
     Args:
@@ -236,7 +236,7 @@ class SPMessages:
             if v.get("notifications"):
                 notify_count += 1
 
-        res = "Версия sp: 5.3.6 (80)"
+        res = "Версия sp: 5.3.8 (82)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: {next_update.strftime('%d %h в %H:%M')} проверено"
         res += f"\n:: {last_parse.strftime('%d %h в %H:%M')} обновлено"
@@ -275,18 +275,21 @@ class SPMessages:
         save_file(self._users_path, users)
         logger.info("Reset user: {}", self.uid)
 
-    def set_class(self, cl: str) -> None:
+    def set_class(self, cl: str | None) -> bool:
         """Изменяет класс пользователя.
 
         Args:
             cl (str): Целевой класс пользователя
         """
-        if cl in self.sc.lessons:
+        if cl is None or cl in self.sc.lessons:
             self.user["join_date"] = datetime.now().timestamp()
             self.user["class_let"] = cl
             self.user["set_class"] = True
             self.user["last_parse"] = self.sc.schedule["last_parse"]
             self.save_user()
+            return True
+        else:
+            return False
 
     def get_lessons_updates(self) -> list:
         """Возвращает дни, для которых изменилось расписание."""

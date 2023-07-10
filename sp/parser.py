@@ -302,7 +302,7 @@ class Schedule:
             if update is None:
                 continue
 
-            if offset is not None and update["time"] <= offset:
+            if offset is not None and update["time"] < offset:
                 continue
 
             new_update = [{} for x in range(6)]
