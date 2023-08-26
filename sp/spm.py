@@ -80,16 +80,17 @@ def send_cl_updates(cl_updates: list) -> str:
 
     return message
 
-def send_update(update: dict) -> str:
+def send_update(update: dict, cl: Optional[str]=None) -> str:
     """Собирает сообщение со списком изменений в расписании.
 
     Args:
-        update (ТИП): Словарь изменений в расписании
-        cl (str, optional): Список изменений для выбранного класса
+        update (dict): Словарь изменений в расписании
+        cl (str, optional): Не отображать заголовок для класса
 
     Returns:
-        ТИП: Готовое сообщение с изменениями в расписании
+        str: Готовое сообщение с изменениями в расписании
     """
+
     t = datetime.fromtimestamp(update["time"]).strftime("%d.%m %H:%M")
     message = f"⏰ Примерно {t}:\n"
 
@@ -99,7 +100,9 @@ def send_update(update: dict) -> str:
 
         message += f"\n🔷 На {days_names[day]}\n"
         for u_cl, cl_updates in day_updates.items():
-            message += f"🔸 Для {u_cl}:"
+            if cl is None or cl is not None and cl != u_cl:
+                message += f"🔸 Для {u_cl}:"
+
             message += "\n" if len(cl_updates) > 1 else " "
             message += send_cl_updates(cl_updates)
 
@@ -236,7 +239,7 @@ class SPMessages:
             if v.get("notifications"):
                 notify_count += 1
 
-        res = "Версия sp: 5.3.8 (82)"
+        res = "Версия sp: 5.3.9 (83)"
         res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n:: {next_update.strftime('%d %h в %H:%M')} проверено"
         res += f"\n:: {last_parse.strftime('%d %h в %H:%M')} обновлено"
@@ -336,7 +339,7 @@ class SPMessages:
         if updates:
             message += f"\nУ вас изменилось расписание! 🎉"
             for update in updates:
-                message += f"\n{send_update(update)}"
+                message += f"\n{send_update(update, cl)}"
         return message
 
     def send_today_lessons(self, flt: Filters) -> str:
