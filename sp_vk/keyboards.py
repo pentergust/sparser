@@ -40,9 +40,9 @@ def get_home_keyboard(sp: SPMessages) -> dict:
 
     cl = sp.user["class_let"]
     kb = Keyboard()
+    kb.add(Text("🏠Справка", payload={"cmd": "home"}))
 
     if cl is not None:
-        kb.add(Text("🏠Справка", payload={"cmd": "home"}))
         kb.add(Text("на неделю", payload={"cmd": "week"}))
         kb.add(Text(f"📚Уроки {cl}", payload={"cmd": "sc"}),
             color=KeyboardButtonColor.PRIMARY
