@@ -2,7 +2,7 @@
 Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.1.1 (sp 5.3)
+Ver: 1.2 (sp 5.4)
 """
 
 from sp.counters import cl_counter
@@ -14,6 +14,7 @@ from sp.filters import parse_filters
 from sp.spm import SPMessages
 from sp.spm import send_update
 from sp.spm import send_counter
+from sp.spm import send_search_res
 
 import argparse
 
@@ -76,10 +77,8 @@ def main() -> None:
 
     elif args.cmd == "search":
         flt = parse_filters(sp.sc, args.filters)
-        if args.cabinets:
-            print(sp.search_cabinet(args.target, flt))
-        else:
-            print(sp.search_lesson(args.target, flt))
+        res = sp.sc.search(args.target, flt, args.cabinets)
+        print(send_search_res(flt, res))
 
     elif args.cmd == "counter":
         flt = parse_filters(sp.sc, args.filters)

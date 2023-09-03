@@ -285,7 +285,7 @@ class SPMessages:
                 notify_count += 1
             cl_counter[v["class_let"]] += 1
 
-        res = "🌟 Версия sp: 5.3.10 (87)"
+        res = "🌟 Версия sp: 5.4 (88)"
         res += "\n\n🌲 Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -419,13 +419,3 @@ class SPMessages:
 
         flt = construct_filters(self.sc, cl=flt.cl, days=today)
         return self.send_lessons(flt)
-
-    def search_lesson(self, lesson: str, flt: Filters) -> str:
-        """Поиск упоминаний об уроке. Для обратной совместимости."""
-        res = self.sc.search(lesson, flt)
-        return send_search_res(flt, res)
-
-    def search_cabinet(self, cabinet: str, flt: Filters) -> str:
-        """Поиск упоминаний о кабинете. Для обратной совместимости."""
-        res = self.sc.search(cabinet, flt, cabinets_mode=True)
-        return send_search_res(flt, res)
