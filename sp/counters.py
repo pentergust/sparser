@@ -1,5 +1,6 @@
 """
-Функции счётчиков для расписания.
+Вспомогательные функции для подсчёта
+количества элементов в расписании.
 
 Author: Milinuri Nirvalen
 """
@@ -9,6 +10,7 @@ from .filters import construct_filters
 from .parser import Schedule
 
 from collections import Counter
+from collections import defaultdict
 from typing import Optional
 
 
@@ -24,15 +26,12 @@ def group_counter_res(res: dict) -> dict:
     Returns:
         dict: Сгруппированыый результат работы счётчиков
     """
-    groups = {}
 
+    groups = defaultdict(dict)
     for k, v in res.items():
         key = v["total"]
         if not key:
             continue
-
-        if key not in groups:
-            groups[key] = {}
 
         groups[key][k] = v
 
@@ -40,17 +39,13 @@ def group_counter_res(res: dict) -> dict:
 
 def reverse_counter(cnt: Counter) -> dict:
     """Меняет ключ и занчение Counter местами."""
-    res = {}
+    res = defaultdict(list)
     for k, v in cnt.items():
         if not v:
             continue
 
-        if v not in res:
-            res[v] = []
         res[v].append(k)
     return res
-
-
 
 
 # Счётчики
@@ -66,6 +61,7 @@ def cl_counter(sc: Schedule, flt: Filters) -> dict:
     Returns:
         dict: Результат работы счётчика
     """
+
     res = {}
 
     for cl, days in sc.lessons.items():
@@ -144,6 +140,7 @@ def index_counter(sc: Schedule, flt: Filters,
     Returns:
         dict: Результаты счётчика
     """
+
     res = {}
 
     if cabinets_mode:
@@ -180,4 +177,3 @@ def index_counter(sc: Schedule, flt: Filters,
                     res[k]["days"][str(day)] += len(i)
                     res[k]["main"][another] += len(i)
     return res
-
