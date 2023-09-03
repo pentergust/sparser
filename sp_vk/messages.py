@@ -4,8 +4,8 @@ Cообщения, используемые в боте.
 Author: Milinuri Nirvalen
 """
 
-from sp.spm import send_counter
-from sp.spm import SPMessages
+from sp.messages import send_counter
+from sp.messages import SPMessages
 from sp.parser import Schedule
 from sp.filters import construct_filters
 

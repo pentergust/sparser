@@ -11,10 +11,10 @@ from sp.counters import group_counter_res
 from sp.counters import index_counter
 from sp.filters import construct_filters
 from sp.filters import parse_filters
-from sp.spm import SPMessages
-from sp.spm import send_update
-from sp.spm import send_counter
-from sp.spm import send_search_res
+from sp.messages import SPMessages
+from sp.messages import send_update
+from sp.messages import send_counter
+from sp.messages import send_search_res
 
 import argparse
 

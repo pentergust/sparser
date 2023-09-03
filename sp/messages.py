@@ -285,7 +285,7 @@ class SPMessages:
                 notify_count += 1
             cl_counter[v["class_let"]] += 1
 
-        res = "🌟 Версия sp: 5.4 (88)"
+        res = "🌟 Версия sp: 5.4 (90)"
         res += "\n\n🌲 Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"

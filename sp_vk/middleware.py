@@ -6,7 +6,7 @@ Middleware для бота.
 Author: Milinuri Nirvalen
 """
 
-from sp.spm import SPMessages
+from sp.messages import SPMessages
 
 from vkbottle import BaseMiddleware
 from vkbottle.bot import Message

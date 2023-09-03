@@ -24,10 +24,10 @@ from sp.filters import Filters
 from sp.filters import construct_filters
 from sp.filters import parse_filters
 from sp.parser import Schedule
-from sp.spm import SPMessages
-from sp.spm import send_counter
-from sp.spm import send_update
-from sp.spm import send_search_res
+from sp.messages import SPMessages
+from sp.messages import send_counter
+from sp.messages import send_update
+from sp.messages import send_search_res
 from sp.utils import load_file
 
 from contextlib import suppress

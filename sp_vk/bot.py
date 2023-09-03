@@ -2,14 +2,14 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.1 (12)
+Ver: 1.1.1 (13)
 """
 
 from sp.filters import construct_filters
 from sp.filters import parse_filters
-from sp.spm import SPMessages
-from sp.spm import send_update
-from sp.spm import send_search_res
+from sp.messages import SPMessages
+from sp.messages import send_update
+from sp.messages import send_search_res
 
 from typing import Optional
 
@@ -45,13 +45,11 @@ def process_request(sp: SPMessages, request_text: str) -> str:
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
     if len(flt.cabinets):
-        obj = list(flt.cabinets)[-1]
-        res = sp.sc.search(obj, flt, True)
+        res = sp.sc.search(list(flt.cabinets)[-1], flt, True)
         text = send_search_res(flt, res)
 
     elif len(flt.lessons):
-        obj = list(flt.lessons)[-1]
-        res = sp.sc.search(obj, flt, False)
+        res = sp.sc.search(list(flt.lessons)[-1], flt, False)
         text = send_search_res(flt, res)
 
     elif flt.cl or flt.days:

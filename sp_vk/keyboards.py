@@ -4,7 +4,7 @@
 Author: Milinuri Nirvalen
 """
 
-from sp.spm import SPMessages
+from sp.messages import SPMessages
 
 from typing import Optional
 

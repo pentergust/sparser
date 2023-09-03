@@ -12,9 +12,9 @@ Ver: 0.4 (sp 5.3, telegram 1.12)
 """
 
 from sp.filters import construct_filters
-from sp.spm import SPMessages
-from sp.spm import send_update
-from sp.spm import users_path
+from sp.messages import SPMessages
+from sp.messages import send_update
+from sp.messages import users_path
 from sp.utils import load_file
 from sp.utils import save_file
 from telegram import bot
