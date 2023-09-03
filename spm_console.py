@@ -2,7 +2,7 @@
 Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.1 (sp 5.2)
+Ver: 1.1.1 (sp 5.3)
 """
 
 from sp.counters import cl_counter
@@ -108,6 +108,7 @@ def main() -> None:
             print(send_update(u))
 
     else:
+        flt = construct_filters(sp.sc)
         print(sp.send_today_lessons(flt))
 
     if not sp.user["set_class"]:
