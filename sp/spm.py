@@ -3,6 +3,7 @@
 
 Author: Milinuri Nirvalen
 """
+
 from .filters import Filters
 from .filters import construct_filters
 from .utils import load_file
@@ -13,6 +14,7 @@ from .parser import Schedule
 from .counters import reverse_counter
 
 from collections import Counter
+from collections import defaultdict
 from datetime import datetime
 from datetime import time
 from pathlib import Path
@@ -211,6 +213,41 @@ def send_counter(groups: dict, target: Optional[str]=None) -> str:
     return message
 
 
+# Вспомогательные функции для сообщения статуса парсера
+# =====================================================
+
+def get_next_update_str(time: datetime, now: Optional[datetime]=None) -> str:
+    if now is None:
+        now = datetime.now()
+
+    if now.day == time.day:
+        res = time.strftime("в %H:%M")
+    else:
+        res = time.strftime("%d %h в %H:%M")
+
+    return res
+
+def get_cl_counter_str(cl_counter: Counter) -> str:
+    groups = defaultdict(list)
+    for k, v in cl_counter.items():
+        groups[v].append(k)
+
+    res = ""
+    for k, v in groups.items():
+        res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+
+    return res
+
+def get_str_delta(s: int, hours: Optional[bool]=True) -> str:
+    if hours:
+        hours, remainder = divmod(s, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    else:
+        minutes, seconds = divmod(s, 60)
+        return f"{minutes:02}:{seconds:02}"
+
+
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
 
@@ -230,25 +267,37 @@ class SPMessages:
 
     def send_status(self) -> str:
         """Возвращает некоторую информауию о парсере."""
-        last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
+        now = datetime.now()
         next_update = datetime.fromtimestamp(self.sc.schedule["next_update"])
+        last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
 
+        nu_str = get_next_update_str(next_update, now)
+        lp_str = get_next_update_str(last_parse, now)
+
+        nu_delta = get_str_delta((next_update - now).seconds, False)
+        lp_delta = get_str_delta((now - last_parse).seconds)
+
+        cl_counter = Counter()
         notify_count = 0
         users = load_file(self._users_path, {})
         for k, v in users.items():
             if v.get("notifications"):
                 notify_count += 1
+            cl_counter[v["class_let"]] += 1
 
-        res = "Версия sp: 5.3.9 (83)"
-        res += "\n:: Автор: Milinuri Nirvalen (@milinuri)"
-        res += f"\n:: {next_update.strftime('%d %h в %H:%M')} проверено"
-        res += f"\n:: {last_parse.strftime('%d %h в %H:%M')} обновлено"
-        res += f"\n:: {len(users)} пользователей"
-        res += f"\n:: {notify_count} с оповещениями"
-        res += f"\n:: {self.user['class_let']} класс"
-        res += f"\n:: ~{len(self.sc.l_index)} предметов"
-        res += f"\n:: ~{len(self.sc.c_index)} кабинетов"
-        res += f"\n:: {', '.join(self.sc.lessons)}"
+        res = "🌟 Версия sp: 5.3.10 (87)"
+        res += "\n\n🌲 Автор: Milinuri Nirvalen (@milinuri)"
+        res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
+        res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
+        res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
+        res += f"\n🌲 {self.user['class_let']} класс"
+        res += f"\n🌲 ~{len(self.sc.l_index)} предмета ~{len(self.sc.c_index)} кабинета"
+        res += f"\n🌲 {get_cl_counter_str(cl_counter)}"
+
+        other_cl = sorted(set(self.sc.lessons) - set(cl_counter))
+        if other_cl:
+            res += f" 🔹{', '.join(other_cl)}"
+
         return res
 
 
