@@ -4,8 +4,7 @@
 Author: Milinuri Nirvalen
 """
 
-from .filters import Filters
-from .filters import construct_filters
+from .intents import Intent
 from .utils import load_file
 from .utils import save_file
 from .utils import plural_form
@@ -142,23 +141,24 @@ def send_day_lessons(lessons: list) -> str:
 
     return message
 
-def send_search_res(flt: Filters, res: list) -> str:
+def send_search_res(intent: Intent, res: list) -> str:
     """Собирает сообщение с результатами поиска в расписании.
 
     Args:
-        flt (Filters): Использованный набор фильстров для уточнения
+        intent (Intent): Намерения для уточнения результатов
         res (dict): Результаты поиска в расписании
 
     Returns:
         str: Готовое сообщение
     """
+
     message = f"🔎 поиск "
-    if flt.cabinets:
-        message += f" [{', '.join(flt.cabinets)}]"
-    if flt.cl:
-        message += f" ({', '.join(flt.cl)})"
-    if flt.lessons:
-        message += f" ({', '.join(flt.lessons)})"
+    if intent.cabinets:
+        message += f" [{', '.join(intent.cabinets)}]"
+    if intent.cl:
+        message += f" ({', '.join(intent.cl)})"
+    if intent.lessons:
+        message += f" ({', '.join(intent.lessons)})"
 
     for day, lessons in enumerate(res):
         while lessons and not lessons[-1]:
@@ -264,6 +264,9 @@ class SPMessages:
         self._users_path = Path(users_path)
         self.user = self.get_user()
         self.sc = Schedule(self.user["class_let"])
+        self.user_intent = Intent.construct(
+            self.sc, cl=self.user["class_let"]
+        )
 
     def send_status(self) -> str:
         """Возвращает некоторую информауию о парсере."""
@@ -285,7 +288,7 @@ class SPMessages:
                 notify_count += 1
             cl_counter[v["class_let"]] += 1
 
-        res = "🌟 Версия sp: 5.4 +1b (91)"
+        res = "🌟 Версия sp: 6.0 +2b (96)"
         res += "\n\n🌲 Автор: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -352,8 +355,7 @@ class SPMessages:
             return []
 
         logger.info("Get lessons updates")
-        flt = construct_filters(self.sc, cl=self.user["class_let"])
-        updates = self.sc.get_updates(flt, self.user["last_parse"])
+        updates = self.sc.get_updates(self.user_intent, self.user["last_parse"])
 
         # Обновление времени последней проверки расписания
         self.user["last_parse"] = self.sc.schedule["last_parse"]
@@ -364,19 +366,20 @@ class SPMessages:
     # Отображение расписания
     # ======================
 
-    def send_lessons(self, flt: Filters) -> str:
+    def send_lessons(self, intent: Intent) -> str:
         """Собирает сообщение с расписанием уроков.
 
         Args:
-            flt (Filters): Набор фильтров для уточнения
+            intent (Intent): Намерения для уточнения расписания
 
         Returns:
-            str: Сообение с расписание уроков
+            str: Сообщение с расписание уроков
         """
-        cl = flt.cl or [self.user["class_let"]]
+
+        cl = intent.cl or (self.user["class_let"],)
         lessons = {x: self.sc.get_lessons(x) for x in cl}
         message = ""
-        for day in flt.days:
+        for day in intent.days:
             message += f"\n📅 На {days_names[day]}:"
             for cl, cl_lessons in lessons.items():
                 message += f"\n🔶 Для {cl}:"
@@ -391,25 +394,26 @@ class SPMessages:
                 message += f"\n{send_update(update, cl)}"
         return message
 
-    def send_today_lessons(self, flt: Filters) -> str:
+    def send_today_lessons(self, intent: Intent) -> str:
         """Сообщение с расписанием на сегодня/завтра.
-        Есои уроки закончились, выводится расписание на завтра.
+        Если уроки закончились, отправляется расписание на завтра.
 
         Args:
-            cl (str, optional): Для какого класса
+            intent (Intent): Намерения для уточнения расписания
 
         Returns:
-            str: Сообщыение с расписанием на сегодня/завтра
+            str: Сообщение с расписанием на сегодня/завтра
         """
+
         now = datetime.now()
         today = now.weekday()
 
         if today == 6:
             today = 0
         else:
-            cl = flt.cl or [self.user["class_let"]]
-            lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
-            hour = timetable[lessons-1][2]
+            cl = intent.cl or (self.user["class_let"],)
+            max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
+            hour = timetable[max_lessons-1][2]
 
             if now.hour >= hour:
                 today += 1
@@ -417,5 +421,4 @@ class SPMessages:
             if today > 5:
                 today = 0
 
-        flt = construct_filters(self.sc, cl=flt.cl, days=today)
-        return self.send_lessons(flt)
+        return self.send_lessons(intent.reconstruct(self.sc, days=today))

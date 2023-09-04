@@ -1,13 +1,21 @@
 """
-Вспомогательные функции для работы.
+Вспомогательные функции для работы парсера.
 
 Author: Muilinuri Nirvalen
 """
+
 from pathlib import Path
 from typing import Optional
+# from typing import Iterable
+from typing import Union
+from typing import Any
 
 import ujson
 from loguru import logger
+
+
+# Работа с json файлами
+# =====================
 
 def save_file(path: Path, data: dict) -> dict:
     """Записывает данные в файл.
@@ -46,6 +54,7 @@ def load_file(path: Path, data: Optional[dict]=None):
     else:
         return {}
 
+
 def check_keys(data: dict, model: dict) -> dict:
     """Проверяет ключи словоря с шаблоном.
     Дополняет отцуцтвуюшие ключи.
@@ -65,6 +74,10 @@ def check_keys(data: dict, model: dict) -> dict:
 
     return res
 
+def ensure_list(a):
+    return (a,) if isinstance(a, (str, int)) else a
+
+
 def plural_form(n: int, v: list[str]) -> str:
     """Возвращает просклонённое слово в зависимости от числа.
 
@@ -78,4 +91,3 @@ def plural_form(n: int, v: list[str]) -> str:
         str: ПРосклонённое слово в зависимости от числа
     """
     return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]]
-

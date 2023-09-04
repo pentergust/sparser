@@ -3,7 +3,8 @@
 
 Author: Milinuri Nirvalen
 """
-from .filters import Filters
+
+from .intents import Intent
 from .utils import load_file
 from .utils import save_file
 
@@ -119,6 +120,7 @@ def clear_day_lessons(day_lessons: list) -> list:
             break
     return day_lessons
 
+
 def parse_lessons(csv_file: str) -> dict:
     """Пересобирает CSV файл расписания в удобный формат.
 
@@ -134,7 +136,7 @@ def parse_lessons(csv_file: str) -> dict:
     # day: Номер текущего дня недели (0-5)
     # Последняя строка с указанием номера урока
     lessons = {}
-    day = 0
+    day = -1
     last_row = 8
     reader = list(csv.reader(csv_file.decode("utf-8").splitlines()))
 
@@ -151,9 +153,9 @@ def parse_lessons(csv_file: str) -> dict:
                 # Если класса нет в расписании, то добавляем его
                 if k not in lessons:
                     lessons[k] = [[] for x in range(6)]
-                lessons[k][day-1].append(f"{row[v] or None}:{row[v+1] or 0}")
+                lessons[k][day].append(f"{row[v] or None}:{row[v+1] or 0}")
 
-        elif day == 6:
+        elif day == 5:
             logger.info("CSV file reading completed")
             break
 
@@ -290,11 +292,11 @@ class Schedule:
         """Получает расписание уроков на неделю для класса."""
         return self.lessons.get(self.get_class(cl), [[], [], [], [], [], []])
 
-    def get_updates(self, flt: Filters, offset: Optional[int] = None) -> list:
+    def get_updates(self, intent: Intent, offset: Optional[int] = None) -> list:
         """Получает список изменений расписания.
 
         Args:
-            flt (Filters): Набор фильтров для уточнения результатов
+            intent (Intent): Намерения для уточнения результатов
         """
         updates = []
 
@@ -307,11 +309,11 @@ class Schedule:
 
             new_update = [{} for x in range(6)]
             for day, day_updates in enumerate(update["updates"]):
-                if flt.days and day not in flt.days:
+                if intent.days and day not in intent.days:
                     continue
 
                 for cl, cl_updates in day_updates.items():
-                    if flt.cl and cl not in flt.cl:
+                    if intent.cl and cl not in intent.cl:
                         continue
 
                     new_update[day][cl] = cl_updates
@@ -321,7 +323,7 @@ class Schedule:
 
         return updates
 
-    def search(self, target: str, flt: Filters,
+    def search(self, target: str, intent: Intent,
                cabinets_mode: Optional[bool]=False) -> list:
         """Поиск в расписании.
         Цель (target) Может быть кабинетом или уроком
@@ -330,7 +332,7 @@ class Schedule:
 
         Args:
             target (str): Цель для поиска
-            flt (Filters): Набор фильтров для уточнения поиска
+            intent (Intent): Намерения для уточнения результатов
             cabinets_mode (bool, optional): Поиск по кабинетам
         """
         res = [[[] for x in range(8)] for x in range(6)]
@@ -341,21 +343,21 @@ class Schedule:
             days = self.l_index.get(target, {})
 
         for day, objs in enumerate(days):
-            if flt.days and day not in flt.days:
+            if intent.days and day not in intent.days:
                 continue
 
             for obj, another in objs.items():
-                if cabinets_mode and flt.lessons and obj not in flt.lessons:
+                if cabinets_mode and intent.lessons and obj not in intent.lessons:
                     continue
 
                 for cl, i in another.items():
-                    if flt.cl and cl not in flt.cl:
+                    if intent.cl and cl not in intent.cl:
                         continue
 
                     for x in i:
-                        if len(flt.cabinets) == 1 and len(flt.lessons):
+                        if len(intent.cabinets) == 1 and len(intent.lessons):
                             res[day][x].append(f"{cl}")
-                        elif len(flt.cl) == 1:
+                        elif len(intent.cl) == 1:
                             res[day][x].append(f"{obj}")
                         else:
                             res[day][x].append(f"{cl}:{obj}")

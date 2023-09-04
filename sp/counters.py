@@ -5,8 +5,7 @@
 Author: Milinuri Nirvalen
 """
 
-from .filters import Filters
-from .filters import construct_filters
+from .intents import Intent
 from .parser import Schedule
 
 from collections import Counter
@@ -51,12 +50,12 @@ def reverse_counter(cnt: Counter) -> dict:
 # Счётчики
 # ========
 
-def cl_counter(sc: Schedule, flt: Filters) -> dict:
+def cl_counter(sc: Schedule, intent: Intent) -> dict:
     """Счётчик по классам с использованием sp.lessons.
 
     Args:
         sc (Schedule): Расписание уроков
-        flt (Filters): Набор фильтров для уточнения подсчётов
+        intent (Intent): Намерения для уточнения подсчётов
 
     Returns:
         dict: Результат работы счётчика
@@ -65,7 +64,7 @@ def cl_counter(sc: Schedule, flt: Filters) -> dict:
     res = {}
 
     for cl, days in sc.lessons.items():
-        if flt.cl and cl not in flt.cl:
+        if intent.cl and cl not in intent.cl:
             continue
 
         day_counter = Counter()
@@ -73,7 +72,7 @@ def cl_counter(sc: Schedule, flt: Filters) -> dict:
         cabinets_counter = Counter()
 
         for day, lessons in enumerate(days):
-            if flt.days and day not in flt.days:
+            if intent.days and day not in intent.days:
                 continue
 
             for x in lessons:
@@ -91,12 +90,12 @@ def cl_counter(sc: Schedule, flt: Filters) -> dict:
                    "cabinets": cabinets_counter}
     return res
 
-def days_counter(sc: Schedule, flt: Filters) -> dict:
+def days_counter(sc: Schedule, intent: Intent) -> dict:
     """Счётчик по дням с использованием sc.lessons.
 
     Args:
         sc (Schedule): Расписание уроков
-        flt (Filters): Набор фильтров для уточнения подсчётов
+        intent (Intent): Намерения для уточнения подсчётов
 
     Returns:
         dict: Результаты счётчика
@@ -110,11 +109,11 @@ def days_counter(sc: Schedule, flt: Filters) -> dict:
     } for x in range(6)}
 
     for cl, days in sc.lessons.items():
-        if flt.cl and cl not in flt.cl:
+        if intent.cl and cl not in intent.cl:
             continue
 
         for day, lessons in enumerate(days):
-            if flt.days and day not in flt.days:
+            if intent.days and day not in intent.days:
                 continue
 
             for lesson in lessons:
@@ -128,13 +127,13 @@ def days_counter(sc: Schedule, flt: Filters) -> dict:
 
     return res
 
-def index_counter(sc: Schedule, flt: Filters,
+def index_counter(sc: Schedule, intent: Intent,
                   cabinets_mode: Optional[bool]=False) -> dict:
     """Счётчик уроков/кабинетов с использованием индексов.
 
     Args:
         sc (Schedule): Расписание уроков
-        flt (Filters): Набор фильтров для уточнения подсчётов
+        intent (Intent): Намерения для уточнения подсчётов
         cabinets_mode (bool, optional): Считать кабинеты вместо уроков
 
     Returns:
@@ -145,12 +144,12 @@ def index_counter(sc: Schedule, flt: Filters,
 
     if cabinets_mode:
         index = sc.c_index
-        obj_filter = flt.cabinets
-        another_filter = flt.lessons
+        obj_filter = intent.cabinets
+        another_filter = intent.lessons
     else:
         index = sc.l_index
-        obj_filter = flt.lessons
-        another_filter = flt.cabinets
+        obj_filter = intent.lessons
+        another_filter = intent.cabinets
 
     for k, v in index.items():
         if obj_filter and k not in obj_filter:
@@ -161,7 +160,7 @@ def index_counter(sc: Schedule, flt: Filters,
                       "main": Counter()}
 
         for day, another_v in enumerate(v):
-            if flt.days and day not in flt.days:
+            if intent.days and day not in intent.days:
                 continue
 
             for another, cl_s in another_v.items():
@@ -169,7 +168,7 @@ def index_counter(sc: Schedule, flt: Filters,
                     continue
 
                 for cl, i in cl_s.items():
-                    if flt.cl and cl not in flt.cl:
+                    if intent.cl and cl not in intent.cl:
                         continue
 
                     res[k]["total"] += len(i)
