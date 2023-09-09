@@ -1,5 +1,4 @@
-"""
-Telegram бот для доступа к SPMessages.
+"""Telegram бот для доступа к SPMessages.
 
 Команды бота для BotFather:
 sc - Уроки на сегодня
@@ -13,48 +12,42 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.13.5 (sp v5.4)
+Ver: 1.14-b1 (sp v6.0 +3b)
 """
 
-from sp.counters import cl_counter
-from sp.counters import days_counter
-from sp.counters import group_counter_res
-from sp.counters import index_counter
-from sp.filters import Filters
-from sp.filters import construct_filters
-from sp.filters import parse_filters
-from sp.parser import Schedule
-from sp.messages import SPMessages
-from sp.messages import send_counter
-from sp.messages import send_update
-from sp.messages import send_search_res
-from sp.utils import load_file
-
+import os
 from contextlib import suppress
 from pathlib import Path
 from typing import Optional
 
-from aiogram import Bot
-from aiogram import Dispatcher
-from aiogram import executor
-from aiogram import types
-from aiogram.types import InlineKeyboardButton
-from aiogram.types import InlineKeyboardMarkup
-from aiogram.utils.exceptions import MessageCantBeDeleted
-from aiogram.utils.exceptions import MessageNotModified
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.middlewares import BaseMiddleware
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.exceptions import MessageCantBeDeleted, MessageNotModified
 from gotify import AsyncGotify
 from loguru import logger
+from dotenv import load_dotenv
+
+from sp.counters import (
+    cl_counter,
+    days_counter,
+    group_counter_res,
+    index_counter,
+)
+from sp.intents import Intent
+from sp.messages import SPMessages, send_counter, send_search_res, send_update
+from sp.parser import Schedule
+from sp.utils import load_file
 
 
 # Определение Middleware
 # ======================
 
 class SpMiddleware(BaseMiddleware):
-    async def setup_sp(self, data: dict, user: types.User, chat: Optional[types.Chat] = None):
+    async def setup_sp(self, data: dict, user: types.User,
+        chat: Optional[types.Chat] = None) -> None:
         cid = chat.id if chat else user.id
         sp = SPMessages(str(cid))
-
         data["sp"] = sp
 
     async def on_pre_process_message(self, message: types.Message, data: dict):
@@ -115,7 +108,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-⚙️ Версия бота: 1.13.5"""
+⚙️ Версия бота: 1.14-b1"""
 
 SET_CLASS_MESSAGE = """
 Для полноценной работы желательно указать ваш класс.
@@ -406,18 +399,18 @@ def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
     Returns:
         str: Готовое сообщение
     """
-    flt = construct_filters(sc)
+    intent = Intent.new()
 
     if counter == "cl":
         if target == "lessons":
-            flt = construct_filters(sc, cl=sc.cl)
-        res = cl_counter(sc, flt)
+            intent = Intent.construct(sc, cl=sc.cl)
+        res = cl_counter(sc, intent)
     elif counter == "days":
-        res = days_counter(sc, flt)
+        res = days_counter(sc, intent)
     elif counter == "lessons":
-        res = index_counter(sc, flt)
+        res = index_counter(sc, intent)
     else:
-        res = index_counter(sc, flt, cabinets_mode=True)
+        res = index_counter(sc, intent, cabinets_mode=True)
 
     groups = group_counter_res(res)
     message = f"✨ Счётчик {counter}/{target}:"
@@ -448,7 +441,7 @@ def send_home_message(sp: SPMessages) -> str:
 
     return message
 
-def process_request(sp: SPMessages, request_text: str) -> str:
+def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
     """Обрабатывает текстовый запрос к расписанию.
 
     Args:
@@ -458,21 +451,20 @@ def process_request(sp: SPMessages, request_text: str) -> str:
     Returns:
         str: Результат запроса к расписанию
     """
-
-    flt = parse_filters(sp.sc, request_text.split())
+    intent = Intent.parse(sp.sc, request_text.split())
 
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
-    if len(flt.cabinets):
-        res = sp.sc.search(list(flt.cabinets)[-1], flt, True)
-        text = send_search_res(flt, res)
+    if len(intent.cabinets):
+        res = sp.sc.search(list(intent.cabinets)[-1], intent, True)
+        text = send_search_res(intent, res)
 
-    elif len(flt.lessons):
-        res = sp.sc.search(list(flt.lessons)[-1], flt, False)
-        text = send_search_res(flt, res)
+    elif len(intent.lessons):
+        res = sp.sc.search(list(intent.lessons)[-1], intent, False)
+        text = send_search_res(intent, res)
 
-    elif flt.cl or flt.days:
-        text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
+    elif intent.cl or intent.days:
+        text = sp.send_lessons(intent) if intent.days else sp.send_today_lessons(intent)
     else:
         text = None
 
@@ -516,7 +508,7 @@ async def info_command(message: types.Message, sp: SPMessages) -> None:
 
 @dp.message_handler(commands=["updates"])
 async def updates_command(message: types.Message, sp: SPMessages) -> None:
-    """Оправляет список изменений в расписании/"""
+    """Оправляет список изменений в расписании."""
     logger.info(message.chat.id)
     updates = sp.sc.updates
     markup = gen_updates_markup(max(len(updates)-1, 0), updates)
@@ -550,8 +542,7 @@ async def sc_command(message: types.Message, sp: SPMessages) -> None:
         await message.answer(text=text)
 
     elif sp.user["class_let"]:
-        flt = construct_filters(sp.sc)
-        await message.answer(text=sp.send_today_lessons(flt),
+        await message.answer(text=sp.send_today_lessons(Intent.new()),
                              reply_markup=markup_generator(sp, week_markup))
     else:
         text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
@@ -651,13 +642,13 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Расписание на сегодня
     elif header == "sc":
-        text = sp.send_today_lessons(construct_filters(sp.sc, cl=[args[0]]))
+        text = sp.send_today_lessons(Intent.construct(sp.sc, cl=args[0]))
         markup = markup_generator(sp, week_markup, cl=args[0])
 
     # Расписание на неделю
     elif header == "week":
-        flt = construct_filters(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=args[0])
-        text = sp.send_lessons(flt)
+        intent = Intent.construct(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=args[0])
+        text = sp.send_lessons(intent)
         markup = markup_generator(sp, sc_markup, cl=args[0])
 
     # Клавиатура для выбора дня
@@ -672,13 +663,13 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
         if day == 7:
             day = [0, 1, 2, 3, 4, 5]
 
-        flt = construct_filters(sp.sc, days=day, cl=args[0])
+        intent = Intent.construct(sp.sc, days=day, cl=args[0])
 
         if day == 6:
-            text = sp.send_today_lessons(flt)
+            text = sp.send_today_lessons(intent)
             markup = markup_generator(sp, week_markup, cl=args[0])
         else:
-            text = sp.send_lessons(flt)
+            text = sp.send_lessons(intent)
             markup = markup_generator(sp, sc_markup, cl=args[0])
 
     # Отправка списка изменений
@@ -694,12 +685,12 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
         # Доплняем шапку сообщения
         if cl is not None and sp.user["set_class"]:
             text += f"для {cl}:\n"
-            flt = construct_filters(sp.sc, cl=args[2])
+            intent = Intent.construct(sp.sc, cl=args[2])
         else:
             text += "в расписании:\n"
-            flt = construct_filters(sp.sc)
+            intent = Intent.new()
 
-        updates = sp.sc.get_updates(flt)
+        updates = sp.sc.get_updates(intent)
         i = max(min(int(args[1]), len(updates)-1), 0)
 
         if len(updates):
