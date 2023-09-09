@@ -2,15 +2,14 @@
 Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.2 (sp 5.4)
+Ver: 1.3 (sp 5.5)
 """
 
 from sp.counters import cl_counter
 from sp.counters import days_counter
 from sp.counters import group_counter_res
 from sp.counters import index_counter
-from sp.filters import construct_filters
-from sp.filters import parse_filters
+from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.messages import send_update
 from sp.messages import send_counter
@@ -69,46 +68,46 @@ def main() -> None:
         logger.info("User class let = {}", args.cl)
 
     elif args.cmd == "sc":
-        flt = parse_filters(sp.sc, args.filters)
-        if flt.days:
-            print(sp.send_lessons(flt))
+        intent = Intent.parse(sp.sc, args.filters)
+
+        if intent.days:
+            print(sp.send_lessons(intent))
         else:
-            print(sp.send_today_lessons(flt))
+            print(sp.send_today_lessons(intent))
 
     elif args.cmd == "search":
-        flt = parse_filters(sp.sc, args.filters)
-        res = sp.sc.search(args.target, flt, args.cabinets)
-        print(send_search_res(flt, res))
+        intent = Intent.parse(sp.sc, args.filters)
+        res = sp.sc.search(args.target, intent, args.cabinets)
+        print(send_search_res(intent, res))
 
     elif args.cmd == "counter":
-        flt = parse_filters(sp.sc, args.filters)
+        intent = Intent.parse(sp.sc, args.filters)
         header = "✨ Счётчик"
 
         if args.counter == "cl":
             header += " по классам:"
-            res = cl_counter(sp.sc, flt)
+            res = cl_counter(sp.sc, intent)
         elif args.counter == "days":
             header += " по дням:"
-            res = days_counter(sp.sc, flt)
+            res = days_counter(sp.sc, intent)
         elif args.counter == "lessons":
             header += " по урокам:"
-            res = index_counter(sp.sc, flt)
+            res = index_counter(sp.sc, intent)
         elif args.counter == "cabinets":
             header += " по кабинетам:"
-            res = index_counter(sp.sc, flt, cabinets_mode=True)
+            res = index_counter(sp.sc, intent, cabinets_mode=True)
 
         groups = group_counter_res(res)
         print(header)
         print(send_counter(groups, target=args.target))
 
     elif args.cmd == "updates":
-        flt = parse_filters(sp.sc, args.filters)
-        for u in sp.sc.get_updates(flt):
+        intent = Intent.parse(sp.sc, args.filters)
+        for u in sp.sc.get_updates(intent):
             print(send_update(u))
 
     else:
-        flt = construct_filters(sp.sc)
-        print(sp.send_today_lessons(flt))
+        print(sp.send_today_lessons(Intent.new()))
 
     if not sp.user["set_class"]:
         logger.warning("Please select your class!")
