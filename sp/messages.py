@@ -282,19 +282,25 @@ class SPMessages:
 
         cl_counter = Counter()
         notify_count = 0
+        active_users = 0
         users = load_file(self._users_path, {})
         for k, v in users.items():
+            if v["last_parse"] == self.sc.schedule["last_parse"]:
+                active_users += 1
             if v.get("notifications"):
                 notify_count += 1
             cl_counter[v["class_let"]] += 1
 
-        res = "🌟 Версия sp: 6.0 +2b (96)"
-        res += "\n\n🌲 Автор: Milinuri Nirvalen (@milinuri)"
+        active_pr = round(active_users/len(users)*100, 2)
+
+        res = "🌟 Версия sp: 6.0 +3b (97)"
+        res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
         res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
+        res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
         res += f"\n🌲 {self.user['class_let']} класс"
-        res += f"\n🌲 ~{len(self.sc.l_index)} предмета ~{len(self.sc.c_index)} кабинета"
+        res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
         res += f"\n🌲 {get_cl_counter_str(cl_counter)}"
 
         other_cl = sorted(set(self.sc.lessons) - set(cl_counter))
