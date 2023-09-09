@@ -12,21 +12,20 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.14-b1 (sp v6.0 +3b)
+Ver: 1.14-b2 (sp v6.0 +3b)
 """
 
 import os
 from contextlib import suppress
-from pathlib import Path
 from typing import Optional
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.exceptions import MessageCantBeDeleted, MessageNotModified
+from dotenv import load_dotenv
 from gotify import AsyncGotify
 from loguru import logger
-from dotenv import load_dotenv
 
 from sp.counters import (
     cl_counter,
@@ -37,7 +36,6 @@ from sp.counters import (
 from sp.intents import Intent
 from sp.messages import SPMessages, send_counter, send_search_res, send_update
 from sp.parser import Schedule
-from sp.utils import load_file
 
 
 # Определение Middleware
@@ -60,22 +58,20 @@ class SpMiddleware(BaseMiddleware):
 # Определеник начальных настроек
 # ==============================
 
-config = load_file(Path("sp_data/telegram.json"),
-    {"token": "YOUR TG API TOKEN",
-    "gotify": {
-        "enabled": False,
-        "base_url": None,
-        "app_token": None
-    }})
+load_dotenv()
 
-if config["gotify"]["enabled"]:
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+GOTIFY_BASE_URL = os.getenv("GOTIFY_BASE_URL")
+GOTIFY_APP_TOKEN = os.getenv("GOTIFY_APP_TOKEN")
+
+if GOTIFY_BASE_URL != "" and GOTIFY_APP_TOKEN != "":
     gotify = AsyncGotify(
-        base_url=config["gotify"]["base_url"],
-        app_token=config["gotify"]["app_token"])
+        base_url=GOTIFY_BASE_URL,
+        app_token=GOTIFY_APP_TOKEN)
 else:
     gotify = None
 
-bot = Bot(config["token"])
+bot = Bot(TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 dp.middleware.setup(SpMiddleware())
 logger.add("sp_data/telegram.log")
@@ -108,7 +104,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!"""
 
 INFO_MESSAGE = """
-⚙️ Версия бота: 1.14-b1"""
+⚙️ Версия бота: 1.14-b2"""
 
 SET_CLASS_MESSAGE = """
 Для полноценной работы желательно указать ваш класс.
