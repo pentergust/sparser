@@ -9,6 +9,7 @@ from typing import Optional
 # from typing import Iterable
 from typing import Union
 from typing import Any
+from types import NoneType
 
 import ujson
 from loguru import logger
@@ -75,7 +76,7 @@ def check_keys(data: dict, model: dict) -> dict:
     return res
 
 def ensure_list(a):
-    return (a,) if isinstance(a, (str, int)) else a
+    return (a,) if isinstance(a, (str, int, NoneType)) else a
 
 
 def plural_form(n: int, v: list[str]) -> str:
