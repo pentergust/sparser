@@ -12,7 +12,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.14-b3 (sp v6.0 +3b)
+Ver: 1.14-b4 (sp v6.0 +3b)
 """
 
 import os
@@ -122,15 +122,15 @@ NO_CL_HOME_MESSAGE = """💡 Некоторые примеры запросов:
 """
 
 INFO_MESSAGE = """
-⚙️ Версия бота: 1.14-b3"""
+⚙️ Версия бота: 1.14-b4"""
 
 SET_CLASS_MESSAGE = """
 Для полноценной работы желательно указать ваш класс.
 Для быстрого просмотра расписания и списка изменений.
 
-🌟 Вы можете пропустить выбор класса командой /pass.
+🌟 Вы можете пропустить выбор класса нажав кнопку (/pass).
 Но это накладывает некоторые ограничения.
-Прочитать об ограничениях можно по команде /restrictions.
+Прочитать об ограничениях можно нажав кнопку (/restrictions).
 
 Способы указать класс:
 -- В переписке с ботом: следуюшим сообщением введите ваш класс ("1а").
@@ -162,7 +162,6 @@ def send_notification_message(sp: SPMessages) -> str:
     Returns:
         str: Сообщение с информацией об уведомлениях.
     """
-
     message = "Вы получени уведомление, если расписание изменится.\n"
 
     if sp.user["notifications"]:
@@ -194,7 +193,6 @@ def send_counter_message(sc: Schedule, counter: str, target: str) -> str:
     Returns:
         str: Собранное сообщение от счётчиков.
     """
-
     intent = Intent.new()
 
     if counter == "cl":
@@ -226,7 +224,6 @@ def send_home_message(sp: SPMessages) -> str:
     Returns:
         str: Готовое главное сообщение бота.
     """
-
     cl = sp.user["class_let"]
 
     if cl:
@@ -243,8 +240,16 @@ def send_home_message(sp: SPMessages) -> str:
 # Определение клавиатур бота
 # ==========================
 
-to_home_markup = InlineKeyboardMarkup().add(
+TO_HOME_MARKUP = InlineKeyboardMarkup().add(
     InlineKeyboardButton(text="🏠Домой", callback_data="home"))
+PASS_SET_CL_MARKUP = InlineKeyboardMarkup(inline_keyboard=[[
+    InlineKeyboardButton(text="Не привязаывать класс", callback_data="pass"),
+    InlineKeyboardButton(text="ограничения", callback_data="restrictions"),
+]])
+BACK_SET_CL_MARKUP = InlineKeyboardMarkup(inline_keyboard=[[
+    InlineKeyboardButton(text="◁", callback_data="set_class"),
+    InlineKeyboardButton(text="Не привязаывать класс", callback_data="pass"),
+]])
 
 week_markup = [{"home": "🏠", "week {cl}": "На неделю", "select_day {cl}":"▷"}]
 sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}": "▷"}]
@@ -526,7 +531,7 @@ async def restrictions_commend(message: types.Message) -> None:
 async def info_command(message: types.Message, sp: SPMessages) -> None:
     """Отправляет статус парсера и бота."""
     await message.answer(text=sp.send_status()+INFO_MESSAGE,
-                         reply_markup=to_home_markup)
+                         reply_markup=TO_HOME_MARKUP)
 
 @dp.message_handler(commands=["updates"])
 async def updates_command(message: types.Message, sp: SPMessages) -> None:
@@ -594,7 +599,7 @@ async def set_class_command(message: types.Message, sp: SPMessages) -> None:
         sp.reset_user()
         text = SET_CLASS_MESSAGE
 
-    await message.answer(text=text)
+    await message.answer(text=text, reply_markup=PASS_SET_CL_MARKUP)
 
 @dp.message_handler(commands=["notify"])
 async def notify_command(message: types.Message, sp: SPMessages) -> None:
@@ -735,7 +740,18 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
     elif header == "set_class":
         sp.reset_user()
         text = SET_CLASS_MESSAGE
-        markup = to_home_markup
+        markup = PASS_SET_CL_MARKUP
+
+    elif header == "pass":
+        sp.user["set_class"] = True
+        sp.save_user()
+        text = send_home_message(sp)
+        markup = get_home_markup(sp)
+
+    elif header == "restrictions":
+        text = RESTRICTIONS_MESSAGE
+        markup = BACK_SET_CL_MARKUP
+
 
     elif header == "notify":
         command, *arg_hours = args
@@ -760,12 +776,15 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
         enabled = sp.user["notifications"]
         hours = sp.user["hours"]
 
-        text = send_notification_message(sp, enabled, hours)
+        text = send_notification_message(sp)
         markup = get_notifications_markup(sp, enabled, hours)
 
     else:
-        text = "👀 Упс, эта клавиатура устарела."
-        markup = to_home_markup
+        text = "👀 Упс, похоже эта клавиатура устарела."
+        text += f"\nHeader: {header}"
+        text += f"\nArgs: {args}"
+        text += "\n\nНапишите @milinuri, если считаете это ошибкой."
+        markup = TO_HOME_MARKUP
         logger.warning("Unknown header - {}", header)
 
     with suppress(MessageNotModified):
