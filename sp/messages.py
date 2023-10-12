@@ -254,7 +254,7 @@ def get_str_delta(s: int, hours: Optional[bool]=True) -> str:
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
 
-    def __init__(self, uid: str) -> None:
+    def __init__(self, uid: str, user_data: Optional[dict]=None) -> None:
         """
         Args:
             uid (str): Кто пользуется расписанием
@@ -265,7 +265,7 @@ class SPMessages:
 
         self.uid = uid
         self._users_path = Path(users_path)
-        self.user = self.get_user()
+        self.user = self.get_user(user_data)
         self.sc = Schedule(self.user["class_let"])
         self.user_intent = Intent.construct(
             self.sc, cl=self.user["class_let"]
@@ -296,7 +296,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +1b (100)"
+        res = "🌟 Версия sp: 5.7 +2b (101)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -316,14 +316,21 @@ class SPMessages:
     # Управление данными пользователя
     # ===============================
 
-    def get_user(self) -> dict:
-        """Возвращает данные пользователя или данные по умолчанию."""
-        user = load_file(self._users_path).get(self.uid)
+    def get_user(self, user_data: Optional[dict]=None) -> dict:
+        """Возвращает данные пользователя или данные по умолчанию.
 
-        if user is None:
-            return default_user_data.copy()
-        else:
-            return check_keys(user, default_user_data)
+        Args:
+            user_data (dict): Переданный данные пользователя.
+
+        Returns:
+            dict: Данные пользователя
+        """
+
+        if user_data is None:
+            user = load_file(self._users_path).get(self.uid)
+            if user is None:
+                return default_user_data.copy()
+        return check_keys(user_data, default_user_data)
 
     def save_user(self) -> None:
         """Записывает данные пользователя в self._users_path."""
