@@ -13,6 +13,7 @@ import hashlib
 import requests
 
 from collections import deque
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -45,7 +46,7 @@ def get_sc_updates(a: dict, b: dict) -> list:
     Returns:
         list: Список изменений в расписании
     """
-    updates = [{} for x in range(6)]
+    updates = [defaultdict(lambda: [None] * 8) for x in range(6)]
 
     for k, v in b.items():
         if not k in a:
@@ -61,10 +62,7 @@ def get_sc_updates(a: dict, b: dict) -> list:
             for i, l in enumerate(lessons):
                 al = a_lessons[i] if i <= len(a_lessons)-1 else None
                 if l != al:
-                    if k not in updates[day]:
-                        updates[day][k] = []
-
-                    updates[day][k].append([i, al, l])
+                    updates[day][k][i] = (al, l)
     return updates
 
 def get_index(sp_lessons: dict, lessons_mode: Optional[bool] = True) -> dict:

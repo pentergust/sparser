@@ -59,25 +59,28 @@ def send_cl_updates(cl_updates: list) -> str:
         str: Сообщение с изменениями в расписании для класса
     """
     message = ""
-    for u in cl_updates:
-        if str(u[1]) == "None":
-            message += f"{u[0]+1}: ++{u[2]}\n"
+    for i, u in enumerate(cl_updates):
+        if u is None:
             continue
 
-        message += f"{u[0]+1}: "
-        ol, oc = str(u[1]).split(':')
-        l, c = str(u[2]).split(':')
+        if str(u[0]) == "None":
+            message += f"{i+1}: ++{u[1]}\n"
+            continue
+
+        message += f"{i+1}: "
+        ol, oc = str(u[0]).split(':')
+        l, c = str(u[1]).split(':')
 
         if ol == "---":
-            message += f"++{u[2]}\n"
+            message += f"++{u[1]}\n"
         elif l == "---":
-            message += f"--{u[1]}\n"
+            message += f"--{u[0]}\n"
         elif oc == c:
             message += f"{ol} -> {l}:{c}\n"
         elif ol == l:
             message += f"{l}: ({oc} -> {c})\n"
         else:
-            message += f"{u[1]} -> {u[2]}\n"
+            message += f"{u[0]} -> {u[1]}\n"
 
     return message
 
@@ -293,7 +296,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 6.0 +4b (98)"
+        res = "🌟 Версия sp: 5.7 +1b (100)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
