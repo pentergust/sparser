@@ -296,7 +296,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +2b (101)"
+        res = "🌟 Версия sp: 5.7 +3b (102)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -327,9 +327,10 @@ class SPMessages:
         """
 
         if user_data is None:
-            user = load_file(self._users_path).get(self.uid)
-            if user is None:
+            user_data = load_file(self._users_path).get(self.uid)
+            if user_data is None:
                 return default_user_data.copy()
+
         return check_keys(user_data, default_user_data)
 
     def save_user(self) -> None:
