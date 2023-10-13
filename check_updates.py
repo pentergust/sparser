@@ -8,7 +8,7 @@
 - Удаляет недействительных пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.5 (sp 6.0-b4, telegram 1.14-b4)
+Ver: 0.5 (sp 5.7+2b, telegram 1.14-b4)
 """
 
 from datetime import datetime
@@ -31,31 +31,29 @@ CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
 Настройки чата были перемещены.."""
 
 
-async def process_update(bot, hour: int, uid: str, user: dict) -> None:
+async def process_update(bot, hour: int, sp: SPMessages) -> None:
     """Проверяет обновления для пользователя (или чата).
 
     Args:
         bot (bot): Экземпляр aiogram бота.
         hour (int): Текущий час.
         uid (str): ID чата для проверки.
-        user (dict): Данные пользователя.
+        sp (SPMessages): Данные пользователя.
     """
-    sp = SPMessages(uid)
-
     # Отправляем расписание в указанные часы
-    if str(hour) in user["hours"]:
+    if str(hour) in sp.user["hours"]:
         message = sp.send_today_lessons(Intent.new())
         markup = markup_generator(sp, week_markup)
-        await bot.send_message(uid, text=message, reply_markup=markup)
+        await bot.send_message(sp.uid, text=message, reply_markup=markup)
 
     # Отправляем уведомления об обновлениях
     updates = sp.get_lessons_updates()
     if updates:
         message = "🎉 У вас изменилось расписание!"
         for update in updates:
-            message += f"\n{send_update(update)}"
+            message += f"\n{send_update(update, cl=sp.user['class_let'])}"
 
-        await bot.send_message(uid, text=message)
+        await bot.send_message(sp.uid, text=message)
 
 
 # Главная функция скрипта
@@ -72,9 +70,10 @@ async def main() -> None:
         if not v.get("notifications") or not v.get("class_let"):
             continue
 
+        sp = SPMessages(k, v)
         logger.info("User: {}", k)
         try:
-           await process_update(bot, hour, k, v)
+           await process_update(bot, hour, sp)
 
         # Если чат мигрировал в супергруппу
         except MigrateToChat as e:
