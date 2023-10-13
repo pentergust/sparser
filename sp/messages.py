@@ -236,7 +236,7 @@ def get_cl_counter_str(cl_counter: Counter) -> str:
         groups[v].append(k)
 
     res = ""
-    for k, v in groups.items():
+    for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
         res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
 
     return res
@@ -290,13 +290,13 @@ class SPMessages:
         for k, v in users.items():
             if v["last_parse"] == self.sc.schedule["last_parse"]:
                 active_users += 1
-            if v.get("notifications"):
+            if v.get("notifications") and v.get("set_class"):
                 notify_count += 1
             cl_counter[v["class_let"]] += 1
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +3b (102)"
+        res = "🌟 Версия sp: 5.7 +4b (103)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -308,7 +308,7 @@ class SPMessages:
 
         other_cl = sorted(set(self.sc.lessons) - set(cl_counter))
         if other_cl:
-            res += f" 🔹{', '.join(other_cl)}"
+            res += f" 🔸{', '.join(other_cl)}"
 
         return res
 
