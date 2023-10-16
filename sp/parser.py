@@ -151,7 +151,10 @@ def parse_lessons(csv_file: str) -> dict:
                 # Если класса нет в расписании, то добавляем его
                 if k not in lessons:
                     lessons[k] = [[] for x in range(6)]
-                lessons[k][day].append(f"{row[v] or None}:{row[v+1] or 0}")
+                
+                lesson = row[v].strip(" .-").lower() or None
+                cabinet = row[v+1].strip().lower() or 0
+                lessons[k][day].append(f"{lesson}:{cabinet}")
 
         elif day == 5:
             logger.info("CSV file reading completed")
