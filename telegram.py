@@ -12,7 +12,7 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.14-b4 (sp v6.0 +3b)
+Ver: 1.14 +5b (sp v6.0 +3b)
 """
 
 import os
@@ -122,7 +122,7 @@ NO_CL_HOME_MESSAGE = """💡 Некоторые примеры запросов:
 """
 
 INFO_MESSAGE = """
-⚙️ Версия бота: 1.14-b4"""
+⚙️ Версия бота: 1.14 +5b"""
 
 SET_CLASS_MESSAGE = """
 Для полноценной работы желательно указать ваш класс.
@@ -636,6 +636,11 @@ async def main_handler(message: types.Message, sp: SPMessages) -> None:
         sp.set_class(text)
         markup = get_home_markup(sp)
         await message.answer(text=send_home_message(sp), reply_markup=markup)
+
+    elif message.chat.type == "private":
+        text = "👀 Такого класса на существует."
+        text += f"\n💡 Список доступных классов: {', '.join(sp.sc.lessons)}"
+        await message.answer(text=text)
 
 
 # Обработчик inline-кнопок
