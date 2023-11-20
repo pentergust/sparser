@@ -92,3 +92,25 @@ def plural_form(n: int, v: list[str]) -> str:
         str: ПРосклонённое слово в зависимости от числа
     """
     return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]]
+
+
+def get_str_timedelta(s: int | float, hours: Optional[bool]=True) -> str:
+    """Возаращает строковый обратный отсчёт из количества секунд.
+
+    Если hours = False -> ММ:SS.
+    Если hours = True -> HH:MM:SS.
+
+    Args:
+        s (int | float): Количество секунд прошедшего времени.
+        hours (bool, optional): Учитывать ли часы.
+
+    Returns:
+        str: Строковый обраный отсчёт.
+    """
+    if hours:
+        hours, remainder = divmod(int(s), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    else:
+        minutes, seconds = divmod(int(s), 60)
+        return f"{minutes:02}:{seconds:02}"

@@ -9,6 +9,7 @@ from .utils import load_file
 from .utils import save_file
 from .utils import plural_form
 from .utils import check_keys
+from .utils import get_str_timedelta
 from .parser import Schedule
 from .counters import reverse_counter
 
@@ -84,6 +85,46 @@ def send_cl_updates(cl_updates: list) -> str:
 
     return message
 
+def get_update_header(update: dict) -> str:
+    """Возвращает шапку списка изменений.
+
+    Returns:
+        str: Шапка списка изменений.
+    """
+    message = "📀"
+
+    # Получаем timestamp обновления
+    now = datetime.now().timestamp()
+    # ic(update)
+    end_timestamp = update.get("end_time", 0)
+    start_timespamp = update.get("start_time", end_timestamp)
+    update_delta = end_timestamp - start_timespamp
+    now_delta = now - end_timestamp
+
+    etime = datetime.fromtimestamp(end_timestamp)
+    stime = datetime.fromtimestamp(start_timespamp)
+
+    if stime != etime:
+        t = stime.strftime("%d.%m %H:%M")
+        message += f" от {t}"
+
+        if update_delta <= 172800:
+            message += f" [{get_str_timedelta(update_delta, hours=True)}]"
+
+        message += " ->\n"
+        t = etime.strftime("%d.%m %H:%M" if stime.day != etime.day else "%H:%M")
+    else:
+        t = etime.strftime("%d.%m %H:%M")
+
+
+    message += f"до {t}:"
+    if now_delta <= 86400:
+        message += f" ({get_str_timedelta(now_delta, hours=True)} назад)"
+
+    return message
+
+
+
 def send_update(update: dict, cl: Optional[str]=None) -> str:
     """Собирает сообщение со списком изменений в расписании.
 
@@ -94,18 +135,15 @@ def send_update(update: dict, cl: Optional[str]=None) -> str:
     Returns:
         str: Готовое сообщение с изменениями в расписании
     """
-
-    t = datetime.fromtimestamp(update["time"]).strftime("%d.%m %H:%M")
-    message = f"⏰ Примерно {t}:\n"
-
+    message = get_update_header(update)
     for day, day_updates in enumerate(update["updates"]):
         if not day_updates:
             continue
 
-        message += f"\n🔷 На {days_names[day]}\n"
+        message += f"\n🔷 На {days_names[day]}"
         for u_cl, cl_updates in day_updates.items():
             if cl is None or cl is not None and cl != u_cl:
-                message += f"🔸 Для {u_cl}:"
+                message += f"\n🔸 Для {u_cl}:"
 
             message += "\n" if len(cl_updates) > 1 else " "
             message += send_cl_updates(cl_updates)
@@ -241,15 +279,6 @@ def get_cl_counter_str(cl_counter: Counter) -> str:
 
     return res
 
-def get_str_delta(s: int, hours: Optional[bool]=True) -> str:
-    if hours:
-        hours, remainder = divmod(s, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{hours:02}:{minutes:02}:{seconds:02}"
-    else:
-        minutes, seconds = divmod(s, 60)
-        return f"{minutes:02}:{seconds:02}"
-
 
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
@@ -280,8 +309,8 @@ class SPMessages:
         nu_str = get_next_update_str(next_update, now)
         lp_str = get_next_update_str(last_parse, now)
 
-        nu_delta = get_str_delta((next_update - now).seconds, False)
-        lp_delta = get_str_delta((now - last_parse).seconds)
+        nu_delta = get_str_timedelta((next_update - now).seconds, False)
+        lp_delta = get_str_timedelta((now - last_parse).seconds)
 
         cl_counter = Counter()
         notify_count = 0
@@ -296,7 +325,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +5b (104)"
+        res = "🌟 Версия sp: 5.7 +6b (108)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -368,14 +397,14 @@ class SPMessages:
         if self.user["class_let"] is None:
             return []
 
-        if self.sc.schedule["last_parse"] == self.user["last_parse"]:
+        if self.sc.schedule["last_parse"] <= self.user["last_parse"]:
             return []
 
         logger.info("Get lessons updates")
         updates = self.sc.get_updates(self.user_intent, self.user["last_parse"])
 
         # Обновление времени последней проверки расписания
-        self.user["last_parse"] = self.sc.schedule["last_parse"]
+        self.user["last_parse"] = self.sc.schedule["last_parse"]+1
         self.save_user()
         return updates
 
