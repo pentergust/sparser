@@ -9,7 +9,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.6 (sp 5.7+2b, telegram 1.14 +b5)
+Ver: 0.7 (sp 5.7+2b, telegram 1.14 +b5)
 """
 
 from datetime import datetime
@@ -32,6 +32,9 @@ CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
 dp = Dispatcher(bot)
 logger.add("sp_data/updates.log")
 
+
+# Функци для обработки списка пользователей
+# =========================================
 
 async def process_update(bot, hour: int, sp: SPMessages) -> None:
     """Проверяет обновления для одного пользователя (или чата).
@@ -61,6 +64,40 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
 
         await bot.send_message(sp.uid, text=message)
 
+async def migrate_users(migrate_ids: list[tuple[str, str]]) -> None:
+    """Перемещает данные пользователей (чатов) на новый ID.
+
+    Например, вследствии перемещания группы в супергруппу.
+
+    Args:
+        migrate_ids (list[tuple[str, str]]): ID для миграции.
+    """
+    logger.info("Start migrate users...")
+    users = load_file(Path(users_path), {})
+    for old, new in migrate_ids:
+        logger.info("Migrate {} -> {}". old, new)
+        users[new] = users[old]
+        del users[k]
+        await bot.send_message(new, CHAT_MIGRATE_MESSAGE)
+    save_file(Path(users_path), users)
+
+async def remove_users(remove_ids: list[str]):
+    """Удаляет недействительные ID пользователей (чата).
+
+    Если пользователь заблокировал бота.
+    Если бота исключили из чата.
+    Если пользователь удалил аккаунт.
+
+    Args:
+        remove_ids (list[str]) Список ID для удаления.
+    """
+    logger.info("Start remove users...")
+    users = load_file(Path(users_path), {})
+    for x in remove_ids:
+        logger.info("Remove {}". x)
+        del users[x]
+    save_file(Path(users_path), users)
+
 
 # Главная функция скрипта
 # =======================
@@ -68,7 +105,8 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
 async def main() -> None:
     hour = datetime.now().hour
     users = load_file(Path(users_path), {})
-    edited = False
+    remove_ids = []
+    migrate_ids = []
 
     logger.info("Start of the update process...")
     for k, v in list(users.items()):
@@ -88,29 +126,23 @@ async def main() -> None:
         # Если чат сменил свой ID.
         # Например, стал из обычного супергруппой.
         except MigrateToChat as e:
-            logger.info("Migrate to chat: {}", e)
-            new_id = e.migrate_to_chat_id
-            users[new_id] = users[k]
-            del users[k]
-            await bot.send_message(new_id, CHAT_MIGRATE_MESSAGE)
-            edited = True
+            migrate_ids.append((k, e.migrate_to_chat_id))
 
         # Если что-то произошло с пользователем:
         # Заблокировал бота, исключил из чата, исчез сам ->
         # Удаляем пользователя (чат) из списка чатов.
         except (BotKicked, BotBlocked, UserDeactivated):
-            logger.info("Remove user {}", k)
-            edited = True
-            del users[k]
+            remove_ids.append(k)
 
         # Ловим все прочие исключения и отобржаем их на экран
         except Exception as e:
             logger.exception(e)
 
     # Если данные изменились - записываем изменения в файл
-    if edited:
-        logger.info("Save changed users file")
-        save_file(Path(users_path), users)
+    if remove_ids:
+        await remove_users(remove_ids)
+    if migrate_ids:
+        await migrate_users(migrate_ids)
 
 
 # Запуск скрипта обновлений
