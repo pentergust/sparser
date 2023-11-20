@@ -20,7 +20,6 @@ from typing import Optional
 
 from loguru import logger
 
-
 url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=csv"
 sc_path = "sp_data/sc.json"
 sc_updates_path = "sp_data/updates.json"
@@ -151,7 +150,7 @@ def parse_lessons(csv_file: str) -> dict:
                 # Если класса нет в расписании, то добавляем его
                 if k not in lessons:
                     lessons[k] = [[] for x in range(6)]
-                
+
                 lesson = row[v].strip(" .-").lower() or None
                 cabinet = row[v+1].strip().lower() or 0
                 lessons[k][day].append(f"{lesson}:{cabinet}")
@@ -216,7 +215,11 @@ class Schedule:
         sc_changes = deque(load_file(self.updates_path, []), 30)
         updates = get_sc_updates(a.get("lessons", {}), b["lessons"])
         if sum(map(len, updates)):
-            sc_changes.append({"time": b["last_parse"], "updates": updates})
+            sc_changes.append({
+                "start_time": sc_changes[-1]["end_time"],
+                "end_time": b["last_parse"],
+                "updates": updates}
+            )
             save_file(self.updates_path, list(sc_changes))
 
     def _update_index_files(self, sp_lessons: dict) -> None:
@@ -305,7 +308,7 @@ class Schedule:
             if update is None:
                 continue
 
-            if offset is not None and update["time"] < offset:
+            if offset is not None and update["end_time"] < offset:
                 continue
 
             new_update = [{} for x in range(6)]
@@ -320,7 +323,11 @@ class Schedule:
                     new_update[day][cl] = cl_updates
 
             if sum(map(len, new_update)):
-                updates.append({"time": update["time"], "updates": new_update})
+                updates.append({
+                    "start_time": update["start_time"],
+                    "end_time": update["end_time"],
+                    "updates": new_update
+                })
 
         return updates
 
