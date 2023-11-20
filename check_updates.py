@@ -2,20 +2,21 @@
 Скрипт для автоматической проверки расписания.
 Работает в паре с Teleram ботом.
 
+- Проверяет пользователей.
 - Обновляет расписание.
-- Рассылает изменения в рпсписпнии.
-- Рассылает расписание в указанный час.
-- Удаляет недействительных пользователей.
+- Отправляет изменения в расписании пользователям.
+- Рассылает расписание на сегодня/завтра пользователям.
+- Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.5 (sp 5.7+2b, telegram 1.14-b4)
+Ver: 0.6 (sp 5.7+2b, telegram 1.14 +b5)
 """
 
 from datetime import datetime
 from pathlib import Path
 
 from aiogram import Dispatcher, executor
-from aiogram.utils.exceptions import BotBlocked, BotKicked, MigrateToChat
+from aiogram.utils.exceptions import BotBlocked, BotKicked, MigrateToChat, UserDeactivated
 from loguru import logger
 
 from sp.intents import Intent
@@ -24,15 +25,19 @@ from sp.utils import load_file, save_file
 from telegram import bot, markup_generator, week_markup
 
 
-dp = Dispatcher(bot)
-logger.add("sp_data/updates.log")
-
+# Если данные мигрировали вследствии .
 CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
 Настройки чата были перемещены.."""
 
+dp = Dispatcher(bot)
+logger.add("sp_data/updates.log")
+
 
 async def process_update(bot, hour: int, sp: SPMessages) -> None:
-    """Проверяет обновления для пользователя (или чата).
+    """Проверяет обновления для одного пользователя (или чата).
+
+    Отправляет расписани на сегодня/завтра в указанный час или
+    список измнений в расписании, при наличии.
 
     Args:
         bot (bot): Экземпляр aiogram бота.
@@ -40,11 +45,12 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
         uid (str): ID чата для проверки.
         sp (SPMessages): Данные пользователя.
     """
-    # Отправляем расписание в указанные часы
+    # Рассылка расписания в указанные часы.
     if str(hour) in sp.user["hours"]:
-        message = sp.send_today_lessons(Intent.new())
-        markup = markup_generator(sp, week_markup)
-        await bot.send_message(sp.uid, text=message, reply_markup=markup)
+        await bot.send_message(sp.uid,
+            text=sp.send_today_lessons(Intent.new()),
+            reply_markup=markup_generator(sp, week_markup)
+        )
 
     # Отправляем уведомления об обновлениях
     updates = sp.get_lessons_updates()
@@ -62,20 +68,25 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
 async def main() -> None:
     hour = datetime.now().hour
     users = load_file(Path(users_path), {})
-    logger.info("Start of the update process...")
     edited = False
 
+    logger.info("Start of the update process...")
     for k, v in list(users.items()):
-        # Если не включены уведомленияя или не укзаан класс
+        # Если у пользователя отключены уведомления или не указан
+        # класс по умолчанию -> пропускаем.
         if not v.get("notifications") or not v.get("class_let"):
             continue
 
+        # Получаем экземлпря генратора сообщения пользователя
+        # TODO: данные пользователя вновь загружаются из файла на
+        # каждой итерации
         sp = SPMessages(k, v)
         logger.info("User: {}", k)
         try:
-           await process_update(bot, hour, sp)
+            await process_update(bot, hour, sp)
 
-        # Если чат мигрировал в супергруппу
+        # Если чат сменил свой ID.
+        # Например, стал из обычного супергруппой.
         except MigrateToChat as e:
             logger.info("Migrate to chat: {}", e)
             new_id = e.migrate_to_chat_id
@@ -84,24 +95,26 @@ async def main() -> None:
             await bot.send_message(new_id, CHAT_MIGRATE_MESSAGE)
             edited = True
 
-        # Если бота заблокировали или исключили
-        except (BotKicked, BotBlocked):
+        # Если что-то произошло с пользователем:
+        # Заблокировал бота, исключил из чата, исчез сам ->
+        # Удаляем пользователя (чат) из списка чатов.
+        except (BotKicked, BotBlocked, UserDeactivated):
             logger.info("Remove user {}", k)
             edited = True
             del users[k]
 
-        # Все прочие исключения
+        # Ловим все прочие исключения и отобржаем их на экран
         except Exception as e:
             logger.exception(e)
 
-    # Если данные изменились - записываем изменения
+    # Если данные изменились - записываем изменения в файл
     if edited:
         logger.info("Save changed users file")
         save_file(Path(users_path), users)
 
 
-# Запуск скрипта
-# ==============
+# Запуск скрипта обновлений
+# =========================
 
 if __name__ == '__main__':
     executor.start(dp, main())
