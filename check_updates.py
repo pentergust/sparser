@@ -9,7 +9,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.7 (sp 5.7+2b, telegram 1.14 +b5)
+Ver: 0.8 (sp 5.7+2b, telegram 1.14 +b5)
 """
 
 from datetime import datetime
@@ -31,10 +31,11 @@ CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
 
 dp = Dispatcher(bot)
 logger.add("sp_data/updates.log")
+_TIMETAG_PATH = Path("sp_data/last_update")
 
 
-# Функци для обработки списка пользователей
-# =========================================
+# Функции для обработки списка пользователей
+# ==========================================
 
 async def process_update(bot, hour: int, sp: SPMessages) -> None:
     """Проверяет обновления для одного пользователя (или чата).
@@ -99,11 +100,30 @@ async def remove_users(remove_ids: list[str]):
     save_file(Path(users_path), users)
 
 
+def set_timetag(path: Path, timestamp: int) -> None:
+    """Оставляет временную метку последней проверки обнолвения.
+
+    После успешной работы скрипта записывает в файл временную метку.
+    Метка может использватьна для проверки работаспособности
+    скрипта обновлений.
+
+    Args:
+        path (Path): Путь к файлу временной метки.
+        timestamp (int): Временная UNIXtime метка.
+    """
+
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, "w") as f:
+        f.write(str(timestamp))
+
+
 # Главная функция скрипта
 # =======================
 
 async def main() -> None:
-    hour = datetime.now().hour
+    now = datetime.now()
     users = load_file(Path(users_path), {})
     remove_ids = []
     migrate_ids = []
@@ -121,7 +141,7 @@ async def main() -> None:
         sp = SPMessages(k, v)
         logger.info("User: {}", k)
         try:
-            await process_update(bot, hour, sp)
+            await process_update(bot, now.hour, sp)
 
         # Если чат сменил свой ID.
         # Например, стал из обычного супергруппой.
@@ -143,6 +163,9 @@ async def main() -> None:
         await remove_users(remove_ids)
     if migrate_ids:
         await migrate_users(migrate_ids)
+
+    # Осталяем временную метку успешного обновления
+    set_timetag(_TIMETAG_PATH, int(now.timestamp()))
 
 
 # Запуск скрипта обновлений

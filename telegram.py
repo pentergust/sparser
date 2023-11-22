@@ -12,12 +12,14 @@ info - Информация о боте
 TODO: Разделить код бота на несколько файлов
 
 Author: Milinuri Nirvalen
-Ver: 1.14 +5b (sp v6.0 +3b)
+Ver: 1.14 +6b (sp v6.0 +3b)
 """
 
 import os
 from contextlib import suppress
 from typing import Optional
+from pathlib import Path
+from datetime import datetime
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.middlewares import BaseMiddleware
@@ -36,6 +38,7 @@ from sp.counters import (
 from sp.intents import Intent
 from sp.messages import SPMessages, send_counter, send_search_res, send_update
 from sp.parser import Schedule
+from sp.utils import get_str_timedelta
 
 
 # Определение Middleware
@@ -77,7 +80,7 @@ dp.middleware.setup(SpMiddleware())
 logger.add("sp_data/telegram.log")
 days_names = ["понедельник", "вторник", "среда", "четверг", "пятница",
               "суббота", "сегодня", "неделя"]
-
+_TIMETAG_PATH = Path("sp_data/last_update")
 
 # Тексты сообщений
 # ================
@@ -121,9 +124,6 @@ NO_CL_HOME_MESSAGE = """💡 Некоторые примеры запросов:
 🌟 Порядок и форма аргументов не важны, балуйтесь!
 """
 
-INFO_MESSAGE = """
-⚙️ Версия бота: 1.14 +5b"""
-
 SET_CLASS_MESSAGE = """
 Для полноценной работы желательно указать ваш класс.
 Для быстрого просмотра расписания и списка изменений.
@@ -152,89 +152,6 @@ RESTRICTIONS_MESSAGE = """🚫 Ограничения не привязанно�
 
 🌟 Остальные функции работают одинаково."""
 
-
-def send_notification_message(sp: SPMessages) -> str:
-    """Отправляет сообщение с информацией о статуск уведомлений.
-
-    Args:
-        sp (SPMessages): Экземпляр генератора сообщений.
-
-    Returns:
-        str: Сообщение с информацией об уведомлениях.
-    """
-    message = "Вы получени уведомление, если расписание изменится.\n"
-
-    if sp.user["notifications"]:
-        message += "\n🔔 уведомления включены."
-        message += "\n\nТакже вы можете настроить отправку расписания."
-        message += "\nВ указанное время бот отправит расписание вашего класса."
-        hours = sp.user["hours"]
-
-        if hours:
-            message += "\n\nРасписани будет отправлено в: "
-            message += ", ".join(map(str, set(hours)))
-    else:
-        message += "\n🔕 уведомления отключены."
-
-    return message
-
-def send_counter_message(sc: Schedule, counter: str, target: str) -> str:
-    """Собирает сообщение с результатами работы счётчиков.
-
-    Counter: {cl, days, lessons, cabinets}
-    Target: {cl, days, lessons, cabinets}
-    Target: {main} если Counter in {lessons, cabinets}
-
-    Args:
-        sc (Schedule): Экземпляр расписания уроков.
-        counter (str): Название типа счётчика.
-        target (str): Режим просмотра счётчика.
-
-    Returns:
-        str: Собранное сообщение от счётчиков.
-    """
-    intent = Intent.new()
-
-    if counter == "cl":
-        if target == "lessons":
-            intent = Intent.construct(sc, cl=sc.cl)
-        res = cl_counter(sc, intent)
-    elif counter == "days":
-        res = days_counter(sc, intent)
-    elif counter == "lessons":
-        res = index_counter(sc, intent)
-    else:
-        res = index_counter(sc, intent, cabinets_mode=True)
-
-    groups = group_counter_res(res)
-    message = f"✨ Счётчик {counter}/{target}:"
-    message += send_counter(groups, target=target)
-    return message
-
-def send_home_message(sp: SPMessages) -> str:
-    """Отпраляет главное сообщение бота.
-
-    В шапке сообщения указывается указанный вами класс.
-    В теле сообщения содержится справка по использованию бота.
-    Если вы не привязаны к классу, справка немного отличается.
-
-    Args:
-        sp (SPMessages): Экземпляр генератор сообщений.
-
-    Returns:
-        str: Готовое главное сообщение бота.
-    """
-    cl = sp.user["class_let"]
-
-    if cl:
-        message = f"💎 Ваш класс {cl}.\n\n{HOME_MESSAGE}"
-    elif sp.user["set_class"]:
-        message = f"🌟 Вы не привязаны к классу.\n\n{NO_CL_HOME_MESSAGE}"
-    else:
-        message = "👀 Хитро, но это так не работает."
-        message += "\n💡 Установить класс по умолчанию: /set_class"
-
-    return message
 
 
 # Определение клавиатур бота
@@ -497,6 +414,142 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 
     return text
 
+def get_update_timetag(path: Path) -> int:
+    """Получает время последней удачной проверки обнолвений.
+
+    Args:
+        path (Path): Путь к файлу временной метки обновлений.
+
+    Returns:
+        int: UNIXtime последней удачной проверки обновлений.
+    """
+
+    if not path.exists():
+        return 0
+
+    try:
+        with open(path) as f:
+            return int(f.read())
+    except ValueError:
+        return 0
+
+
+# Функции отправки сообщений бота
+# ===============================
+
+def send_notification_message(sp: SPMessages) -> str:
+    """Отправляет сообщение с информацией о статуск уведомлений.
+
+    Args:
+        sp (SPMessages): Экземпляр генератора сообщений.
+
+    Returns:
+        str: Сообщение с информацией об уведомлениях.
+    """
+    message = "Вы получени уведомление, если расписание изменится.\n"
+
+    if sp.user["notifications"]:
+        message += "\n🔔 уведомления включены."
+        message += "\n\nТакже вы можете настроить отправку расписания."
+        message += "\nВ указанное время бот отправит расписание вашего класса."
+        hours = sp.user["hours"]
+
+        if hours:
+            message += "\n\nРасписани будет отправлено в: "
+            message += ", ".join(map(str, set(hours)))
+    else:
+        message += "\n🔕 уведомления отключены."
+
+    return message
+
+def send_counter_message(sc: Schedule, counter: str, target: str) -> str:
+    """Собирает сообщение с результатами работы счётчиков.
+
+    Counter: {cl, days, lessons, cabinets}
+    Target: {cl, days, lessons, cabinets}
+    Target: {main} если Counter in {lessons, cabinets}
+
+    Args:
+        sc (Schedule): Экземпляр расписания уроков.
+        counter (str): Название типа счётчика.
+        target (str): Режим просмотра счётчика.
+
+    Returns:
+        str: Собранное сообщение от счётчиков.
+    """
+    intent = Intent.new()
+
+    if counter == "cl":
+        if target == "lessons":
+            intent = Intent.construct(sc, cl=sc.cl)
+        res = cl_counter(sc, intent)
+    elif counter == "days":
+        res = days_counter(sc, intent)
+    elif counter == "lessons":
+        res = index_counter(sc, intent)
+    else:
+        res = index_counter(sc, intent, cabinets_mode=True)
+
+    groups = group_counter_res(res)
+    message = f"✨ Счётчик {counter}/{target}:"
+    message += send_counter(groups, target=target)
+    return message
+
+def send_home_message(sp: SPMessages) -> str:
+    """Отпраляет главное сообщение бота.
+
+    В шапке сообщения указывается указанный вами класс.
+    В теле сообщения содержится справка по использованию бота.
+    Если вы не привязаны к классу, справка немного отличается.
+
+    Args:
+        sp (SPMessages): Экземпляр генератор сообщений.
+
+    Returns:
+        str: Готовое главное сообщение бота.
+    """
+    cl = sp.user["class_let"]
+
+    if cl:
+        message = f"💎 Ваш класс {cl}.\n\n{HOME_MESSAGE}"
+    elif sp.user["set_class"]:
+        message = f"🌟 Вы не привязаны к классу.\n\n{NO_CL_HOME_MESSAGE}"
+    else:
+        message = "👀 Хитро, но это так не работает."
+        message += "\n💡 Установить класс по умолчанию: /set_class"
+
+    return message
+
+def send_status_message(sp: SPMessages, timetag_path: Path) -> str:
+    """Отправляет информационно сособщение о работа бота и парсера.
+
+    Инфомарционно сообщения содержит некоторую вспомогательную
+    информацию относительно статуса и работаспособности бота.
+    К примеру версия бота, время последнего обновления,
+    классов и прочее.
+
+    Args:
+        sp (SPMessages): Экземлпря генератора сообщений.
+        timetag_path (Path): Путь к файлу временной метки обновления.
+
+    Returns:
+        str: Информацинное сообщение.
+    """
+    message = sp.send_status()
+    message += "\n⚙️ Версия бота: 1.14 +6b"
+
+    timetag = get_update_timetag(timetag_path)
+    now = datetime.now().timestamp()
+
+    timedelta = now-timetag
+    message += f"\n📀 Последная проверка {get_str_timedelta(timedelta)} назад"
+
+    if timedelta > 3600:
+        message += "\n⚠️ Автоматическая проверка была более часа назад."
+        message += "\nПожалуйста, проверьте работу скрипта."
+    
+    return message
+
 
 # Опеределение команд бота
 # ========================
@@ -530,7 +583,7 @@ async def restrictions_commend(message: types.Message) -> None:
 @dp.message_handler(commands=["info"])
 async def info_command(message: types.Message, sp: SPMessages) -> None:
     """Отправляет статус парсера и бота."""
-    await message.answer(text=sp.send_status()+INFO_MESSAGE,
+    await message.answer(text=send_status_message(sp, _TIMETAG_PATH),
                          reply_markup=TO_HOME_MARKUP)
 
 @dp.message_handler(commands=["updates"])
@@ -658,7 +711,7 @@ async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> Non
 
     # Вызоы меню инстрментов
     elif header == "other":
-        text = sp.send_status() + INFO_MESSAGE
+        text = send_status_message(sp, _TIMETAG_PATH)
         markup = markup_generator(sp, other_markup)
 
     # Счётчик уроков/кабинетов
