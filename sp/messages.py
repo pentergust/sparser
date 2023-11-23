@@ -77,49 +77,48 @@ def send_cl_updates(cl_updates: list) -> str:
         elif l == "---":
             message += f"--{u[0]}\n"
         elif oc == c:
-            message += f"{ol} -> {l}:{c}\n"
+            message += f"{ol} ➜ {l}:{c}\n"
         elif ol == l:
-            message += f"{l}: ({oc} -> {c})\n"
+            message += f"{l}: ({oc} ➜ {c})\n"
         else:
-            message += f"{u[0]} -> {u[1]}\n"
+            message += f"{u[0]} ➜ {u[1]}\n"
 
     return message
 
-def get_update_header(update: dict) -> str:
-    """Возвращает шапку списка изменений.
+def get_update_header(update: dict, extend_info: Optional[bool]=True) -> str:
+    """Возвращает заголовок списка изменений.
+
+    Args:
+        update (dict): Словарь с обновлением в расписании.
+        extend_info (bool): Отображать ли дополниельную информацию.
 
     Returns:
-        str: Шапка списка изменений.
+        str: Заголовок списка изменений.
     """
-    message = "📀"
 
     # Получаем timestamp обновления
-    now = datetime.now().timestamp()
-    # ic(update)
     end_timestamp = update.get("end_time", 0)
     start_timespamp = update.get("start_time", end_timestamp)
-    update_delta = end_timestamp - start_timespamp
-    now_delta = now - end_timestamp
-
     etime = datetime.fromtimestamp(end_timestamp)
     stime = datetime.fromtimestamp(start_timespamp)
+    message = f"📀 {stime.strftime('%d.%m %H:%M')} "
 
-    if stime != etime:
-        t = stime.strftime("%d.%m %H:%M")
-        message += f" от {t}"
+    t = etime.strftime("%d.%m %H:%M" if stime.day != etime.day else "%H:%M")
+    message += f"➜ {t}"
+
+    if extend_info:
+        update_delta = end_timestamp - start_timespamp
+        now_delta = datetime.now().timestamp() - end_timestamp
+        extend_message = ""
 
         if update_delta <= 172800:
-            message += f" [{get_str_timedelta(update_delta, hours=True)}]"
+            extend_message += f"🗘 {get_str_timedelta(update_delta, hours=True)}"
 
-        message += " ->\n"
-        t = etime.strftime("%d.%m %H:%M" if stime.day != etime.day else "%H:%M")
-    else:
-        t = etime.strftime("%d.%m %H:%M")
+        if now_delta <= 86400:
+            extend_message += f" ⭯ {get_str_timedelta(now_delta, hours=True)}"
 
-
-    message += f"до {t}:"
-    if now_delta <= 86400:
-        message += f" ({get_str_timedelta(now_delta, hours=True)} назад)"
+        if extend_message:
+            message += f" [{extend_message}]"
 
     return message
 
@@ -325,7 +324,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +6b (108)"
+        res = "🌟 Версия sp: 5.7 +7b (109)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
