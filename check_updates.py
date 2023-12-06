@@ -9,29 +9,52 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.8 (sp 5.7+2b, telegram 1.14 +b5)
+Ver: 0.9 (sp 5.7+2b, telegram 1.14 +b5)
 """
 
 from datetime import datetime
 from pathlib import Path
+from os import getenv
 
-from aiogram import Dispatcher, executor
+from aiogram import Dispatcher, executor, Bot
 from aiogram.utils.exceptions import BotBlocked, BotKicked, MigrateToChat, UserDeactivated
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
+from dotenv import load_dotenv
 
 from sp.intents import Intent
 from sp.messages import SPMessages, send_update, users_path
 from sp.utils import load_file, save_file
-from telegram import bot, markup_generator, week_markup
 
+
+load_dotenv()
+TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN")
+bot = Bot(TELEGRAM_TOKEN)
+dp = Dispatcher(bot)
+logger.add("sp_data/updates.log")
+_TIMETAG_PATH = Path("sp_data/last_update")
 
 # Если данные мигрировали вследствии .
 CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
 Настройки чата были перемещены.."""
 
-dp = Dispatcher(bot)
-logger.add("sp_data/updates.log")
-_TIMETAG_PATH = Path("sp_data/last_update")
+
+# Функкии для сбора клавиатур
+# ===========================
+
+def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🏠", callback_data=f"week {cl}"),
+        InlineKeyboardButton(text="На неделю", callback_data=f"week {cl}"),
+        InlineKeyboardButton(text="▷", callback_data=f"select_day {cl}")
+    ]])
+
+def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="◁", callback_data="home"),
+        InlineKeyboardButton(text="Изменения", callback_data=f"updates last 0 {cl}"),
+        InlineKeyboardButton(text="Уроки", callback_data=f"lessons {cl}")
+    ]])
 
 
 # Функции для обработки списка пользователей
@@ -53,7 +76,7 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
     if str(hour) in sp.user["hours"]:
         await bot.send_message(sp.uid,
             text=sp.send_today_lessons(Intent.new()),
-            reply_markup=markup_generator(sp, week_markup)
+            reply_markup=get_week_keyboard(sp.user["class_let"])
         )
 
     # Отправляем уведомления об обновлениях
@@ -63,7 +86,9 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
         for update in updates:
             message += f"\n{send_update(update, cl=sp.user['class_let'])}"
 
-        await bot.send_message(sp.uid, text=message)
+        await bot.send_message(sp.uid, text=message,
+            reply_markup=get_updates_keyboard(sp.user["class_let"]
+        ))
 
 async def migrate_users(migrate_ids: list[tuple[str, str]]) -> None:
     """Перемещает данные пользователей (чатов) на новый ID.
@@ -139,7 +164,6 @@ async def main() -> None:
         # TODO: данные пользователя вновь загружаются из файла на
         # каждой итерации
         sp = SPMessages(k, v)
-        logger.info("User: {}", k)
         try:
             await process_update(bot, now.hour, sp)
 
