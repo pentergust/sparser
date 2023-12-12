@@ -9,7 +9,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.9 (sp 5.7+2b, telegram 1.14 +b5)
+Ver: 0.9.1 (sp 5.7+2b, telegram 1.14 +b5)
 """
 
 from datetime import datetime
@@ -34,9 +34,9 @@ dp = Dispatcher(bot)
 logger.add("sp_data/updates.log")
 _TIMETAG_PATH = Path("sp_data/last_update")
 
-# Если данные мигрировали вследствии .
+# Если данные мигрировали вследствии
 CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
-Настройки чата были перемещены.."""
+Настройки чата были перемещены."""
 
 
 # Функкии для сбора клавиатур
@@ -72,7 +72,7 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
         uid (str): ID чата для проверки.
         sp (SPMessages): Данные пользователя.
     """
-    # Рассылка расписания в указанные часы.
+    # Рассылка расписания в указанные часы
     if str(hour) in sp.user["hours"]:
         await bot.send_message(sp.uid,
             text=sp.send_today_lessons(Intent.new()),
@@ -93,7 +93,7 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
 async def migrate_users(migrate_ids: list[tuple[str, str]]) -> None:
     """Перемещает данные пользователей (чатов) на новый ID.
 
-    Например, вследствии перемещания группы в супергруппу.
+    Например, вследствии перемещения группы в супергруппу.
 
     Args:
         migrate_ids (list[tuple[str, str]]): ID для миграции.
@@ -103,7 +103,7 @@ async def migrate_users(migrate_ids: list[tuple[str, str]]) -> None:
     for old, new in migrate_ids:
         logger.info("Migrate {} -> {}". old, new)
         users[new] = users[old]
-        del users[k]
+        del users[old]
         await bot.send_message(new, CHAT_MIGRATE_MESSAGE)
     save_file(Path(users_path), users)
 
@@ -120,7 +120,7 @@ async def remove_users(remove_ids: list[str]):
     logger.info("Start remove users...")
     users = load_file(Path(users_path), {})
     for x in remove_ids:
-        logger.info("Remove {}". x)
+        logger.info("Remove {}", x)
         del users[x]
     save_file(Path(users_path), users)
 
@@ -160,7 +160,7 @@ async def main() -> None:
         if not v.get("notifications") or not v.get("class_let"):
             continue
 
-        # Получаем экземлпря генратора сообщения пользователя
+        # Получаем экземпляр генератора сообщения пользователя
         # TODO: данные пользователя вновь загружаются из файла на
         # каждой итерации
         sp = SPMessages(k, v)
@@ -178,7 +178,7 @@ async def main() -> None:
         except (BotKicked, BotBlocked, UserDeactivated):
             remove_ids.append(k)
 
-        # Ловим все прочие исключения и отобржаем их на экран
+        # Ловим все прочие исключения и отображаем их на экран
         except Exception as e:
             logger.exception(e)
 
