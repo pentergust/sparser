@@ -1,6 +1,11 @@
-"""Telegram бот для доступа к SPMessages.
+"""Telegram-бот для доступа к SPMessages.
 
-Команды бота для BotFather:
+Не считая некоторых ограничений в настройке "намерений" (Intents)
+боя полностью реализует доступ ко всем разделам SPMessages.
+
+Команды бота для BotFather
+--------------------------
+
 sc - Уроки на сегодня
 updates - Изменения в расписании
 counter - Счётчики уроков/кабинетов
@@ -10,82 +15,101 @@ help - Главное меню
 typehint - Как писать запросы
 info - Информация о боте
 
-TODO: Разделить код бота на несколько файлов
-TODO: Переписать под aiogram v3
-
 Author: Milinuri Nirvalen
-Ver: 1.14 +8b (sp v6.0 +3b)
+Ver: 2.0
 """
 
-import os
-from contextlib import suppress
-from typing import Optional
-from pathlib import Path
+import asyncio
 from datetime import datetime
+from os import getenv
+from pathlib import Path
+from typing import Any, Awaitable, Callable, Dict, Optional
 
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.dispatcher.middlewares import BaseMiddleware
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.exceptions import MessageCantBeDeleted, MessageNotModified
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import Command
+from aiogram.filters.callback_data import CallbackData
+from aiogram.types import (CallbackQuery, ErrorEvent, InlineKeyboardButton,
+                           InlineKeyboardMarkup, Message, Update)
 from dotenv import load_dotenv
-from gotify import AsyncGotify
 from loguru import logger
 
-from sp.counters import (
-    cl_counter,
-    days_counter,
-    group_counter_res,
-    index_counter,
-)
+from sp.counters import (cl_counter, days_counter, group_counter_res,
+                         index_counter)
 from sp.intents import Intent
 from sp.messages import SPMessages, send_counter, send_search_res, send_update
 from sp.parser import Schedule
 from sp.utils import get_str_timedelta
 
 
-# Определение Middleware
+# Настройкки и константы
 # ======================
 
-class SpMiddleware(BaseMiddleware):
-    async def setup_sp(self, data: dict, user: types.User,
-        chat: Optional[types.Chat] = None) -> None:
-        cid = chat.id if chat else user.id
-        sp = SPMessages(str(cid))
-        data["sp"] = sp
-
-    async def on_pre_process_message(self, message: types.Message, data: dict):
-        await self.setup_sp(data, message.from_user, message.chat)
-
-    async def on_pre_process_callback_query(self, query: types.CallbackQuery, data: dict):
-        await self.setup_sp(data, query.from_user, query.message.chat if query.message else None)
-
-
-# Определеник начальных настроек
-# ==============================
-
 load_dotenv()
-
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-GOTIFY_BASE_URL = os.getenv("GOTIFY_BASE_URL")
-GOTIFY_APP_TOKEN = os.getenv("GOTIFY_APP_TOKEN")
-
-if GOTIFY_BASE_URL != "" and GOTIFY_APP_TOKEN != "":
-    gotify = AsyncGotify(
-        base_url=GOTIFY_BASE_URL,
-        app_token=GOTIFY_APP_TOKEN)
-else:
-    gotify = None
-
-bot = Bot(TELEGRAM_TOKEN)
-dp = Dispatcher(bot)
-dp.middleware.setup(SpMiddleware())
-logger.add("sp_data/telegram.log")
-days_names = ["понедельник", "вторник", "среда", "четверг", "пятница",
-              "суббота", "сегодня", "неделя"]
+TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
+dp = Dispatcher()
+days_names = ("пн", "вт", "ср", "чт", "пт", "сб")
 _TIMETAG_PATH = Path("sp_data/last_update")
+_HOME_BUTTON = InlineKeyboardButton(text="◁", callback_data="home")
 
-# Тексты сообщений
-# ================
+TO_HOME_MARKUP = InlineKeyboardMarkup(
+    inline_keyboard=[[InlineKeyboardButton(text="🏠Домой", callback_data="home")]]
+)
+PASS_SET_CL_MARKUP = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Не привязывать класс", callback_data="pass"),
+            InlineKeyboardButton(text="Ограничения", callback_data="restrictions"),
+        ]
+    ]
+)
+BACK_SET_CL_MARKUP = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="◁", callback_data="set_class"),
+            InlineKeyboardButton(text="Не привязывать класс", callback_data="pass"),
+        ]
+    ]
+)
+
+
+# Добавление Middleware
+# =====================
+
+@dp.message.middleware()
+@dp.callback_query.middleware()
+async def sp_middleware(
+    handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+    event: Update,
+    data: Dict[str, Any],
+) -> Any:
+    """Добавляет экземпляр SPMessages в обработчик."""
+    if isinstance(event, CallbackQuery):
+        uid = event.message.chat.id
+    else:
+        uid = event.chat.id
+
+    data["sp"] = SPMessages(str(uid))
+    return await handler(event, data)
+
+
+@dp.message.middleware()
+@dp.callback_query.middleware()
+async def log_middleware(
+    handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+    event: Update,
+    data: Dict[str, Any],
+) -> Any:
+    """Отслеживает полученные ботом сообщения и callback data."""
+    if isinstance(event, CallbackQuery):
+        logger.info("[cq] {}: {}", event.message.chat.id, event.data)
+    else:
+        logger.info("[msg] {}: {}", event.chat.id, event.text)
+
+    return await handler(event, data)
+
+
+# Статические тексты сообщений
+# ============================
 
 HOME_MESSAGE = """💡 Некоторые примеры запросов:
 -- 7в 6а на завтра
@@ -98,7 +122,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 * Урок/Кабинет: Получить все его упоминания.
 
 * Классы: для которого нужно расписание.
--- Если класс не укзаан, подставляется ваш класс.
+-- Если класс не указан, подставляется ваш класс.
 -- "?": для явной подставновки вашего класса.
 
 * Дни недели:
@@ -106,7 +130,7 @@ HOME_MESSAGE = """💡 Некоторые примеры запросов:
 -- Понедельник-суббота (пн-сб).
 -- Сегодня, завтра, неделя.
 
-🌟 /typehint - Как писать запросы?"""
+🌟 Как писать запросы? /typehint"""
 
 NO_CL_HOME_MESSAGE = """💡 Некоторые примеры запросов:
 -- 7в 6а на завтра
@@ -133,17 +157,15 @@ SET_CLASS_MESSAGE = """
 Но это накладывает некоторые ограничения.
 Прочитать об ограничениях можно нажав кнопку (/restrictions).
 
-Способы указать класс:
--- В переписке с ботом: следуюшим сообщением введите ваш класс ("1а").
--- /set_class в ответ на сообщение с классом ("7а").
--- /set_class [класс] -- с явным указание класса.
+Чтобы указать класс следующим сообщением введите ваш класс ("1а").
 
 💡 Вы можете сменить класс в дальнейшем:
 -- через команду /set_class.
 -- Ещё -> сменить класс."""
 
+
 RESTRICTIONS_MESSAGE = """🚫 Ограничения не привязанного класса.
-Всё перечисленное будет недоступно, пока не указан класс.
+Всё перечисленное будет недоступно, пока не указан класс:
 
 -- Быстрое получение расписания для класса.
 -- Подстановка класса в текстовых запросах.
@@ -179,150 +201,323 @@ TYPEHINT_MESSAGE = """
 -- "328" ➜ Всё что проходит в 328 кабинете за неделю.
 -- "312 литер вторник 7а" ➜ Можно уточнить классом, днём, уроком."""
 
-# Определение клавиатур бота
-# ==========================
 
-TO_HOME_MARKUP = InlineKeyboardMarkup().add(
-    InlineKeyboardButton(text="🏠Домой", callback_data="home"))
-PASS_SET_CL_MARKUP = InlineKeyboardMarkup(inline_keyboard=[[
-    InlineKeyboardButton(text="Не привязаывать класс", callback_data="pass"),
-    InlineKeyboardButton(text="ограничения", callback_data="restrictions"),
-]])
-BACK_SET_CL_MARKUP = InlineKeyboardMarkup(inline_keyboard=[[
-    InlineKeyboardButton(text="◁", callback_data="set_class"),
-    InlineKeyboardButton(text="Не привязаывать класс", callback_data="pass"),
-]])
+# Динамические клавиатуры
+# =======================
 
-week_markup = [{"home": "🏠", "week {cl}": "На неделю", "select_day {cl}":"▷"}]
-sc_markup = [{"home": "🏠", "sc {cl}": "На сегодня", "select_day {cl}": "▷"}]
-home_murkup = [{"other": "🔧Ещё",
-                "notify info": "🔔Уведомления",
-                "sc {cl}": "📚Уроки {cl}"}]
-other_markup = [{"home": "◁", "set_class": "Сменить класс"},
-                {"count lessons main": "📊Счётчики",
-                "updates last 0 None": "📜Изменения"}]
+def get_other_keyboard(
+    cl: str, home_button: Optional[bool] = True
+) -> InlineKeyboardMarkup:
+    """Собирает дополнительную клавиатуру.
 
+    Дополнительная клавиатура содержит на часто использумые разделы.
+    Чтобы эти раделы не занимали место на главном экране и не пугали
+    пользователей большим количеством разных кнопочек.
 
-def markup_generator(sp: SPMessages, pattern: dict, cl: Optional[str]=None,
-        exclude: Optional[str]=None, row_width: Optional[int]=3
-        ) -> InlineKeyboardMarkup:
-    """Собиарает inline-клавиатуру по шаблону.
+    Buttons:
+        set_class => Сменить класс.
+        count:lessons:main => Меню счётчиков бота.
+        updates:last:0:{cl} => Последная сраница списка изменений.
 
     Args:
-        sp (SPMessages): Описание
-        cl (str, optional): Выбранный класс для передачи в callback_data
-        pattern (dict): Шаблон для сборки клавиатуры
-        exclude (str, optional): Ключ кнопки для исключения
-        row_width (int, optional): Количество кнопок в одной строке
+        cl (str): Класс пользователя для клавиатуры.
+        home_button (bool, optional): Добавлять ли кнопку возврата.
 
     Returns:
-        InlineKeyboardMarkup: Собранная клавиатура
+        InlineKeyboardMarkup: Дополнительная клавиатура.
     """
-    markup = InlineKeyboardMarkup(row_width)
-    cl = cl if cl is not None else sp.user["class_let"]
+    buttons = [
+        [
+            InlineKeyboardButton(text="Сменить класс", callback_data="set_class"),
+            InlineKeyboardButton(
+                text="📊 Счётчики", callback_data="count:lessons:main"
+            ),
+            InlineKeyboardButton(
+                text="📜 Изменения", callback_data=f"updates:last:0:{cl}"
+            ),
+        ],
+        [],
+    ]
 
-    for group_row in pattern:
-        row = []
+    if home_button:
+        buttons[-1].append(InlineKeyboardButton(text="🏠 Домой", callback_data="home"))
 
-        for callback_data, text in group_row.items():
-            if exclude is not None and callback_data == exclude:
-                continue
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-            if cl is None and "{cl}" in callback_data:
-                continue
+def get_main_keyboard(cl: str) -> InlineKeyboardMarkup:
+    """Возращает главную клавиатуру бота.
 
-            if cl is None and "{cl}" in text:
-                continue
+    Главная клавиатуры предоставляет доступ к самым часто используемым
+    разделам бота, таким как получение расписания для класса по
+    умолчанию или настройка оповщеений.
 
-            callback_data = callback_data.replace("{cl}", cl or "")
-            text = text.replace("{cl}", cl or "")
-
-            row.append(InlineKeyboardButton(text= text, callback_data= callback_data))
-        markup.row(*row)
-
-    return markup
-
-def gen_updates_markup(update_index: int, updates: list,
-                       cl: Optional[str]=None) -> InlineKeyboardMarkup:
-    """Собирает inline-клввиатуру для просмотра списка изменений
-    в расписании.
+    Buttons:
+        other => Вызов дополнительной клавиатуры.
+        notify => Меню настройки уведомлений пользователя.
+        sc:{cl}:today => Получаени расписания на сегодня для класса.
 
     Args:
-        update_index (int): Номер текущей страницы обновлений
-        updates (list): Список всех страниц
-        cl (str, optional): Для какого класс собрать клавиатуру
+        cl (str): Класс для подставновки в клавиатуру.
 
     Returns:
-        InlineKeyboardMarkup: Готовая inline-клавиатура
+        InlineKeyboardMarkup: Главная клавиатура бота.
     """
-    markup = InlineKeyboardMarkup(row_width=4)
-    markup_pattern = {
-            "home": "🏠",
-            "updates back": "◁",
-            "updates switch": f"{update_index+1}/{len(updates)}",
-            "updates next": "▷",
-        }
+    if cl is None:
+        return get_other_keyboard(cl, home_button=False)
 
-    for k, v in markup_pattern.items():
-        k += f" {update_index} {cl}"
-        markup.insert(InlineKeyboardButton(text=v, callback_data=k))
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🔧 Ещё", callback_data="other"),
+                InlineKeyboardButton(text="🔔 Уведомления", callback_data="notify"),
+                InlineKeyboardButton(
+                    text=f"📚 Уроки {cl}", callback_data=f"sc:{cl}:today"
+                ),
+            ]
+        ]
+    )
 
-    return markup
+def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
+    """Возращает клавиатуру, для получение расписания на неделю.
 
-def select_day_markup(cl: str) -> InlineKeyboardMarkup:
-    """Собирает inline-клавиатуру для выбора дня недели.
+    Используется в сообщениях с расписанием уроков.
+    Также содержит кнопки для возврата домой и выбора дня недели.
+
+    Buttons:
+        home => Возврат на главный экран.
+        sc:{cl}:week => Получить расписание на неедлю для класса.
+        select_day:{cl} => Выбрать день недели для расписания.
 
     Args:
-        cl (str): Уточнение для какого класса выбиратеся день недели
+        cl (str): Класс для подставновки в клавиатуру.
 
-    Returns:
-        InlineKeyboardMarkup: inline-клавиатура для выбора для недели
+    Return:
+        InlineKeyboardMarkup: Клавиатуру для сообщения с расписанием.
     """
-    markup = InlineKeyboardMarkup()
-    for i, x in enumerate(days_names):
-        markup.insert(
-            InlineKeyboardButton(text=x, callback_data=f"sc_day {cl} {i}"))
-    return markup
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+                InlineKeyboardButton(text="На неделю", callback_data=f"sc:{cl}:week"),
+                InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}"),
+            ]
+        ]
+    )
 
-def gen_counters_markup(sp: SPMessages, counter: str, target: str) -> InlineKeyboardMarkup:
-    """Собирает клавиатуру для счётчиков.
+def get_sc_keyboard(cl: str) -> InlineKeyboardMarkup:
+    """Возаращает клавиатуру, для получения расписания на сегодня.
+
+    Используется в сообщениях с расписанием уроков.
+    Также содержит кнопки для возврата домой и выбора дня недели.
+
+    Buttons:
+        home => Возврат на главный экран.
+        sc:{cl}:today => Получить расписание на сегодня для класса.
+        select_day:{cl} => Выбрать день недели для расписания.
 
     Args:
-        sp (SPMessages): Генератор сообщений
-        counter (str): Название текущего счётчика
-        target (str): Названеи текущего режима просмотра
+        cl (str): Класс для подставновки в клавиатуру.
+
+    Return:
+        InlineKeyboardMarkup: Клавиатуру для сообщения с расписанием.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+                InlineKeyboardButton(text="На сегодня", callback_data=f"sc:{cl}:today"),
+                InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}"),
+            ]
+        ]
+    )
+
+def get_select_day_keyboard(cl: str) -> InlineKeyboardMarkup:
+    """Возаращает клавиатуру, для выбора дня недели для рассписания.
+
+    Мспользуется в сообщения с расписанием.
+    Позволяет выбрать один из дней недели.
+    Автоматически подставляя укзааный класс в запрос.
+
+    Buttons:
+        sc:{cl}:{0..6} => Получить расписания для укзаанного дня.
+        sc:{cl}:today => Получить расписание на сегодня.
+        sc:{cl}:week => получить расписание на неделю.
+
+    Args:
+        cl (str): Класс для подставноки в клавиатуру.
 
     Returns:
-        InlineKeyboardMarkup: Собранная клавиатура
+        InlineKeyboardMarkup: Клаавиатура для выбра дня расписания.
     """
-    markup = InlineKeyboardMarkup(row_width=4)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=x, callback_data=f"sc:{cl}:{i}")
+                for i, x in enumerate(days_names)
+            ],
+            [
+                InlineKeyboardButton(text="◁", callback_data="home"),
+                InlineKeyboardButton(text="Сегодня", callback_data=f"sc:{cl}:today"),
+                InlineKeyboardButton(text="Неделя", callback_data=f"sc:{cl}:week"),
+            ],
+        ]
+    )
 
-    row = [InlineKeyboardButton(text="◁", callback_data="home")]
-    counters = {"cl": "по классам",
-                "days": "По дням",
-                "lessons": "По урокам",
-                "cabinets": "По кабинетам"}
+def get_notify_keyboard(
+    sp: SPMessages, enabled: bool, hours: Optional[list[int]] = None
+) -> InlineKeyboardMarkup:
+    """Возвращет клавиатуру для настройки уведомлений.
 
-    for k, v in counters.items():
+    Используется для управления оповещениями.
+    Позволяет включить/отключить уведомления.
+    Настроить дни для рассылки расписания.
+    Сброисить все часы рассылки расписания.
+
+    Buttons:
+        notify:on:0 => Включить уведомления бота.
+        notify:off:0 => Отключить уведомления бота.
+        notify:reset:0 => Сбросить часы для рассылки расписния.
+        notify:add:{hour} => Включить рассылку для указанного часа.
+        notify:remove:{hour} => Отключить рассылку для указанного часа.
+
+    Args:
+        sp (SPMessages): Экземпляр генератора сообщений.
+        enabled (bool): Включены ли уведомления у пользователя.
+        hours (list, optional): В какой час рассылать расписание.
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура для настройки уведомлений.
+    """
+    inline_keyboard = [[InlineKeyboardButton(text="◁", callback_data="home")]]
+
+    if not enabled:
+        inline_keyboard[0].append(
+            InlineKeyboardButton(text="🔔 Включить", callback_data="notify:on:0")
+        )
+    else:
+        inline_keyboard[0].append(
+            InlineKeyboardButton(text="🔕 Выключить", callback_data="notify:off:0")
+        )
+        if hours:
+            inline_keyboard[0].append(
+                InlineKeyboardButton(text="❌ Сброс", callback_data="notify:reset:0")
+            )
+        hours_line = []
+        for i, x in enumerate(range(6, 24)):
+            if x % 6 == 0:
+                inline_keyboard.append(hours_line)
+                hours_line = []
+
+            if x in hours:
+                hours_line.append(
+                    InlineKeyboardButton(
+                        text=f"✔️{x}", callback_data=f"notify:remove:{x}"
+                    )
+                )
+            else:
+                hours_line.append(
+                    InlineKeyboardButton(text=str(x), callback_data=f"notify:add:{x}")
+                )
+
+        if len(hours_line):
+            inline_keyboard.append(hours_line)
+
+    return InlineKeyboardMarkup(row_width=6, inline_keyboard=inline_keyboard)
+
+def get_updates_keyboard(
+    page: int, updates: list, cl: Optional[str] = None
+) -> InlineKeyboardMarkup:
+    """Возвращает клавиатуру, для просмотра списка изменений.
+
+    Используется для перемещения по списку изменений в расписании.
+    Также может переключать режим просмотре с общего на для класса.
+
+    Buttons:
+        home => Возврат к главному меня бота.
+        update:back:{page}:{cl} => Перещается на одну страницу назад.
+        update:switch:0:{cl} => Переключает режим просмотра расписания.
+        update:next:{page}:{cl} => Перемещается на страницу вперёд.
+
+    Args:
+        page (int): Номер текущей страницы списка обновлений.
+        updates (list): Список всех страниц списка изменений.
+        cl (str, optional): Класс для подстановки в клавиатуру.
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура просмотра списка изменений.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🏠", callback_data="home"),
+                InlineKeyboardButton(
+                    text="◁", callback_data=f"updates:back:{page}:{cl}"
+                ),
+                InlineKeyboardButton(
+                    text=f"{page+1}/{len(updates)}",
+                    callback_data=f"updates:switch:0:{cl}",
+                ),
+                InlineKeyboardButton(
+                    text="▷", callback_data=f"updates:next:{page}:{cl}"
+                ),
+            ]
+        ]
+    )
+
+
+_COUNTERS = (
+    ("cl", "По классам"),
+    ("days", "По дням"),
+    ("lessons", "По урокам"),
+    ("cabinets", "По кабинетам"),
+)
+
+_TARGETS = (
+    ("cl", "Классы"),
+    ("days", "Дни"),
+    ("lessons", "Уроки"),
+    ("cabinets", "Кабинеты"),
+    ("main", "Общее"),
+)
+
+def get_counter_keyboard(cl: str, counter: str, target: str) -> InlineKeyboardMarkup:
+    """Возвращает клавиатуру, для просмотра счётчиков расписания.
+
+    Позводяет просматривать счётчики расписания по группам и целям:
+
+    +----------+-------------------------+
+    | counter  | targets                 |
+    +----------+-------------------------+
+    | cl       | days, lessons. cabinets |
+    | days     | cl, lessons. cabinets   |
+    | lessons  | cl, days, main          |
+    | cabinets | cl, days, main          |
+    +----------+-------------------------+
+
+    Buttons:
+        home => Вернуться к главному сообщению бота.
+        count:{counter}:{target} => Переключиться на нужный счётчик.
+
+    Args:
+        cl (str): Класс для подстановки в клавиатуру.
+        counter (str): Текущая группа счётчиков.
+        target (str): Текущий тип просмотра счётчика.
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура для просмотра счётчиков.
+    """
+    inline_keyboard = [[InlineKeyboardButton(text="◁", callback_data="home")], []]
+
+    for k, v in _COUNTERS:
         if counter == k:
             continue
 
-        row.append(InlineKeyboardButton(text=v,
-                                        callback_data=f"count {k} {target}"))
-    markup.add(*row)
+        inline_keyboard[0].append(
+            InlineKeyboardButton(text=v, callback_data=f"count:{k}:{target}")
+        )
 
-    row = []
-    targets = {"cl": "Классы",
-               "days": "дни",
-               "lessons": "Уроки",
-               "cabinets": "Кабинеты",
-               "main": "Общее"}
-
-    for k, v in targets.items():
-        if target == k:
-            continue
-
-        if counter == k:
+    for k, v in _TARGETS:
+        if target == k or counter == k:
             continue
 
         if k == "main" and counter not in ["lessons", "cabinets"]:
@@ -331,116 +526,27 @@ def gen_counters_markup(sp: SPMessages, counter: str, target: str) -> InlineKeyb
         if counter in ["lessons", "cabinets"] and k in ["lessons", "cabinets"]:
             continue
 
-        if counter == "cl" and k == "lessons" and not sp.user["class_let"]:
+        if counter == "cl" and k == "lessons" and not cl:
             continue
 
-        row.append(InlineKeyboardButton(text=v,
-                                        callback_data=f"count {counter} {k}"))
-    markup.add(*row)
-
-    return markup
-
-def get_notifications_markup(sp: SPMessages, enabled: bool,
-        hours: Optional[list[int]] = None) -> InlineKeyboardMarkup:
-    """Возвращетс клавиатуру для настройки уведомлений.
-
-    Args:
-        sp (SPMessages): Генератор сообщенийц
-        enabled (bool): Включены ли уведомления
-        hours (list, optional): В какой час отправлять уведомления
-
-    Returns:
-        InlineKeyboardMarkup: Готовая клавитура для настройки
-    """
-    inline_keyboard = [[InlineKeyboardButton(text="◁", callback_data="home")]]
-
-    if not enabled:
-        inline_keyboard[0].append(
-            InlineKeyboardButton(text="🔔Включить", callback_data="notify on")
+        inline_keyboard[1].append(
+            InlineKeyboardButton(text=v, callback_data=f"count:{counter}:{k}")
         )
 
-    else:
-        inline_keyboard[0].append(
-            InlineKeyboardButton(text="🔕Выключить", callback_data="notify off")
-        )
-
-        if hours:
-            inline_keyboard[0].append(
-                InlineKeyboardButton(text="❌", callback_data="notify reset")
-            )
-
-        hours_line = []
-        for i, x in enumerate(range(6, 24)):
-            if str(x) in hours:
-                continue
-
-            if x % 6 == 0:
-                inline_keyboard.append(hours_line)
-                hours_line = []
-
-            hours_line.append(
-                InlineKeyboardButton(text=x, callback_data=f"notify add {x}")
-            )
-
-        if len(hours_line):
-            inline_keyboard.append(hours_line)
-
-    return InlineKeyboardMarkup(row_width=6, inline_keyboard=inline_keyboard)
-
-def get_home_markup(sp: SPMessages) -> InlineKeyboardMarkup:
-    """Возвращает клавиатуру для сообщения справки.
-    Если класс не указан, возвращает клавиатуру допллнительных опций.
-
-    Args:
-        sp (SPMessages): Экземпляр генератора сообщений
-
-    Returns:
-        InlineKeyboardMarkup: Клавиатуру для сообщения справки
-    """
-    cl = sp.user["class_let"]
-
-    if cl is None:
-        markup = markup_generator(sp, other_markup, exclude="home")
-    else:
-        markup = markup_generator(sp, home_murkup)
-
-    return markup
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
-# Вспомогательные функции
-# =======================
+# Динамический сообщения
+# ======================
 
-def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
-    """Обрабатывает текстовый запрос к расписанию.
-
-    Args:
-        sp (SPMessages): Экземпляр генератора сообщений
-        request_text (str): Текст запроса к расписанию
-
-    Returns:
-        str: Результат запроса к расписанию
-    """
-    intent = Intent.parse(sp.sc, request_text.split())
-
-    # Чтобы не превращать бота в машину для спама
-    # Будет использоваться последний урок/кабинет из фильтра
-    if len(intent.cabinets):
-        res = sp.sc.search(list(intent.cabinets)[-1], intent, True)
-        text = send_search_res(intent, res)
-
-    elif len(intent.lessons):
-        res = sp.sc.search(list(intent.lessons)[-1], intent, False)
-        text = send_search_res(intent, res)
-
-    elif intent.cl or intent.days:
-        text = sp.send_lessons(intent) if intent.days else sp.send_today_lessons(intent)
-    else:
-        text = None
-
-    return text
 
 def get_update_timetag(path: Path) -> int:
     """Получает время последней удачной проверки обнолвений.
+
+    Вспомогательная функция.
+    Время успешой проверки используется для проверки скрипта обновлений.
+    Если время последней проверки будет дольше одного часа,
+    то это повод задуматься о правильноти работы скрипта.
 
     Args:
         path (Path): Путь к файлу временной метки обновлений.
@@ -448,7 +554,6 @@ def get_update_timetag(path: Path) -> int:
     Returns:
         int: UNIXtime последней удачной проверки обновлений.
     """
-
     if not path.exists():
         return 0
 
@@ -458,73 +563,46 @@ def get_update_timetag(path: Path) -> int:
     except ValueError:
         return 0
 
+def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
+    """Отправляет информационно сособщение о работа бота и парсера.
 
-# Функции отправки сообщений бота
-# ===============================
-
-def send_notification_message(sp: SPMessages) -> str:
-    """Отправляет сообщение с информацией о статусе уведомлений.
+    Инфомарционно сообщения содержит некоторую вспомогательную
+    информацию относительно статуса и работаспособности бота.
+    К примеру версия бота, время последнего обновления,
+    классов и прочее.
 
     Args:
         sp (SPMessages): Экземпляр генератора сообщений.
+        timetag_path (Path): Путь к файлу временной метки обновления.
 
     Returns:
-        str: Сообщение с информацией об уведомлениях.
+        str: Информацинное сообщение.
     """
-    message = "Вы получите уведомление, если расписание изменится.\n"
+    message = sp.send_status()
+    message += "\n⚙️ Версия бота: 2.0\n🛠️ Тестер @sp6510"
 
-    if sp.user["notifications"]:
-        message += "\n🔔 уведомления включены."
-        message += "\n\nТакже вы можете настроить отправку расписания."
-        message += "\nВ указанное время бот отправит расписание вашего класса."
-        hours = sp.user["hours"]
+    timetag = get_update_timetag(timetag_path)
+    now = datetime.now().timestamp()
 
-        if hours:
-            message += "\n\nРасписание будет отправлено в: "
-            message += ", ".join(map(str, set(hours)))
-    else:
-        message += "\n🔕 уведомления отключены."
+    timedelta = now - timetag
+    message += f"\n📀 Проверка было {get_str_timedelta(timedelta)} назад"
+
+    if timedelta > 3600:
+        message += "\n⚠️ Автоматическая проверка была более часа назад."
+        message += "\nПожалуйста, проверьте работу скрипта."
+        message += "\nИли свяжитесь с администратором бота."
 
     return message
 
-def send_counter_message(sc: Schedule, counter: str, target: str) -> str:
-    """Собирает сообщение с результатами работы счётчиков.
 
-    Counter: {cl, days, lessons, cabinets}
-    Target: {cl, days, lessons, cabinets}
-    Target: {main} если Counter in {lessons, cabinets}
-
-    Args:
-        sc (Schedule): Экземпляр расписания уроков.
-        counter (str): Название типа счётчика.
-        target (str): Режим просмотра счётчика.
-
-    Returns:
-        str: Собранное сообщение от счётчиков.
-    """
-    intent = Intent.new()
-
-    if counter == "cl":
-        if target == "lessons":
-            intent = Intent.construct(sc, cl=sc.cl)
-        res = cl_counter(sc, intent)
-    elif counter == "days":
-        res = days_counter(sc, intent)
-    elif counter == "lessons":
-        res = index_counter(sc, intent)
-    else:
-        res = index_counter(sc, intent, cabinets_mode=True)
-
-    groups = group_counter_res(res)
-    message = f"✨ Счётчик {counter}/{target}:"
-    message += send_counter(groups, target=target)
-    return message
-
-def send_home_message(sp: SPMessages) -> str:
+def get_home_message(sp: SPMessages) -> str:
     """Отпраляет главное сообщение бота.
 
-    В шапке сообщения указывается указанный вами класс.
-    В теле сообщения содержится справка по использованию бота.
+    Главное сообщение будет сопровождать пользователя всегда.
+    Оно содержит краткую необходимую информацию.
+
+    В шапке сообщения указывается ваш класс по умолчанию.
+    В теле сообщения содержится краткая справка по использованию бота.
     Если вы не привязаны к классу, справка немного отличается.
 
     Args:
@@ -545,84 +623,157 @@ def send_home_message(sp: SPMessages) -> str:
 
     return message
 
-def send_status_message(sp: SPMessages, timetag_path: Path) -> str:
-    """Отправляет информационно сособщение о работа бота и парсера.
+def get_notify_message(sp: SPMessages) -> str:
+    """Отправляет сообщение с информацией о статусе уведомлений.
 
-    Инфомарционно сообщения содержит некоторую вспомогательную
-    информацию относительно статуса и работаспособности бота.
-    К примеру версия бота, время последнего обновления,
-    классов и прочее.
+    Сообщение о статусе уведомлений содержит в себе:
+    Включены ли сейчас уведомления.
+    Краткая инфомрация об уведомленях.
+    В какие часы рассылается расписание уроков.
 
     Args:
-        sp (SPMessages): Экземлпря генератора сообщений.
-        timetag_path (Path): Путь к файлу временной метки обновления.
+        sp (SPMessages): Экземпляр генератора сообщений.
 
     Returns:
-        str: Информацинное сообщение.
+        str: Сообщение с информацией об уведомлениях.
     """
-    message = sp.send_status()
-    message += "\n⚙️ Версия бота: 1.14 +7b"
+    if sp.user["notifications"]:
+        message = "🔔 уведомления включены."
+        message += "\nВы получите уведомление, если расписание изменится."
+        message += "\n\nТакже вы можете настроить отправку расписания."
+        message += "\nВ указанное время бот отправит расписание вашего класса."
+        hours = sp.user["hours"]
 
-    timetag = get_update_timetag(timetag_path)
-    now = datetime.now().timestamp()
-
-    timedelta = now-timetag
-    message += f"\n📀 Последная проверка {get_str_timedelta(timedelta)} назад"
-
-    if timedelta > 3600:
-        message += "\n⚠️ Автоматическая проверка была более часа назад."
-        message += "\nПожалуйста, проверьте работу скрипта."
+        if hours:
+            message += "\n\nРасписание будет отправлено в: "
+            message += ", ".join(map(str, set(hours)))
+    else:
+        message = "🔕 уведомления отключены."
+        message += "\nНикаких лишних сообщений."
 
     return message
 
+def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
+    """Собирает сообщение с результатами работы счётчиков.
 
-# Опеределение команд бота
-# ========================
+    В зависимости от выбранного счётчика использует соответствующую
+    функцию счётчика.
 
-@dp.message_handler(commands=["start", "help"])
-async def start_command(message: types.Message, sp: SPMessages) -> None:
-    logger.info(message.chat.id)
-    with suppress(MessageCantBeDeleted):
-        await message.delete()
+    +----------+-----------------------------+
+    | counter  | targets                     |
+    +----------+-----------------------------+
+    | cl       | cl, days, lessons. cabinets |
+    | days     | cl, days, lessons. cabinets |
+    | lessons  | cl, days. main              |
+    | cabinets | cl, days. main              |
+    +----------+-----------------------------+
 
-    if sp.user["set_class"]:
-        markup = get_home_markup(sp)
-        await message.answer(text=send_home_message(sp), reply_markup=markup)
+    Args:
+        sc (Schedule): Экземпляр расписания уроков.
+        counter (str): Тип счётчика.
+        target (str): Группа просмтора счётчика.
+
+    Returns:
+        str: Сообщение с результаатми счётчика.
+    """
+    intent = Intent.new()
+
+    if counter == "cl":
+        if target == "lessons":
+            intent = Intent.construct(sc, cl=sc.cl)
+        res = cl_counter(sc, intent)
+    elif counter == "days":
+        res = days_counter(sc, intent)
+    elif counter == "lessons":
+        res = index_counter(sc, intent)
     else:
-        await message.answer(
-            text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
-        )
+        res = index_counter(sc, intent, cabinets_mode=True)
 
-@dp.message_handler(commands=["pass"])
-async def pass_commend(message: types.Message, sp: SPMessages) -> None:
-    """Отвязывает пользователя от класса."""
-    logger.info(message.chat.id)
-    if not sp.user["set_class"]:
-        sp.user["set_class"] = True
-        sp.save_user()
-        markup = get_home_markup(sp)
-        await message.answer(text=send_home_message(sp), reply_markup=markup)
+    message = f"✨ Счётчик {counter}/{target}:"
+    message += send_counter(group_counter_res(res), target=target)
+    return message
 
-@dp.message_handler(commands=["restrictions"])
-async def restrictions_commend(message: types.Message) -> None:
+
+# Обработчики команд
+# ==================
+
+# Простая отправка сообщений -------------------------------------------
+
+@dp.message(Command("restrictions"))
+async def restrictions_handler(message: Message) -> None:
+    """Отправляет список ограничений на использование бота
+    без указанного класса по умолчанию.
+    """
     await message.answer(text=RESTRICTIONS_MESSAGE)
 
-@dp.message_handler(commands=["typehint"])
-async def restrictions_commend(message: types.Message) -> None:
+@dp.message(Command("typehint"))
+async def typehint_handler(message: Message) -> None:
+    """Отпаврляет подсказку по использованию бота."""
     await message.answer(text=TYPEHINT_MESSAGE)
 
-@dp.message_handler(commands=["info"])
-async def info_command(message: types.Message, sp: SPMessages) -> None:
-    """Отправляет статус парсера и бота."""
-    await message.answer(text=send_status_message(sp, _TIMETAG_PATH),
-                         reply_markup=TO_HOME_MARKUP)
+@dp.message(Command("info"))
+async def info_handler(message: Message, sp: SPMessages) -> None:
+    """Сообщение о статусе рабты бота и парсера."""
+    await message.answer(
+        text=get_status_message(sp, _TIMETAG_PATH),
+        reply_markup=get_other_keyboard(sp.user["class_let"]),
+    )
 
-@dp.message_handler(commands=["updates"])
-async def updates_command(message: types.Message, sp: SPMessages) -> None:
-    """Оправляет список изменений в расписании."""
-    logger.info(message.chat.id)
+# Help команда ---------------------------------------------------------
+
+@dp.message(Command("help", "start"))
+async def start_handler(message: Message, sp: SPMessages) -> None:
+    """Отправляет сообщение справки и главную клавиатуру.
+    Если класс не указан, отпраляет сообщение указания класса."""
+    if sp.user["set_class"]:
+        await message.answer(
+            text=get_home_message(sp),
+            reply_markup=get_main_keyboard(sp.user["class_let"]),
+        )
+    else:
+        await message.answer(text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
+
+# Изменение класса пользователя ----------------------------------------
+
+@dp.message(Command("set_class"))
+async def set_class_command(message: Message, sp: SPMessages) -> None:
+    """Изменяет класс или удаляет данные о пользователе."""
+    sp.reset_user()
+    await message.answer(text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
+
+@dp.message(Command("pass"))
+async def pass_handler(message: Message, sp: SPMessages) -> None:
+    """Отвязывает пользователя от класса по умолчанию."""
+    sp.set_class(None)
+    await message.answer(
+        text=get_home_message(sp),
+        reply_markup=get_main_keyboard(sp.user["class_let"]),
+    )
+
+# Получить расписание уроков -------------------------------------------
+
+@dp.message(Command("sc"))
+async def sc_handler(message: Message, sp: SPMessages) -> None:
+    """Отправляет расписание уроков пользовтелю.
+    Отправляет предупреждение, если у пользователя не укзаан класс.
+    """
+    if sp.user["class_let"]:
+        await message.answer(
+            text=sp.send_today_lessons(Intent.new()),
+            reply_markup=get_week_keyboard(sp.user["class_let"]),
+        )
+    else:
+        await message.answer(
+            text="⚠️ Для быстрого получения расписания вам нужно указать класс."
+        )
+
+# Переход к разделам бота ----------------------------------------------
+
+@dp.message(Command("updates"))
+async def updates_handler(message: Message, sp: SPMessages) -> None:
+    """Оправляет последную страницу списка изменений в расписании."""
     updates = sp.sc.updates
-    markup = gen_updates_markup(max(len(updates)-1, 0), updates)
+    markup = get_updates_keyboard(max(len(updates) - 1, 0), updates)
     if len(updates):
         text = send_update(updates[-1])
     else:
@@ -630,83 +781,70 @@ async def updates_command(message: types.Message, sp: SPMessages) -> None:
 
     await message.answer(text=text, reply_markup=markup)
 
-@dp.message_handler(commands=["counter"])
-async def counter_command(message: types.Message, sp: SPMessages) -> None:
-    """Отправялет счётчик уроков/кабинетов."""
-    logger.info(message.chat.id)
-    text = send_counter_message(sp.sc, "lessons", "main")
-    markup = gen_counters_markup(sp, "lessons", "main")
-    await message.answer(text=text, reply_markup=markup)
+@dp.message(Command("counter"))
+async def counter_handler(message: Message, sp: SPMessages) -> None:
+    """Переводит в меню просмора счётчиков расписания."""
+    await message.answer(
+        text=get_counter_message(sp.sc, "lessons", "main"),
+        reply_markup=get_counter_keyboard(sp.user["class_let"], "lessons", "main"),
+    )
 
-@dp.message_handler(commands=["sc"])
-async def sc_command(message: types.Message, sp: SPMessages) -> None:
-    """Отправляет расписание на сегодня/завтра."""
-    logger.info(message.chat.id)
-
-    if message.reply_to_message and message.reply_to_message.from_user.id != bot.id:
-        content = message.reply_to_message.text
-    else:
-        content = message.get_args()
-
-    if content:
-        text = process_request(sp, content)
-        await message.answer(text=text)
-
-    elif sp.user["class_let"]:
-        await message.answer(text=sp.send_today_lessons(Intent.new()),
-                             reply_markup=markup_generator(sp, week_markup))
-    else:
-        text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
-        await message.answer(text=text)
-
-
-# Команды для настройки бота
-# ==========================
-
-@dp.message_handler(commands=["set_class"])
-async def set_class_command(message: types.Message, sp: SPMessages) -> None:
-    """Изменяет класс или удаляет данные о пользователе."""
-    logger.info(message.chat.id)
-
-    if message.reply_to_message and message.reply_to_message.from_user.id != bot.id:
-        content = message.reply_to_message.text
-    else:
-        content = message.get_args()
-
-    if content:
-        if content in sp.sc.lessons:
-            sp.set_class(content)
-            text = f"✏️ Класс изменён на {content}"
-        else:
-            text = "👀 Такого класса не существует."
-    else:
-        sp.reset_user()
-        text = SET_CLASS_MESSAGE
-
-    await message.answer(text=text, reply_markup=PASS_SET_CL_MARKUP)
-
-@dp.message_handler(commands=["notify"])
-async def notify_command(message: types.Message, sp: SPMessages) -> None:
-    """Отправляет расписание на сегодня/завтра."""
-    logger.info(message.chat.id)
-
+@dp.message(Command("notify"))
+async def notyfi_handler(message: Message, sp: SPMessages):
+    """Переводит в менюя настройки уведомлений."""
     enabled = sp.user["notifications"]
     hours = sp.user["hours"]
+    await message.answer(
+        text=get_notify_message(sp),
+        reply_markup=get_notify_keyboard(sp, enabled, hours),
+    )
 
-    text = send_notification_message(sp)
-    markup = get_notifications_markup(sp, enabled, hours)
-    await message.answer(text=text, reply_markup=markup)
 
+# Обработчик текстовых запросов
+# =============================
 
-# Главный обработчик сообщений
-# ============================
+def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
+    """Обрабатывает текстовый запрос к расписанию.
 
-@dp.message_handler()
-async def main_handler(message: types.Message, sp: SPMessages) -> None:
-    uid = str(message.chat.id)
+    Преобразует входящий текст в набор намерений или запрос.
+    Производит поиск по урокам/кабинетам
+    или получает расписание, в зависимости от намерений.
+
+    Args:
+        sp (SPMessages): Экземпляр генератора сообщений.
+        request_text (str): Текст запроса к расписанию.
+
+    Returns:
+        str: Ответ от генератора сообщений.
+    """
+    intent = Intent.parse(sp.sc, request_text.split())
+
+    # Чтобы не превращать бота в машину для спама
+    # Будет использоваться последний урок/кабинет из фильтра
+    if len(intent.cabinets):
+        res = sp.sc.search(list(intent.cabinets)[-1], intent, True)
+        text = send_search_res(intent, res)
+
+    elif len(intent.lessons):
+        res = sp.sc.search(list(intent.lessons)[-1], intent, False)
+        text = send_search_res(intent, res)
+
+    elif intent.cl or intent.days:
+        text = sp.send_lessons(intent) if intent.days else sp.send_today_lessons(intent)
+    else:
+        text = None
+
+    return text
+
+@dp.message()
+async def main_handler(message: Message, sp: SPMessages) -> None:
+    """Главный обработчик сообщений бота.
+    Перенаправляет входящий текст в запросы к расписанию.
+    Устанавливает калсс, если он не установлен.
+    """
     text = message.text.strip().lower()
-    logger.info("{} {}", uid, text)
 
+    # Если у пользователя установлек класс -> создаём запрос
     if sp.user["set_class"]:
         answer = process_request(sp, text)
 
@@ -718,182 +856,290 @@ async def main_handler(message: types.Message, sp: SPMessages) -> None:
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
         sp.set_class(text)
-        markup = get_home_markup(sp)
-        await message.answer(text=send_home_message(sp), reply_markup=markup)
+        markup = get_main_keyboard(sp.user["class_let"])
+        await message.answer(text=get_home_message(sp), reply_markup=markup)
 
     elif message.chat.type == "private":
-        text = "👀 Такого класса на существует."
-        text += f"\n💡 Список доступных классов: {', '.join(sp.sc.lessons)}"
+        text = "👀 Такого класса не существует."
+        text += f"\n💡 Доступных классы: {', '.join(sp.sc.lessons)}"
         await message.answer(text=text)
 
 
-# Обработчик inline-кнопок
-# ========================
+# Обработчик Callback запросов
+# ============================
 
-@dp.callback_query_handler()
-async def callback_handler(callback: types.CallbackQuery, sp: SPMessages) -> None:
-    header, *args = callback.data.split()
-    uid = str(callback.message.chat.id)
-    logger.info("{}: {} -- {}", uid, header, args)
+@dp.callback_query(F.data == "home")
+async def home_callback(query: CallbackQuery, sp: SPMessages) -> None:
+    """Возаращает в главное меню."""
+    await query.message.edit_text(
+        text=get_home_message(sp), reply_markup=get_main_keyboard(sp.user["class_let"])
+    )
 
-    if header == "home":
-        text = send_home_message(sp)
-        markup = get_home_markup(sp)
+@dp.callback_query(F.data == "other")
+async def other_callback(query: CallbackQuery, sp: SPMessages) -> None:
+    """Возвращает сообщение статуса и доплнительную клавиатуру."""
+    await query.message.edit_text(
+        text=get_status_message(sp, _TIMETAG_PATH),
+        reply_markup=get_other_keyboard(sp.user["class_let"]),
+    )
 
-    # Вызоы меню инстрментов
-    elif header == "other":
-        text = send_status_message(sp, _TIMETAG_PATH)
-        markup = markup_generator(sp, other_markup)
+@dp.callback_query(F.data == "restrictions")
+async def restrictions_callback(query: CallbackQuery) -> None:
+    """Возвращает сообщение с ограничениями при отсутствии класса."""
+    await query.message.edit_text(
+        text=RESTRICTIONS_MESSAGE, reply_markup=BACK_SET_CL_MARKUP
+    )
 
-    # Счётчик уроков/кабинетов
-    elif header == "count":
-        if args[0] == args[1]:
-            args[1] = None
+@dp.callback_query(F.data == "set_class")
+async def set_class_callback(query: CallbackQuery, sp: SPMessages) -> None:
+    """Сбрасывает класс пользователя."""
+    sp.reset_user()
+    await query.message.edit_text(
+        text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
+    )
 
-        if args[0] == "cl" and args[1] == "lessons" and not sp.user["class_let"]:
-            args[1] = None
+@dp.callback_query(F.data == "pass")
+async def pass_class_callback(query: CallbackData, sp: SPMessages) -> None:
+    """Отвязывает пользователя от класса."""
+    sp.set_class(None)
+    await query.message.edit_text(
+        text=get_home_message(sp), reply_markup=get_main_keyboard(sp.user["class_let"])
+    )
 
-        text = send_counter_message(sp.sc, args[0], args[1])
-        markup = gen_counters_markup(sp, args[0], args[1])
 
-    # Расписание на сегодня
-    elif header == "sc":
-        text = sp.send_today_lessons(Intent.construct(sp.sc, cl=args[0]))
-        markup = markup_generator(sp, week_markup, cl=args[0])
+class ScCallback(CallbackData, prefix="sc"):
+    """Используется при получении расписания.
 
-    # Расписание на неделю
-    elif header == "week":
-        intent = Intent.construct(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=args[0])
-        text = sp.send_lessons(intent)
-        markup = markup_generator(sp, sc_markup, cl=args[0])
+    cl (str): Класс для которого получить расписание.
+    day (str): Для какого дня получить расписание.
 
-    # Клавиатура для выбора дня
-    elif header == "select_day":
-        text = f"📅 на ...\n🔶 Для {args[0]}:"
-        markup = select_day_markup(args[0])
+    - 0-5: понедельник - суббота.
+    - today: Получить расписание на сегодня/завтра.
+    - week: Получить расписание на всю неделю."""
+    cl: str
+    day: str
 
-    # Расписани на определённый день
-    elif header == "sc_day":
-        day = int(args[1])
+@dp.callback_query(ScCallback.filter())
+async def sc_callback(
+    query: CallbackQuery, callback_data: ScCallback, sp: SPMessages
+) -> None:
+    """Отпарвляет расписание уроков для класса в указанный день."""
+    if callback_data.day == "week":
+        text = sp.send_lessons(
+            Intent.construct(sp.sc, days=[0, 1, 2, 3, 4, 5], cl=callback_data.cl)
+        )
+        reply_markup = get_sc_keyboard(callback_data.cl)
+    elif callback_data.day == "today":
+        text = sp.send_today_lessons(Intent.construct(sp.sc, cl=callback_data.cl))
+        reply_markup = get_week_keyboard(callback_data.cl)
+    else:
+        text = sp.send_lessons(
+            Intent.construct(sp.sc, cl=callback_data.cl, days=int(callback_data.day))
+        )
+        reply_markup = get_week_keyboard(callback_data.cl)
 
-        if day == 7:
-            day = [0, 1, 2, 3, 4, 5]
+    await query.message.edit_text(text=text, reply_markup=reply_markup)
 
-        intent = Intent.construct(sp.sc, days=day, cl=args[0])
 
-        if day == 6:
-            text = sp.send_today_lessons(intent)
-            markup = markup_generator(sp, week_markup, cl=args[0])
+class SelectDayCallback(CallbackData, prefix="select_day"):
+    """Используется для выбора дня недели при получении расписания.
+
+    cl (str): Для какого класса получить расписание.
+    """
+    cl: str
+
+@dp.callback_query(SelectDayCallback.filter())
+async def select_day_callback(
+    query: CallbackQuery, callback_data: ScCallback, sp: SPMessages
+) -> None:
+    """Отобржает клавиатуру для выбора дня расписания уроков."""
+    await query.message.edit_text(
+        text=f"📅 на ...\n🔶 Для {callback_data.cl}:",
+        reply_markup=get_select_day_keyboard(callback_data.cl),
+    )
+
+
+class NotifyCallback(CallbackData, prefix="notify"):
+    """Испольуется при настройке уведомлений пользователя.
+
+    action (str): Какое выполнить действие: add, remove, on, off.
+    hour (int): Для какого часа применять изменение.
+
+    - on: Включить увдомления.
+    - off: Откплючить уведомления.
+    - add: Включить рассылку расписания в указанный час.
+    - remove: Отключить рассылку расписания в указанный час.
+    """
+    action: str
+    hour: int
+
+@dp.callback_query(F.data == "notify")
+async def notify_callback(query: CallbackQuery, sp: SPMessages) -> None:
+    """Отправляет настройки увдеомлений."""
+    enabled = sp.user["notifications"]
+    hours = sp.user["hours"]
+    await query.message.edit_text(
+        text=get_notify_message(sp),
+        reply_markup=get_notify_keyboard(sp, enabled, hours),
+    )
+
+@dp.callback_query(NotifyCallback.filter())
+async def notify_mod_callback(
+    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback
+) -> None:
+    """Применяет настройки к уведомлениям."""
+    if callback_data.action == "on":
+        sp.user["notifications"] = True
+
+    elif callback_data.action == "off":
+        sp.user["notifications"] = False
+
+    elif callback_data.action == "add":
+        if callback_data.hour not in sp.user["hours"]:
+            sp.user["hours"].append(callback_data.hour)
+
+    elif callback_data.action == "remove":
+        if callback_data.hour in sp.user["hours"]:
+            sp.user["hours"].remove(callback_data.hour)
+
+    elif callback_data.action == "reset":
+        sp.user["hours"] = []
+
+    sp.save_user()
+    enabled = sp.user["notifications"]
+    hours = sp.user["hours"]
+
+    await query.message.edit_text(
+        text=get_notify_message(sp),
+        reply_markup=get_notify_keyboard(sp, enabled, hours),
+    )
+
+
+class UpdatesCallback(CallbackData, prefix="updates"):
+    """Используется при просмотре списка изменений.
+
+    action (str): back, mext, last, switch.
+
+    - back: Переместитсья на одну страницу назад.
+    - next: Переместиться на одну страницу вперёд.
+    - last: Переместиться на последную страницу расписания.
+    - swith: Переключить режим просмотра с общего на для класса.
+
+    page (int): Текущаю страница списка изменений.
+    cl (str): Для какого класса отображать список изменений.
+    """
+    action: str
+    page: int
+    cl: str
+
+@dp.callback_query(UpdatesCallback.filter())
+async def updates_callback(
+    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback
+) -> None:
+    text = "🔔 Изменения "
+
+    # Смена режима просмотра: только для класса/всего расписния
+    if callback_data.action == "switch":
+        cl = sp.user["class_let"] if callback_data.cl == "None" else None
+    else:
+        cl = None if callback_data.cl == "None" else callback_data.cl
+
+    # Дополняем шапку сообщения
+    if cl is not None and sp.user["class_let"]:
+        text += f"для {cl}:\n"
+        intent = Intent.construct(sp.sc, cl)
+    else:
+        text += "в расписании:\n"
+        intent = Intent.new()
+
+    # Полчуаем список изменений
+    updates = sp.sc.get_updates(intent)
+    i = max(min(int(callback_data.page), len(updates) - 1), 0)
+
+    if len(updates):
+        if callback_data.action in ("last", "switch"):
+            i = len(updates) - 1
+
+        elif callback_data.action == "next":
+            i = (i + 1) % len(updates)
+
+        elif callback_data.action == "back":
+            i = (i - 1) % len(updates)
+
+        update_text = send_update(updates[i], cl=cl)
+        if len(update_text) > 4000:
+            text += "\n < слишком много изменений >"
         else:
-            text = sp.send_lessons(intent)
-            markup = markup_generator(sp, sc_markup, cl=args[0])
-
-    # Отправка списка изменений
-    elif header == "updates":
-        text = "🔔 Изменения "
-
-        # Смена режима просмотра: только для класса/всего расписния
-        if args[0] == "switch":
-            cl = sp.user["class_let"] if args[2] == "None" else None
-        else:
-            cl = None if args[2] == "None" else args[2]
-
-        # Доплняем шапку сообщения
-        if cl is not None and sp.user["set_class"]:
-            text += f"для {cl}:\n"
-            intent = Intent.construct(sp.sc, cl=args[2])
-        else:
-            text += "в расписании:\n"
-            intent = Intent.new()
-
-        updates = sp.sc.get_updates(intent)
-        i = max(min(int(args[1]), len(updates)-1), 0)
-
-        if len(updates):
-            if args[0] in ["last", "switch"]:
-                i = len(updates)-1
-
-            elif args[0] == "next":
-                i = (i+1) % len(updates)
-
-            elif args[0] == "back":
-                i = (i-1) % len(updates)
-
-            text += send_update(updates[i])
-        else:
-            text += "Нет новых обновлений."
-
-        markup = gen_updates_markup(i, updates, cl)
-
-    # Смена класса пользователя
-    elif header == "set_class":
-        sp.reset_user()
-        text = SET_CLASS_MESSAGE
-        markup = PASS_SET_CL_MARKUP
-
-    elif header == "pass":
-        sp.user["set_class"] = True
-        sp.save_user()
-        text = send_home_message(sp)
-        markup = get_home_markup(sp)
-
-    elif header == "restrictions":
-        text = RESTRICTIONS_MESSAGE
-        markup = BACK_SET_CL_MARKUP
-
-
-    elif header == "notify":
-        command, *arg_hours = args
-
-        if command == "on":
-            sp.user["notifications"] = True
-            sp.save_user()
-        elif command == "off":
-            sp.user["notifications"] = False
-            sp.save_user()
-        elif command == "add":
-            for x in arg_hours:
-                if x not in sp.user["hours"]:
-                    sp.user["hours"].append(x)
-
-            sp.save_user()
-
-        elif command == "reset":
-            sp.user["hours"] = []
-            sp.save_user()
-
-        enabled = sp.user["notifications"]
-        hours = sp.user["hours"]
-
-        text = send_notification_message(sp)
-        markup = get_notifications_markup(sp, enabled, hours)
+            text += update_text
 
     else:
-        text = "👀 Упс, похоже эта клавиатура устарела."
-        text += f"\nHeader: {header}"
-        text += f"\nArgs: {args}"
-        text += "\n\nНапишите @milinuri, если считаете это ошибкой."
-        markup = TO_HOME_MARKUP
-        logger.warning("Unknown header - {}", header)
+        text += "Нет новых обновлений."
 
-    with suppress(MessageNotModified):
-        await callback.message.edit_text(text=text, reply_markup=markup)
-
-    await callback.answer()
+    await query.message.edit_text(
+        text=text, reply_markup=get_updates_keyboard(i, updates, cl)
+    )
 
 
-@dp.errors_handler()
-async def errors_handler(update: types.Update, exception: Exception):
-    logger.exception("Cause exception {} in u:{}", exception, update)
-    if gotify is not None:
-        await gotify.create_message(
-            str(exception), title="Oops!", priority=5
-        )
-    return True
+class CounterCallback(CallbackData, prefix="count"):
+    """Используется в клавиатуре просмотра счётчиков расписания.
+
+    counter (str): Тип счётчика.
+    target (str): Цль для отображения счётчика.
+
+    +----------+-------------------------+
+    | counter  | targets                 |
+    +----------+-------------------------+
+    | cl       | days, lessons. cabinets |
+    | days     | cl, lessons. cabinets   |
+    | lessons  | cl, days, main          |
+    | cabinets | cl, days, main          |
+    +----------+-------------------------+
+    """
+    counter: str
+    target: str
+
+@dp.callback_query(CounterCallback.filter())
+async def counter_callback(
+    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback
+) -> None:
+    """Клавитура для просмотра счётчиков расписания."""
+    counter = callback_data.counter
+    target = callback_data.target
+
+    if counter == target:
+        target = None
+
+    if counter == "cl" and target == "lessons" and not sp.user["class_let"]:
+        target = None
+
+    await query.message.edit_text(
+        text=get_counter_message(sp.sc, counter, target),
+        reply_markup=get_counter_keyboard(sp.user["class_let"], counter, target),
+    )
+
+
+@dp.callback_query()
+async def callback_handler(query: CallbackQuery) -> None:
+    """Перехватывает все прочие callback_data."""
+    logger.warning("Unprocessed query - {}", query.data)
+
+
+# Обработчик ошибок
+# =================
+
+@dp.errors()
+async def error_handler(exception: ErrorEvent) -> None:
+    logger.exception(exception.exception)
 
 
 # Запуск бота
 # ===========
 
+async def main() -> None:
+    bot = Bot(TELEGRAM_TOKEN)
+    logger.info("Bot started.")
+    await dp.start_polling(bot, skip_updates=True)
+
+
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    asyncio.run(main())
