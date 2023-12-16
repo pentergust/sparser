@@ -861,7 +861,7 @@ async def main_handler(message: Message, sp: SPMessages) -> None:
 
     elif message.chat.type == "private":
         text = "👀 Такого класса не существует."
-        text += f"\n💡 Доступных классы: {', '.join(sp.sc.lessons)}"
+        text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
         await message.answer(text=text)
 
 
