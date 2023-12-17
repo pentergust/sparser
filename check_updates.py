@@ -9,15 +9,16 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.9.1 (sp 5.7+2b, telegram 1.14 +b5)
+Ver: 0.10 (sp v5.7+2b, telegram v2.0)
 """
 
 from datetime import datetime
 from pathlib import Path
 from os import getenv
+import asyncio
 
-from aiogram import Dispatcher, executor, Bot
-from aiogram.utils.exceptions import BotBlocked, BotKicked, MigrateToChat, UserDeactivated
+from aiogram import Bot
+from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
 from dotenv import load_dotenv
@@ -30,7 +31,6 @@ from sp.utils import load_file, save_file
 load_dotenv()
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN")
 bot = Bot(TELEGRAM_TOKEN)
-dp = Dispatcher(bot)
 logger.add("sp_data/updates.log")
 _TIMETAG_PATH = Path("sp_data/last_update")
 
@@ -44,16 +44,16 @@ CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
 
 def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="🏠", callback_data=f"week {cl}"),
-        InlineKeyboardButton(text="На неделю", callback_data=f"week {cl}"),
-        InlineKeyboardButton(text="▷", callback_data=f"select_day {cl}")
+        InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+        InlineKeyboardButton(text="На неделю", callback_data=f"sc:{cl}:week"),
+        InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}"),
     ]])
 
 def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="◁", callback_data="home"),
-        InlineKeyboardButton(text="Изменения", callback_data=f"updates last 0 {cl}"),
-        InlineKeyboardButton(text="Уроки", callback_data=f"lessons {cl}")
+        InlineKeyboardButton(text="Изменения", callback_data=f"updates:last:0:{cl}"),
+        InlineKeyboardButton(text="Уроки", callback_data=f"sc:{cl}:today")
     ]])
 
 
@@ -89,23 +89,6 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
         await bot.send_message(sp.uid, text=message,
             reply_markup=get_updates_keyboard(sp.user["class_let"]
         ))
-
-async def migrate_users(migrate_ids: list[tuple[str, str]]) -> None:
-    """Перемещает данные пользователей (чатов) на новый ID.
-
-    Например, вследствии перемещения группы в супергруппу.
-
-    Args:
-        migrate_ids (list[tuple[str, str]]): ID для миграции.
-    """
-    logger.info("Start migrate users...")
-    users = load_file(Path(users_path), {})
-    for old, new in migrate_ids:
-        logger.info("Migrate {} -> {}". old, new)
-        users[new] = users[old]
-        del users[old]
-        await bot.send_message(new, CHAT_MIGRATE_MESSAGE)
-    save_file(Path(users_path), users)
 
 async def remove_users(remove_ids: list[str]):
     """Удаляет недействительные ID пользователей (чата).
@@ -151,7 +134,6 @@ async def main() -> None:
     now = datetime.now()
     users = load_file(Path(users_path), {})
     remove_ids = []
-    migrate_ids = []
 
     logger.info("Start of the update process...")
     for k, v in list(users.items()):
@@ -165,17 +147,13 @@ async def main() -> None:
         # каждой итерации
         sp = SPMessages(k, v)
         try:
+            logger.debug("{} {}", k, v)
             await process_update(bot, now.hour, sp)
-
-        # Если чат сменил свой ID.
-        # Например, стал из обычного супергруппой.
-        except MigrateToChat as e:
-            migrate_ids.append((k, e.migrate_to_chat_id))
 
         # Если что-то произошло с пользователем:
         # Заблокировал бота, исключил из чата, исчез сам ->
         # Удаляем пользователя (чат) из списка чатов.
-        except (BotKicked, BotBlocked, UserDeactivated):
+        except TelegramForbiddenError:
             remove_ids.append(k)
 
         # Ловим все прочие исключения и отображаем их на экран
@@ -185,8 +163,6 @@ async def main() -> None:
     # Если данные изменились - записываем изменения в файл
     if remove_ids:
         await remove_users(remove_ids)
-    if migrate_ids:
-        await migrate_users(migrate_ids)
 
     # Осталяем временную метку успешного обновления
     set_timetag(_TIMETAG_PATH, int(now.timestamp()))
@@ -196,4 +172,4 @@ async def main() -> None:
 # =========================
 
 if __name__ == '__main__':
-    executor.start(dp, main())
+    asyncio.run(main())
