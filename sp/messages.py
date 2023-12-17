@@ -162,7 +162,7 @@ def send_day_lessons(lessons: list) -> str:
     complited_lessons = get_complited_lessons()
 
     for i, x in enumerate(lessons):
-        cursor = "🔹" if i == complited_lessons[-1] else f"{i+1}."
+        cursor = "➜" if i == complited_lessons[-1] else f"{i+1}."
         message += f"\n{cursor}"
 
         tt = timetable[i]
@@ -170,9 +170,7 @@ def send_day_lessons(lessons: list) -> str:
             message += time(tt[0], tt[1]).strftime(" %H:%M -")
         message += time(tt[2], tt[3]).strftime(" %H:%M")
 
-        if i == complited_lessons[-1]:
-            message += " > "
-        elif i in complited_lessons:
+        if i in complited_lessons:
             message += " ┃ "
         else:
             message += " │ "
@@ -324,7 +322,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +7b (109)"
+        res = "🌟 Версия sp: 5.7 +8b (110)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"

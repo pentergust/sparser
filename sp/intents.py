@@ -107,7 +107,11 @@ class Intent(NamedTuple):
                 days.append(weekday)
 
             elif arg == "завтра":
-                days.append(weekday+1)
+                today = weekday+1
+                if today > 5:
+                    today = 0
+
+                days.append(today)
 
             elif arg.startswith("недел"):
                 days = [0, 1, 2, 3, 4, 5]
@@ -210,7 +214,11 @@ class Intent(NamedTuple):
                 days.append(weekday)
 
             elif arg == "завтра":
-                days.append(weekday+1)
+                today = weekday+1
+                if today > 5:
+                    today = 0
+
+                days.append(today)
 
             elif arg.startswith("недел"):
                 days = [0, 1, 2, 3, 4, 5]
