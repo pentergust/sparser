@@ -9,6 +9,7 @@ from .utils import load_file
 from .utils import save_file
 from .utils import plural_form
 from .utils import check_keys
+from .utils import compact_updates
 from .utils import get_str_timedelta
 from .parser import Schedule
 from .counters import reverse_counter
@@ -322,7 +323,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +9b (111)"
+        res = "🌟 Версия sp: 5.7 (112)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -389,13 +390,13 @@ class SPMessages:
         else:
             return False
 
-    def get_lessons_updates(self) -> list:
+    def get_lessons_updates(self) -> Optional[dict]:
         """Возвращает дни, для которых изменилось расписание."""
         if self.user["class_let"] is None:
-            return []
+            return
 
         if self.sc.schedule["last_parse"] <= self.user["last_parse"]:
-            return []
+            return
 
         logger.info("Get lessons updates")
         updates = self.sc.get_updates(self.user_intent, self.user["last_parse"])
@@ -403,7 +404,7 @@ class SPMessages:
         # Обновление времени последней проверки расписания
         self.user["last_parse"] = self.sc.schedule["last_parse"]+1
         self.save_user()
-        return updates
+        return compact_updates(updates)
 
 
     # Отображение расписания
@@ -430,11 +431,10 @@ class SPMessages:
             message += "\n"
 
         # Обновления в расписаниии
-        updates = self.get_lessons_updates()
-        if updates:
+        update = self.get_lessons_updates()
+        if update is not None:
             message += f"\nУ вас изменилось расписание! 🎉"
-            for update in updates:
-                message += f"\n{send_update(update, cl)}"
+            message += f"\n{send_update(update, cl)}"
         return message
 
     def send_today_lessons(self, intent: Intent) -> str:

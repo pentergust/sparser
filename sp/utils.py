@@ -114,3 +114,78 @@ def get_str_timedelta(s: int | float, hours: Optional[bool]=True) -> str:
     else:
         minutes, seconds = divmod(int(s), 60)
         return f"{minutes:02}:{seconds:02}"
+
+
+def compact_updates(updates: list[dict]) -> dict:
+    """Собиарет несколько записей об обновлениях в одну.
+
+    Используется чтобы совместить несколько записей об изменениях.
+    Например чтобы покзаать все имзеенния в расписании за неделю.
+    Или использваоть при получении обнолвений.
+
+    Правила совмещения:
+
+    1. Если урока ранее не было -> добавляем урок.
+    2. Если Урок A, сменился на B, а после снова на A -> удаляем урок.
+    3. Если A -> B, B -> C, то A => C.
+    4. Иначе добавить запись.
+
+    Args:
+        updates (list[Dict]): Спиоск записей обновлений расписания.
+
+    Returns:
+        dict: Новая совмешённая запись об обновлении расписания.
+    """
+    res = updates[0]["updates"].copy()
+
+    # Просматриваем все последующии записи об обновленях
+    for update_data in updates[1:]:
+        for day, day_update in enumerate(update_data["updates"]):
+            for cl, cl_updates in day_update.items():
+                if cl not in res[day]:
+                    res[day][cl] = cl_updates
+                    continue
+
+                new_lessons = []
+                old_lessons = res[day][cl]
+
+                for i, lesson in enumerate(cl_updates):
+                    old_lesson = old_lessons[i]
+
+                    # Если нет старого и нового урока.
+                    if old_lesson is None and lesson is None:
+                        new_lessons.append(None)
+
+                    # Если появился новый урок
+                    elif old_lesson is None and lesson is not None:
+                        new_lessons.append(lesson)
+
+                    # Совмещенеи записей об изменении уроков
+                    elif lesson is None and old_lesson is not None:
+                        new_lessons.append(old_lesson)
+
+                    # B -> A, C -> a = None
+                    elif old_lesson[1] == lesson[1]:
+                        new_lessons.append(None)
+
+                    # A -> B -> A = None
+                    elif old_lesson[0] == lesson[1]:
+                        new_lessons.append(None)
+
+                    # A -> B; B -> C = A -> C
+                    elif old_lesson[1] == lesson[0]:
+                        new_lessons.append((old_lesson[0], lesson[1]))
+
+                    else:
+                        new_lessons.append(lesson)
+
+                if new_lessons == [None] * 8:
+                    del res[day][cl]
+                else:
+                    res[day][cl] = new_lessons
+
+    return {
+        "start_time": updates[0]["start_time"],
+        "end_time": updates[-1]["end_time"],
+        "updates": res
+    }
