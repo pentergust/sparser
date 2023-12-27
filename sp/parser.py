@@ -215,8 +215,13 @@ class Schedule:
         sc_changes = deque(load_file(self.updates_path, []), 30)
         updates = get_sc_updates(a.get("lessons", {}), b["lessons"])
         if sum(map(len, updates)):
+            if len(sc_changes):
+                start_time = sc_changes[-1]["end_time"]
+            else:
+                start_time = b["last_parse"]
+
             sc_changes.append({
-                "start_time": sc_changes[-1]["end_time"],
+                "start_time": start_time,
                 "end_time": b["last_parse"],
                 "updates": updates}
             )
