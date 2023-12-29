@@ -751,7 +751,7 @@ def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
     Returns:
         str: Сообщение с результаатми счётчика.
     """
-    intent = Intent.new()
+    intent = intent()  
 
     if counter == "cl":
         if target == "lessons":
@@ -837,7 +837,7 @@ async def sc_handler(message: Message, sp: SPMessages) -> None:
     """
     if sp.user["class_let"]:
         await message.answer(
-            text=sp.send_today_lessons(Intent.new()),
+            text=sp.send_today_lessons(Intent(),
             reply_markup=get_week_keyboard(sp.user["class_let"]),
         )
     else:
@@ -876,6 +876,7 @@ async def notify_handler(message: Message, sp: SPMessages):
         text=get_notify_message(sp),
         reply_markup=get_notify_keyboard(sp, enabled, hours),
     )
+
 
 
 # Обработчик текстовых запросов
@@ -1136,7 +1137,7 @@ async def updates_callback(
         intent = Intent.construct(sp.sc, cl)
     else:
         text += "в расписании:\n"
-        intent = Intent.new()
+        intent = Intent()
 
     # Полчуаем список изменений
     updates = sp.sc.get_updates(intent)

@@ -75,7 +75,7 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
     # Рассылка расписания в указанные часы
     if str(hour) in sp.user["hours"]:
         await bot.send_message(sp.uid,
-            text=sp.send_today_lessons(Intent.new()),
+            text=sp.send_today_lessons(Intent()),
             reply_markup=get_week_keyboard(sp.user["class_let"])
         )
 

@@ -2,7 +2,7 @@
 Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.4 (sp 5.7)
+Ver: 1.4.1 (sp 5.7)
 """
 
 import argparse
@@ -63,9 +63,8 @@ def main() -> None:
     # Получение намерений для расписания
     if args.intents is not None:
         intent = Intent.parse(sp.sc, args.intents.split())
-        print(intent)
     else:
-        intent = Intent.new()
+        intent = Intent()
 
     # Получить расписание уроков
     if args.cmd == "sc":
@@ -106,7 +105,7 @@ def main() -> None:
         print(send_counter(groups, target=args.target))
 
     else:
-        print(sp.send_today_lessons(Intent.new()))
+        print(sp.send_today_lessons(intent))
 
 # Запуск скрипта
 # ==============

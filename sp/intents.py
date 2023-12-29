@@ -23,18 +23,46 @@ _short_days_names = ["пн", "вт", "ср", "чт", "пт", "сб"]
 
 
 class Intent(NamedTuple):
-    cl: set[str]
-    days: set[int]
-    lessons: set[str]
-    cabinets: set[str]
+    cl: set[str] = set()
+    days: set[int] = set()
+    lessons: set[str] = set()
+    cabinets: set[str] = set()
+
+
+    def to_str(self) -> str:
+        """Запаковывает намерение в строку."""
+        return ":".join([",".join(map(str, x)) for x in self])
 
 
     # Создание нового экземлпряа намерений
     # ====================================
 
     @classmethod
-    def new(cls):
-        return Intent(set(), set(), set(), set())
+    def from_str(cls, s: str):
+        """Получает намерение упакованной из строки.
+
+        Формат:
+            cl:day:lessons:cabinets,cabinets2,cabinetsN
+
+        "9в:1,2::" -> Intent(cl=["9в"], days=[1, 2])
+
+        Args:
+            s (str): Строка с упаковынным намерением.
+
+        Returns:
+            Intent: Распакованный экземпляр намерений
+        """
+        res = []
+        for i, part in enumerate(s.split(":")):
+            if part == "":
+                res.append(set())
+            elif i == 1:
+                res.append({int(x) for x in part.split(",")})
+            else:
+                res.append({x for x in part.split(",")})
+
+        return Intent(*res)
+
 
     @classmethod
     def construct(cls, sc, cl: Iterable[str]=(),
