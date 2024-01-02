@@ -16,7 +16,7 @@ help - Главное меню
 info - Информация о боте
 
 Author: Milinuri Nirvalen
-Ver: 2.1 +2
+Ver: 2.1 +3 (sp v5.7)
 """
 
 import asyncio
@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (CallbackQuery, ErrorEvent, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, Update)
@@ -134,9 +134,10 @@ SET_CLASS_MESSAGE = ("Для полноценной работы желател�
     "\nВы сможете быстро просматривать расписание и получать уведомления."
     "\nПочитать о всех преимуществах - /cl_features"
     "\n\n🌟 Просто укажите класс следующим сообщеним (\"8в\")"
+    "\nИли после команды /set_class (прим. /set_class 7в)"
     "\n\nВы можете пропустить выбор класса нажав кнопку (/pass)."
     "\n\n💡 Вы можете сменить класс позже:"
-    "\n-- через команду /set_class."
+    "\n-- через команду /set_class [класс]."
     "\n-- Ещё -> сменить класс."
 )
 
@@ -227,6 +228,16 @@ TUTORIAL_MESSAGES = [
         "\n\n💡 Посмотреть все кабинеты можно в счётчиках:"
         "\n-- По кнопке \"Ещё\" ➜ \"Счётчики\" ➜ \"По урокам\""
         "\n-- По команде /counter ➜ \"По урокам\""
+    ),
+
+    ("6. Групповые чаты"
+        "\n\n🌟 Вы можете добавить бота в чатик."
+        "\nЭто позаолит использовать одного бота нескольким пользователям."
+        "\nКласс уставливается один на весь чат."
+        "\n\n/set_class [класс] - чтобы установить класс в чате."
+        "\nИли ответьте классом на сообщение бота (9в)."
+        "\n\n✏️ Чтобы писать запросы в чате, используйте команду /sc [запрос]"
+        "\nИли ответьте запросом на сообщение бота."
     ),
 
     ("🎉 Поздравляем с прохождением обучения!"
@@ -822,10 +833,26 @@ async def start_handler(message: Message, sp: SPMessages) -> None:
 # Изменение класса пользователя ----------------------------------------
 
 @dp.message(Command("set_class"))
-async def set_class_command(message: Message, sp: SPMessages) -> None:
+async def set_class_command(message: Message, sp: SPMessages,
+command: CommandObject) -> None:
     """Изменяет класс или удаляет данные о пользователе."""
-    sp.reset_user()
-    await message.answer(text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
+    if command.args is not None:
+        if sp.set_class(command.args):
+            await message.answer(
+                text=get_home_message(command.args),
+                reply_markup=get_main_keyboard(command.args)
+        )
+        else:
+            text = "👀 Такого класса не существует."
+            text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
+            await message.answer(text=text)
+
+    else:
+        sp.reset_user()
+        await message.answer(
+            text=SET_CLASS_MESSAGE,
+            reply_markup=PASS_SET_CL_MARKUP
+        )
 
 @dp.message(Command("pass"))
 async def pass_handler(message: Message, sp: SPMessages) -> None:
@@ -835,23 +862,6 @@ async def pass_handler(message: Message, sp: SPMessages) -> None:
         text=get_home_message(sp.user["class_let"]),
         reply_markup=get_main_keyboard(sp.user["class_let"]),
     )
-
-# Получить расписание уроков -------------------------------------------
-
-@dp.message(Command("sc"))
-async def sc_handler(message: Message, sp: SPMessages) -> None:
-    """Отправляет расписание уроков пользовтелю.
-    Отправляет предупреждение, если у пользователя не укзаан класс.
-    """
-    if sp.user["class_let"]:
-        await message.answer(
-            text=sp.send_today_lessons(Intent()),
-            reply_markup=get_week_keyboard(sp.user["class_let"]),
-        )
-    else:
-        await message.answer(
-            text="⚠️ Для быстрого получения расписания вам нужно указать класс."
-        )
 
 # Переход к разделам бота ----------------------------------------------
 
@@ -884,7 +894,6 @@ async def notify_handler(message: Message, sp: SPMessages):
         text=get_notify_message(sp),
         reply_markup=get_notify_keyboard(sp, enabled, hours),
     )
-
 
 
 # Обработчик текстовых запросов
@@ -923,8 +932,33 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 
     return text
 
+# Получить расписание уроков -------------------------------------------
+
+@dp.message(Command("sc"))
+async def sc_handler(message: Message, sp: SPMessages, command: CommandObject) -> None:
+    """Отправляет расписание уроков пользовтелю.
+    Отправляет предупреждение, если у пользователя не укзаан класс.
+    """
+
+    if command.args is not None:
+        answer = process_request(sp, command.args)
+        if answer is not None:
+            await message.answer(text=answer)
+        else:
+            await message.answer(text="👀 Кажется это пустой запрос...")
+
+    elif sp.user["class_let"]:
+        await message.answer(
+            text=sp.send_today_lessons(Intent()),
+            reply_markup=get_week_keyboard(sp.user["class_let"]),
+        )
+    else:
+        await message.answer(
+            text="⚠️ Для быстрого получения расписания вам нужно указать класс."
+        )
+
 @dp.message()
-async def main_handler(message: Message, sp: SPMessages) -> None:2
+async def main_handler(message: Message, sp: SPMessages) -> None:
     """Главный обработчик сообщений бота.
     Перенаправляет входящий текст в запросы к расписанию.
     Устанавливает калсс, если он не установлен.
