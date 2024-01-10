@@ -1,6 +1,6 @@
 """Telegram-бот для доступа к SPMessages.
 
-Полностью реализует доступ ко всем разделам SPMessages.
+Полностью реализует доступ ко всем методам SPMessages.
 Не считая некоторых ограничений в настройке "намерений" (Intents).
 
 Команды бота для BotFather
@@ -12,22 +12,28 @@ notify - Настроить уведомления
 counter - Счётчики уроков/кабинетов
 tutorial - Как писать запросы
 set_class - Изменить класс
+intents - Настроить намерения
+add_intent - Добавить намерение
+remove_intents - Удалить намерение
 help - Главное меню
 info - Информация о боте
 
 Author: Milinuri Nirvalen
-Ver: 2.1 +3 (sp v5.7)
+Ver: 2.2 (sp v5.7)
 """
 
 import asyncio
 from datetime import datetime
 from os import getenv
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional, NamedTuple
+import sqlite3
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject
 from aiogram.filters.callback_data import CallbackData
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (CallbackQuery, ErrorEvent, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, Update)
 from dotenv import load_dotenv
@@ -49,11 +55,11 @@ TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 dp = Dispatcher()
 days_names = ("пн", "вт", "ср", "чт", "пт", "сб")
 _TIMETAG_PATH = Path("sp_data/last_update")
-_HOME_BUTTON = InlineKeyboardButton(text="◁", callback_data="home")
+DB_CONN = sqlite3.connect("sp_data/tg.db")
 
-TO_HOME_MARKUP = InlineKeyboardMarkup(
-    inline_keyboard=[[InlineKeyboardButton(text="🏠Домой", callback_data="home")]]
-)
+# Статические клавиатуры при выборе класса
+# pass => Пропустить смену класс и установить None
+# cl_features => Список преимуществ если указать класс
 PASS_SET_CL_MARKUP = InlineKeyboardMarkup(
     inline_keyboard=[
         [
@@ -72,12 +78,123 @@ BACK_SET_CL_MARKUP = InlineKeyboardMarkup(
 )
 
 
+# Всопомгательный класс
+# =====================
+
+class IntentObject(NamedTuple):
+    name: str
+    intent: Intent
+
+class UserIntents:
+    """Хранилище намерений пользователя.
+
+    Является обёрткой над базой данных.
+    Позволяет получаеть, добавлять и удалять намерений пользователя.
+
+    Args:
+        conn (sqlite3.Connection): Подключение к базе данных намерений.
+        uid (int): Идентификатор пользователя бота.
+    """
+
+    def __init__(self, conn: sqlite3.Connection, uid: int) -> None:
+        self._conn = conn
+        self._cur = self._conn.cursor()
+        self._uid = uid
+        self._check_tables()
+
+    def _check_tables(self) -> None:
+        """Проверяет наличие таблицы намерений в базе данных."""
+        self._cur.execute(("CREATE TABLE IF NOT EXISTS intent("
+            "user_id TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "intent TEXT NOT NULL)"
+        ))
+        self._conn.commit()
+
+    # Работа со списком намерений ----------------------------------------------
+
+    def get(self) -> list[IntentObject]:
+        """Получает словарь всех намерений пользователя.
+
+        Return:
+            list[InentObject]: Список намерений пользователей.
+        """
+        self._cur.execute(
+            "SELECT name,intent FROM intent WHERE user_id=?",
+            (self._uid,)
+        )
+        return [IntentObject(n, Intent.from_str(i))
+            for n, i in self._cur.fetchall()
+        ]
+
+    def get_intent(self, name: str) -> Optional[Intent]:
+        """Возвращает первое пользователя по имени."""
+        for x in self.get():
+            if x.name == name:
+                return x.intent
+
+    def remove_all(self):
+        """Удаляет все намерение пользователя из базы данных."""
+        self._cur.execute("DELETE FROM intent WHERE user_id=?", (self._uid,))
+        self._conn.commit()
+
+    # Работа с одним намерением ------------------------------------------------
+
+    def add(self, name: str, intent: Intent) -> None:
+        """Добавляет намерение пользователя в базу данных.
+
+        Доабвляет запись в базу данных.
+        Еслм такое намерение уже существует - обновляет
+
+        Args:
+            name (str): Имя намерения.
+            intent (Intent): Намерение для добавления.
+        """
+        int_s = intent.to_str()
+        if self.get_intent(name) is not None:
+            self._cur.execute(
+                "UPDATE intent SET intent=? WHERE user_id=? AND name=?",
+                (int_s, self._uid, name)
+            )
+        else:
+            self._cur.execute(
+                "INSERT INTO intent(user_id,name,intent) VALUES(?,?,?);",
+                (self._uid, name, int_s)
+            )
+        self._conn.commit()
+
+    def rename(str, old_name: str, new_name: str) -> None:
+        """Изменяет имя намерения.
+
+        Args:
+            old_name (str): Старое имя намерения.
+            new_name (str): Новое имя намерения.
+        """
+        self._cur.execute(
+            "UPDATE intent SET name=? WHERE user_id=? AND name=?",
+            (new_name, self._uid, old_name)
+        )
+        self._conn.commit()
+
+    def remove(self, name: str) -> None:
+        """Удаляет намерение пользователя из базы данных.
+
+        Args:
+            name (str): Имя намерения для удаления.
+        """
+        self._cur.execute(
+            "DELETE FROM intent WHERE user_id=? AND name=?",
+            (self._uid, name)
+        )
+        self._conn.commit()
+
+
 # Добавление Middleware
 # =====================
 
 @dp.message.middleware()
 @dp.callback_query.middleware()
-async def sp_middleware(
+async def user_middleware(
     handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
     event: Update,
     data: Dict[str, Any],
@@ -89,6 +206,7 @@ async def sp_middleware(
         uid = event.chat.id
 
     data["sp"] = SPMessages(str(uid))
+    data["intents"] = UserIntents(DB_CONN, uid)
     return await handler(event, data)
 
 # Если вы хотите отключить логгирование в боте
@@ -102,9 +220,9 @@ async def log_middleware(
 ) -> Any:
     """Отслеживает полученные ботом сообщения и callback data."""
     if isinstance(event, CallbackQuery):
-        logger.info("[cq] {}: {}", event.message.chat.id, event.data)
+        logger.info("[c] {}: {}", event.message.chat.id, event.data)
     else:
-        logger.info("[msg] {}: {}", event.chat.id, event.text)
+        logger.info("[m] {}: {}", event.chat.id, event.text)
 
     return await handler(event, data)
 
@@ -116,7 +234,6 @@ async def log_middleware(
 HOME_MESSAGE = ("💡 Некоторые примеры запросов:"
     "\n-- 7в 6а на завтра"
     "\n-- уроки 6а на вторник ср"
-    "\n-- расписание на завтра для 8б"
     "\n-- 312 на вторник пятницу"
     "\n-- химия 228 6а вторник"
     "\n\n🏫 В запросах вы можете использовать:"
@@ -150,6 +267,43 @@ CL_FEATURES_MESSAGE = ("🌟 Если вы укажете класс, то см�
     "\n-- Использовать счётчик cl/lessons."
     "\n\n💎 Список возможностей может пополняться."
 )
+
+# Сообщения работы с намерениями -----------------------------------------------
+
+INTENTS_INFO_MESSAGE = ("Здесь вы можете управлять вашими намерениями."
+    "\nОни используются для уточнения результатов поиска."
+    "\nНапример при получении списка изменений."
+)
+
+SET_INTENT_NAME_MESSAGE = ("✏️ Теперь дайте имя вашему намерению."
+    "\nИмя намерения будет отображаться в списке намерений и клавиатуре."
+    "\nИмя должно быть от 3-х до 15-ти символов."
+    "\n\nИли используйте команду /cancel чтобы отменить добавление намерения."
+)
+
+PARSE_INTENT_MESSAGE = ("✏️ Отлично! Теперь давайте укажем параметры намерения."
+    "\nДругими словами, что должно быть в вашем намерении."
+    "\nЭто могут быть классы, дни, уроки, кабинеты."
+    "\nВсё как в запросах к расписанию."
+    "\n\n🔶 Пример:"
+    "\n-- вторник матем"
+    "\n-- 9в 312"
+    "\n\n🌟 /tutorial - Справка по составлению запросов к расписанию"
+    "\n/cancel - Отменить добавление намерения"
+)
+
+INTENTS_REMOVE_MANY_MESSAGE = ("🗑️ Режим удаления намерений"
+    "\nнажмите на название намерения чтобы удалить его."
+    "\nТакже вы можете удалить все ваши намерения одной кнопкой."
+    "\n\nНажмите \"завершить\" как наиграитесь."
+)
+
+INTENTS_LIMIT_MESSAGE = ("⚠️ Вы достигли предела количества намерений"
+    "\nПожалуйста удалите не используемые намерения."
+    "\n\n/remove_intents - Режимы быстрого удаления"
+    "\nИли воспользуйтесь кнопкой ниже."
+)
+
 
 # Сообщения интерактивного обучения по запросам к расписанию
 TUTORIAL_MESSAGES = [
@@ -251,23 +405,27 @@ TUTORIAL_MESSAGES = [
 # Динамические клавиатуры
 # =======================
 
+# Основные клавиатуры ----------------------------------------------------------
+
 def get_other_keyboard(
-    cl: str, home_button: Optional[bool] = True
+    cl: Optional[str]=None, home_button: Optional[bool] = True
 ) -> InlineKeyboardMarkup:
     """Собирает дополнительную клавиатуру.
 
     Дополнительная клавиатура содержит не часто использумые функции.
-    Чтобы эти раделы не занимали место на главном экране и не пугали
+    Чтобы эти разделы не занимали место на главном экране и не пугали
     пользователей большим количеством разных кнопочек.
 
     Buttons:
         set_class => Сменить класс.
-        count:lessons:main => Меню счётчиков бота.
-        updates:last:0:{cl} => Последная сраница списка изменений.
+        count:lessons:main: => Меню счётчиков бота.
+        updates:last:0:{cl}: => Последная страница списка изменений.
+        tutorial:0 => первая страница общей справки.
+        intents => Раздел настройки намерений пользователя.
         home => Вернуться на главную страницу.
 
     Args:
-        cl (str): Класс пользователя для клавиатуры.
+        cl (str, Optional): Класс пользователя для клавиатуры.
         home_button (bool, optional): Добавлять ли кнопку возврата.
 
     Returns:
@@ -277,14 +435,15 @@ def get_other_keyboard(
         [
             InlineKeyboardButton(text="Сменить класс", callback_data="set_class"),
             InlineKeyboardButton(
-                text="📊 Счётчики", callback_data="count:lessons:main"
+                text="📊 Счётчики", callback_data="count:lessons:main:"
             ),
             InlineKeyboardButton(
-                text="📜 Изменения", callback_data=f"updates:last:0:{cl}"
+                text="📜 Изменения", callback_data=f"updates:last:0:{cl}:"
             ),
         ],
         [
             InlineKeyboardButton(text="🌟 Обучение", callback_data="tutorial:0"),
+            InlineKeyboardButton(text="⚙️ Намерения", callback_data="intents"),
         ],
     ]
 
@@ -293,7 +452,7 @@ def get_other_keyboard(
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_main_keyboard(cl: str) -> InlineKeyboardMarkup:
+def get_main_keyboard(cl: Optional[str]=None) -> InlineKeyboardMarkup:
     """Возращает главную клавиатуру бота.
 
     Главная клавиатуры предоставляет доступ к самым часто используемым
@@ -306,7 +465,7 @@ def get_main_keyboard(cl: str) -> InlineKeyboardMarkup:
         sc:{cl}:today => Получаени расписания на сегодня для класса.
 
     Args:
-        cl (str): Класс для подставновки в клавиатуру.
+        cl (str, Optional): Класс для подставновки в клавиатуру.
 
     Returns:
         InlineKeyboardMarkup: Главная клавиатура бота.
@@ -326,10 +485,12 @@ def get_main_keyboard(cl: str) -> InlineKeyboardMarkup:
         ]
     )
 
+# Для расписания уроков --------------------------------------------------------
+
 def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     """Возращает клавиатуру, для получение расписания на неделю.
 
-    Используется в сообщениях с расписанием уроков.
+    Используется в сообщении с расписанием уроков.
     Также содержит кнопки для возврата домой и выбора дня недели.
 
     Buttons:
@@ -338,7 +499,7 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
         select_day:{cl} => Выбрать день недели для расписания.
 
     Args:
-        cl (str): Класс для подставновки в клавиатуру.
+        cl (str, Optional): Класс для подставновки в клавиатуру.
 
     Return:
         InlineKeyboardMarkup: Клавиатуру для сообщения с расписанием.
@@ -381,7 +542,7 @@ def get_sc_keyboard(cl: str) -> InlineKeyboardMarkup:
     )
 
 def get_select_day_keyboard(cl: str) -> InlineKeyboardMarkup:
-    """Возаращает клавиатуру, для выбора дня недели для рассписания.
+    """Возаращает клавиатуру выбора дня недели в рассписания.
 
     Мспользуется в сообщения с расписанием.
     Позволяет выбрать один из дней недели.
@@ -412,8 +573,10 @@ def get_select_day_keyboard(cl: str) -> InlineKeyboardMarkup:
         ]
     )
 
+# Клавиатуры разделов ----------------------------------------------------------
+
 def get_notify_keyboard(
-    sp: SPMessages, enabled: bool, hours: Optional[list[int]] = None
+    enabled: bool, hours: list[int]
 ) -> InlineKeyboardMarkup:
     """Возвращет клавиатуру для настройки уведомлений.
 
@@ -430,9 +593,8 @@ def get_notify_keyboard(
         notify:remove:{hour} => Отключить рассылку для указанного часа.
 
     Args:
-        sp (SPMessages): Экземпляр генератора сообщений.
         enabled (bool): Включены ли уведомления у пользователя.
-        hours (list, optional): В какой час рассылать расписание.
+        hours (list[int]): В какой час рассылать расписание.
 
     Returns:
         InlineKeyboardMarkup: Клавиатура для настройки уведомлений.
@@ -471,47 +633,68 @@ def get_notify_keyboard(
         if len(hours_line):
             inline_keyboard.append(hours_line)
 
-    return InlineKeyboardMarkup(row_width=6, inline_keyboard=inline_keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 def get_updates_keyboard(
-    page: int, updates: list, cl: Optional[str] = None
+    page: int, updates: list, cl: Optional[str],
+    intents: UserIntents, intent_name: str = ""
 ) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра списка изменений.
 
     Используется для перемещения по списку изменений в расписании.
     Также может переключать режим просмотре с общего на для класса.
+    Использует клавиатуру выбора намерений.
 
     Buttons:
         home => Возврат к главному меня бота.
-        update:back:{page}:{cl} => Перещается на одну страницу назад.
-        update:switch:0:{cl} => Переключает режим просмотра расписания.
-        update:next:{page}:{cl} => Перемещается на страницу вперёд.
+        updates:back:{page}:{cl} => Перещается на одну страницу назад.
+        updates:switch:0:{cl} => Переключает режим просмотра расписания.
+        updates:next:{page}:{cl} => Перемещается на страницу вперёд.
+        updates:last:0:{cl} => Перерключиться на последную страницу.
 
     Args:
         page (int): Номер текущей страницы списка обновлений.
         updates (list): Список всех страниц списка изменений.
         cl (str, optional): Класс для подстановки в клавиатуру.
+        intents (UserIntents): Экземпляр намерений пользователя.
+        intent_name (str, Optional): Название текущего
+            намерения пользователя
 
     Returns:
         InlineKeyboardMarkup: Клавиатура просмотра списка изменений.
     """
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🏠", callback_data="home"),
-                InlineKeyboardButton(
-                    text="◁", callback_data=f"updates:back:{page}:{cl}"
-                ),
-                InlineKeyboardButton(
-                    text=f"{page+1}/{len(updates)}",
-                    callback_data=f"updates:switch:0:{cl}",
-                ),
-                InlineKeyboardButton(
-                    text="▷", callback_data=f"updates:next:{page}:{cl}"
-                ),
-            ]
+    # базовая клавиатура
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text="🏠", callback_data="home"),
+            InlineKeyboardButton(
+                text="◁", callback_data=f"updates:back:{page}:{cl}:{intent_name}"
+            ),
+            InlineKeyboardButton(
+                text=f"{page+1}/{len(updates)}",
+                callback_data=f"updates:switch:0:{cl}:{intent_name}",
+            ),
+            InlineKeyboardButton(
+                text="▷", callback_data=f"updates:next:{page}:{cl}:{intent_name}"
+            ),
         ]
-    )
+    ]
+
+    # Доплнительная клавиатура выбора намерения
+    for i, x in enumerate(intents.get()):
+        if i % 3 == 0:
+            inline_keyboard.append([])
+
+        if x.name == intent_name:
+            inline_keyboard[-1].append(InlineKeyboardButton(
+                text=f"✅ {x.name}", callback_data=f"updates:last:0:{cl}:")
+            )
+        else:
+            inline_keyboard[-1].append(InlineKeyboardButton(
+                text=f"⚙️ {x.name}", callback_data=f"updates:last:0:{cl}:{x.name}")
+            )
+
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
 _COUNTERS = (
@@ -530,7 +713,9 @@ _TARGETS = (
     ("main", "Общее"),
 )
 
-def get_counter_keyboard(cl: str, counter: str, target: str) -> InlineKeyboardMarkup:
+def get_counter_keyboard(cl: str, counter: str, target: str,
+    intents: UserIntents, intent_name: Optional[str]=""
+) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра счётчиков расписания.
 
     Позводяет просматривать счётчики расписания по группам и целям:
@@ -556,14 +741,21 @@ def get_counter_keyboard(cl: str, counter: str, target: str) -> InlineKeyboardMa
     Returns:
         InlineKeyboardMarkup: Клавиатура для просмотра счётчиков.
     """
-    inline_keyboard = [[InlineKeyboardButton(text="◁", callback_data="home")], []]
+    inline_keyboard = [[
+            InlineKeyboardButton(text="◁", callback_data="home")
+        ],
+        []
+    ]
 
     for k, v in _COUNTERS:
         if counter == k:
             continue
 
         inline_keyboard[0].append(
-            InlineKeyboardButton(text=v, callback_data=f"count:{k}:{target}")
+            InlineKeyboardButton(
+                text=v,
+                callback_data=f"count:{k}:{target}:{intent_name}"
+            )
         )
 
     for k, v in _TARGETS:
@@ -580,8 +772,31 @@ def get_counter_keyboard(cl: str, counter: str, target: str) -> InlineKeyboardMa
             continue
 
         inline_keyboard[1].append(
-            InlineKeyboardButton(text=v, callback_data=f"count:{counter}:{k}")
+            InlineKeyboardButton(
+                text=v,
+                callback_data=f"count:{counter}:{k}:{intent_name}"
+            )
         )
+
+    for i, x in enumerate(intents.get()):
+        if i % 3 == 0:
+            inline_keyboard.append([])
+
+        if x.name == intent_name:
+            inline_keyboard[-1].append(
+                InlineKeyboardButton(
+                    text=f"✅ {x.name}",
+                    callback_data=f"count:{counter}:{target}:"
+                )
+            )
+        else:
+            inline_keyboard[-1].append(
+                InlineKeyboardButton(
+                    text=f"⚙️ {x.name}",
+                    callback_data=f"count:{counter}:{target}:{x.name}"
+                )
+            )
+
 
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
@@ -630,15 +845,153 @@ def get_tutorial_keyboard(page: int) -> InlineKeyboardMarkup:
 
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
+# Обработка намерений ----------------------------------------------------------
+
+def get_intents_keyboard(intents: list[IntentObject]) -> InlineKeyboardMarkup:
+    """Отправляет клавиатуру редактора намерений.
+
+    Используется в главном сообщении редактора.
+    Позволяет получить доступ к каждому намерению.
+    Добавить новое намерение, если не превышем лимит.
+    Или перейти в режим быстрого удаления.
+
+    Buttons:
+        intent:show:{name} => Покзаать информацию о намерении.
+        intents:remove_mode => Перейти в режим быстрого удаления.
+        intent:add: => Добавить новое намерение.
+        home => Вернуться на главный экран.
+
+    Args:
+        intents (list[IntentObject]): Намерения пользователя.
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура редактора намерений.
+    """
+    inlene_keyboard = [[]]
+
+    if len(intents):
+        for i, x in enumerate(intents):
+            if i % 3 == 0:
+                inlene_keyboard.append([])
+
+            inlene_keyboard[-1].append(InlineKeyboardButton(
+                    text=x.name, callback_data=f"intent:show:{x.name}"
+                )
+            )
+
+        inlene_keyboard.append([InlineKeyboardButton(
+                text="🗑️ удалить", callback_data="intents:remove_mode"
+            )
+        ])
+
+    if len(intents) < 9:
+        inlene_keyboard[-1].append(InlineKeyboardButton(
+            text="➕ Добавить", callback_data="intent:add:"
+            )
+        )
+    inlene_keyboard[-1].append(
+        InlineKeyboardButton(text="🏠 Домой", callback_data="home")
+    )
+    return InlineKeyboardMarkup(inline_keyboard=inlene_keyboard)
+
+def get_edit_intent_keyboard(intent_name: str) -> InlineKeyboardMarkup:
+    """Возвращает клавиатуру редактора намерения.
+
+    Исползуется для управления намерением пользвоателя.
+    Позволяет изменить имя или параметры намерения, а также удалить его.
+
+    Buttons:
+        intent:reparse:{name} => Изменить параметры намерения.
+        intent:remove:{name} => Удалить намерение.
+        intents => Вернутся к списку намерений.
+
+    Args:
+        intent_name (str): Имя намерения для редактирования
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура редактирования намерения.
+    """
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="✏️ изменить", callback_data=f"intent:reparse:{intent_name}"
+            )
+    ],
+    [
+        InlineKeyboardButton(text="<", callback_data="intents"),
+        InlineKeyboardButton(
+            text="🗑️ удалить", callback_data=f"intent:remove:{intent_name}"
+        )
+    ]])
+
+def get_remove_intents_keyboard(
+    intents: list[IntentObject]
+) -> InlineKeyboardMarkup:
+    """Возаращает клавиатуру быстрого удаления намерений.
+
+    Используется когда необходимо удалить много намерений.
+
+    Buttons:
+        intent:remove_many:{name} => Удаляет намерение пользователя.
+        intents => Вернутся к списку намерений.
+        intents:remove_all => Удаляет все намерения пользователя.
+
+    Args:
+        intents (list[IntentObject]): Список намерений пользователя.
+
+    Returns:
+        InlineKeyboardMarkup: Клавиатура быстрого удаления намерений.
+    """
+    inlene_keyboard = [[]]
+    if len(intents):
+        for i, x in enumerate(intents):
+            if i % 3 == 0:
+                inlene_keyboard.append([])
+            inlene_keyboard[-1].append(
+                InlineKeyboardButton(
+                    text=x.name, callback_data=f"intent:remove_many:{x.name}"
+                )
+            )
+        inlene_keyboard.append([
+            InlineKeyboardButton(
+                text="🗑️ удалить все", callback_data="intents:remove_all"
+            )
+        ])
+
+    inlene_keyboard[-1].append(
+        InlineKeyboardButton(text="Завершить", callback_data="intents")
+    )
+    return InlineKeyboardMarkup(inline_keyboard=inlene_keyboard)
+
 
 # Динамический сообщения
 # ======================
+
+def get_intent_status(i: Intent) -> str:
+    """Отображает краткую информацию о содержимом намерения.
+
+    Формат: < {классы} / {дни} / {уроки} / {кабинеты} >
+
+    Args:
+        i (Intent): Намерение для отображения статуса
+
+    Returns:
+        str: Краткое описание намерения.
+    """
+    message = "<"
+
+    for group in (i.cl, i.days, i.lessons, i.cabinets):
+        for x in group:
+            message += f" {x}"
+        message += " /"
+    message += " >"
+
+    return message
 
 def get_update_timetag(path: Path) -> int:
     """Получает время последней удачной проверки обнолвений.
 
     Вспомогательная функция.
-    Время успешой проверки используется для проверки скрипта обновлений.
+    Время успешой проверки используется для контроля скрипта обновлений.
     Если время последней проверки будет дольше одного часа,
     то это повод задуматься о правильноти работы скрипта.
 
@@ -648,13 +1001,10 @@ def get_update_timetag(path: Path) -> int:
     Returns:
         int: UNIXtime последней удачной проверки обновлений.
     """
-    if not path.exists():
-        return 0
-
     try:
         with open(path) as f:
             return int(f.read())
-    except ValueError:
+    except (ValueError, FileNotFoundError):
         return 0
 
 def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
@@ -673,18 +1023,16 @@ def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
         str: Информацинное сообщение.
     """
     message = sp.send_status()
-    message += "\n⚙️ Версия бота: 2.1\n🛠️ Тестер @sp6510"
+    message += "\n⚙️ Версия бота: 2.2\n🛠️ Тестер @sp6510"
 
     timetag = get_update_timetag(timetag_path)
-    now = datetime.now().timestamp()
-
-    timedelta = now - timetag
-    message += f"\n📀 Проверка было {get_str_timedelta(timedelta)} назад"
+    timedelta = datetime.now().timestamp() - timetag
+    message += f"\n📀 Проверка была {get_str_timedelta(timedelta)} назад"
 
     if timedelta > 3600:
-        message += "\n⚠️ Автоматическая проверка была более часа назад."
-        message += "\nПожалуйста, проверьте работу скрипта."
-        message += "\nИли свяжитесь с администратором бота."
+        message += ("\n⚠️ Автоматическая проверка была более часа назад."
+            "\nПожалуйста свяжитесь с администратором бота."
+        )
 
     return message
 
@@ -713,7 +1061,7 @@ def get_home_message(cl: str) -> str:
     message += f"\n\n{HOME_MESSAGE}"
     return message
 
-def get_notify_message(sp: SPMessages) -> str:
+def get_notify_message(enabled: bool, hours: list[int]) -> str:
     """Отправляет сообщение с информацией о статусе уведомлений.
 
     Сообщение о статусе уведомлений содержит в себе:
@@ -722,55 +1070,61 @@ def get_notify_message(sp: SPMessages) -> str:
     В какие часы рассылается расписание уроков.
 
     Args:
-        sp (SPMessages): Экземпляр генератора сообщений.
+        enabled (bool): Включены ли уведомления пользователя.
+        hours (list[int]): В какие часы отправлять уведомления.
 
     Returns:
         str: Сообщение с информацией об уведомлениях.
     """
-    if sp.user["notifications"]:
-        message = "🔔 уведомления включены."
-        message += "\nВы получите уведомление, если расписание изменится."
-        message += "\n\nТакже вы можете настроить отправку расписания."
-        message += "\nВ указанное время бот отправит расписание вашего класса."
-        hours = sp.user["hours"]
-
-        if hours:
+    if enabled:
+        message = ("🔔 уведомления включены."
+            "\nВы получите уведомление, если расписание изменится."
+            "\n\nТакже вы можете настроить отправку расписания."
+            "\nВ указанное время бот отправит расписание вашего класса."
+        )
+        if len(hours) > 0:
             message += "\n\nРасписание будет отправлено в: "
             message += ", ".join(map(str, set(hours)))
     else:
-        message = "🔕 уведомления отключены."
-        message += "\nНикаких лишних сообщений."
+        message = "🔕 уведомления отключены.\nНикаких лишних сообщений."
 
     return message
 
-def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
+def get_counter_message(
+    sc: Schedule, counter: str, target: str, intent: Optional[Intent]=None
+) -> str:
     """Собирает сообщение с результатами работы счётчиков.
 
     В зависимости от выбранного счётчика использует соответствующую
     функцию счётчика.
 
-    +----------+-----------------------------+
-    | counter  | targets                     |
-    +----------+-----------------------------+
-    | cl       | cl, days, lessons. cabinets |
-    | days     | cl, days, lessons. cabinets |
-    | lessons  | cl, days. main              |
-    | cabinets | cl, days. main              |
-    +----------+-----------------------------+
+    +----------+-------------------------+
+    | counter  | targets                 |
+    +----------+-------------------------+
+    | cl       | days, lessons. cabinets |
+    | days     | cl, lessons. cabinets   |
+    | lessons  | cl, days. main          |
+    | cabinets | cl, days. main          |
+    +----------+-------------------------+
 
     Args:
         sc (Schedule): Экземпляр расписания уроков.
         counter (str): Тип счётчика.
         target (str): Группа просмтора счётчика.
+        intent (Intent): Намерение для уточнения результатов счётчика.
 
     Returns:
         str: Сообщение с результаатми счётчика.
     """
-    intent = Intent()
+    message = f"✨ Счётчик {counter}/{target}:"
+    if intent is not None:
+        message += f"\n⚙️ {get_intent_status(intent)}"
+    else:
+        intent = Intent()
 
     if counter == "cl":
         if target == "lessons":
-            intent = Intent.construct(sc, cl=sc.cl)
+            intent = intent.reconstruct(sc, cl=sc.cl)
         res = cl_counter(sc, intent)
     elif counter == "days":
         res = days_counter(sc, intent)
@@ -779,13 +1133,89 @@ def get_counter_message(sc: Schedule, counter: str, target: str) -> str:
     else:
         res = index_counter(sc, intent, cabinets_mode=True)
 
-    message = f"✨ Счётчик {counter}/{target}:"
-
     if target == "none":
         target = None
 
     message += send_counter(group_counter_res(res), target=target)
     return message
+
+def get_updates_message(
+    update: Optional[list]=None, cl: Optional[str]=None,
+    intent: Optional[Intent]=None
+) -> str:
+    """Собирает сообщение со страницей списка изменений расписания.
+
+    Args:
+        update (list, Optional): Странциа списка изменений расписания.
+        cl (str, Optional): Для какого класса представлены изменения.
+        intent (Intent, Optional): Намерение для уточнения результата.
+
+    Returns:
+        str: Сообщение со страницей списка изменений.
+    """
+    message = "🔔 Изменения "
+    message += " в расписании:\n" if cl is None else f" для {cl}:\n"
+    if intent is not None:
+        message += f"⚙️ {get_intent_status(intent)}\n"
+
+    if update is not None:
+        update_text = send_update(update, cl=cl)
+
+        if len(update_text) > 4000:
+            message += "\n📚 Слишком много изменений."
+        else:
+            message += update_text
+    else:
+        message += "✨ Нет новых обновлений."
+
+    return message
+
+# Обработка намерений ----------------------------------------------------------
+
+def get_intent_info(name: str, i: Intent) -> str:
+    """Возвращает подробное содержимое намерения.
+
+    Args:
+        name (str): Имя намерения.
+        i (Intent): Экземпляр намерения.
+
+    Returns:
+        str: Подробная информация о намерении."""
+    return (f"⚙️ Намерение \"{name}\":"
+        f"\n\n🔸 Классы: {', '.join(i.cl)}"
+        f"\n🔸 Дни: {', '.join([days_names[x] for x in i.days])}"
+        f"\n🔸 Уроки: {', '.join(i.lessons)}"
+        f"\n🔸 Кабинеты: {', '.join(i.cabinets)}"
+    )
+
+def get_intents_message(intents: list[IntentObject]) -> str:
+    """Отправляет главное сообщение редактора намерений.
+
+    Оно используется чтобы представить список ваших намерений.
+    Для чего нужны намерения и что вы можете сделать в редакторе.
+
+    Args:
+        intents (list[IntentObject]): Список намерений пользователя.
+
+    Args:
+        str: Главное сообщение редактора намерений.
+    """
+    Message = f"⚙️ Ваши намерения.\n\n{INTENTS_INFO_MESSAGE}\n"
+
+    if len(intents) == 0:
+        Message += "\n\nУ вас пока нет намерений."
+
+    else:
+        for x in intents:
+            Message += f"\n🔸 {x.name}: {get_intent_status(x.intent)}"
+
+    if len(intents) < 9:
+        Message += ("\n\n✏️ /add_intent - Добавить новое намерение."
+            "\nИли использовать кнопку ниже."
+        )
+
+    return Message
+
 
 
 # Обработчики команд
@@ -834,7 +1264,8 @@ async def start_handler(message: Message, sp: SPMessages) -> None:
 
 @dp.message(Command("set_class"))
 async def set_class_command(message: Message, sp: SPMessages,
-command: CommandObject) -> None:
+    command: CommandObject
+) -> None:
     """Изменяет класс или удаляет данные о пользователе."""
     if command.args is not None:
         if sp.set_class(command.args):
@@ -866,23 +1297,26 @@ async def pass_handler(message: Message, sp: SPMessages) -> None:
 # Переход к разделам бота ----------------------------------------------
 
 @dp.message(Command("updates"))
-async def updates_handler(message: Message, sp: SPMessages) -> None:
+async def updates_handler(message: Message, sp: SPMessages,
+    intents: UserIntents
+) -> None:
     """Оправляет последную страницу списка изменений в расписании."""
     updates = sp.sc.updates
-    markup = get_updates_keyboard(max(len(updates) - 1, 0), updates)
-    if len(updates):
-        text = send_update(updates[-1])
-    else:
-        text = "Нет новых обновлений."
-
-    await message.answer(text=text, reply_markup=markup)
+    await message.answer(
+        text=get_updates_message(updates[-1] if len(updates) else None),
+        reply_markup=get_updates_keyboard(max(len(updates) - 1, 0),
+            updates, None, intents
+        )
+    )
 
 @dp.message(Command("counter"))
-async def counter_handler(message: Message, sp: SPMessages) -> None:
+async def counter_handler(message: Message, sp: SPMessages,
+    intents: UserIntents
+) -> None:
     """Переводит в меню просмора счётчиков расписания."""
     await message.answer(
         text=get_counter_message(sp.sc, "lessons", "main"),
-        reply_markup=get_counter_keyboard(sp.user["class_let"], "lessons", "main"),
+        reply_markup=get_counter_keyboard(sp.user["class_let"], "lessons", "main", intents),
     )
 
 @dp.message(Command("notify"))
@@ -891,8 +1325,172 @@ async def notify_handler(message: Message, sp: SPMessages):
     enabled = sp.user["notifications"]
     hours = sp.user["hours"]
     await message.answer(
-        text=get_notify_message(sp),
-        reply_markup=get_notify_keyboard(sp, enabled, hours),
+        text=get_notify_message(enabled, hours),
+        reply_markup=get_notify_keyboard(enabled, hours),
+    )
+
+
+# Обработка намерений
+# ===================
+
+@dp.message(Command("cancel"))
+async def cancel_handler(message: Message, state: FSMContext) -> None:
+    """Cбрасывает состояние контекста машины состояний."""
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
+    await state.clear()
+    await message.answer("Отменено.")
+
+
+class EditIntentStates(StatesGroup):
+    name = State()
+    parse = State()
+
+
+class IntentCallback(CallbackData, prefix="intent"):
+    action: str
+    name: str
+
+
+# Получение списка намерений ---------------------------------------------------
+
+@dp.message(Command("intents"))
+async def manage_intents_handler(message: Message,
+    intents: UserIntents
+) -> None:
+    await message.answer(
+        text=get_intents_message(intents.get()),
+        reply_markup=get_intents_keyboard(intents.get())
+    )
+
+@dp.callback_query(F.data=="intents")
+async def intents_callback(query: CallbackQuery, intents: UserIntents) -> None:
+    await query.message.edit_text(
+        text=get_intents_message(intents.get()),
+        reply_markup=get_intents_keyboard(intents.get())
+    )
+
+# Добавление нового намерения --------------------------------------------------
+
+@dp.callback_query(IntentCallback.filter(F.action=="add"))
+async def add_intent_callback(query: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(EditIntentStates.name)
+    await query.message.edit_text(SET_INTENT_NAME_MESSAGE)
+
+@dp.message(Command("add_intent"))
+async def add_intent_handler(
+    message: Message, state: FSMContext, intents: UserIntents
+) -> None:
+    # Если превышено количество максимальных намерений
+    if len(intents.get()) >= 9:
+        await message.answer(INTENTS_LIMIT_MESSAGE,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text="🗑️ удалить", callback_data="intents:remove_mode")
+        ]]))
+    else:
+        await state.set_state(EditIntentStates.name)
+        await message.answer(SET_INTENT_NAME_MESSAGE)
+
+@dp.message(EditIntentStates.name)
+async def intent_name_handler(message: Message, state: FSMContext) -> None:
+    name = message.text.lower().strip()
+
+    # Если длинна имени больше или меньше нужной
+    if len(name) < 3 or len(name) > 15:
+        await message.answer("Имя намерения должно быть от 3-х до 15-ти символов.")
+
+    else:
+        await state.update_data(name=name)
+        await state.set_state(EditIntentStates.parse)
+        await message.answer(text=PARSE_INTENT_MESSAGE)
+
+@dp.message(EditIntentStates.parse)
+async def parse_intent_handler(
+    message: Message, state: FSMContext, intents: UserIntents, sp: SPMessages
+) -> None:
+    i = Intent.parse(sp.sc, message.text.lower().strip().split())
+    name = (await state.get_data())["name"]
+    intents.add(name, i)
+    await state.clear()
+    await message.answer(
+        text=get_intents_message(intents.get()),
+        reply_markup=get_intents_keyboard(intents.get())
+    )
+
+# Режим просмотра намерения ----------------------------------------------------
+
+@dp.callback_query(IntentCallback.filter(F.action=="show"))
+async def show_intent_callback(
+    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback
+) -> None:
+    intent = intents.get_intent(callback_data.name)
+    if intent is None:
+        await query.message.edit_text(text="⚠️ Непраивльное имя намерения")
+    else:
+        await query.message.edit_text(
+            text=get_intent_info(callback_data.name, intent),
+            reply_markup=get_edit_intent_keyboard(callback_data.name)
+        )
+
+@dp.callback_query(IntentCallback.filter(F.action=="remove"))
+async def show_intent_callback(
+    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback
+) -> None:
+    intents.remove(callback_data.name)
+    await query.message.edit_text(
+        text=get_intents_message(intents.get()),
+        reply_markup=get_intents_keyboard(intents.get())
+    )
+
+@dp.callback_query(IntentCallback.filter(F.action=="reparse"))
+async def show_intent_callback(
+    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback,
+    state: FSMContext
+) -> None:
+    await state.set_state(EditIntentStates.parse)
+    await state.update_data(name=callback_data.name)
+    await query.message.edit_text(text=PARSE_INTENT_MESSAGE)
+
+
+# Режим удаления намерений -----------------------------------------------------
+
+@dp.message(Command("remove_intents"))
+async def intents_remove_mode_handler(
+    message: Message, intents: UserIntents
+) -> None:
+    await message.answer(
+        text=INTENTS_REMOVE_MANY_MESSAGE,
+        reply_markup=get_remove_intents_keyboard(intents.get())
+    )
+
+@dp.callback_query(F.data=="intents:remove_mode")
+async def intents_remove_mode_callback(
+    query: CallbackQuery, intents: UserIntents
+) -> None:
+    await query.message.edit_text(
+        text=INTENTS_REMOVE_MANY_MESSAGE,
+        reply_markup=get_remove_intents_keyboard(intents.get())
+    )
+
+@dp.callback_query(IntentCallback.filter(F.action=="remove_many"))
+async def show_intent_callback(
+    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback
+) -> None:
+    intents.remove(callback_data.name)
+    await query.message.edit_text(
+        text=INTENTS_REMOVE_MANY_MESSAGE,
+        reply_markup=get_remove_intents_keyboard(intents.get())
+    )
+
+@dp.callback_query(F.data=="intents:remove_all")
+async def intents_set_remove_mode_callback(query: CallbackQuery, intents: UserIntents) -> None:
+    intents.remove_all()
+    await query.message.edit_text(
+        text=get_intents_message(intents.get()),
+        reply_markup=get_intents_keyboard(intents.get())
     )
 
 
@@ -1111,8 +1709,8 @@ async def notify_callback(query: CallbackQuery, sp: SPMessages) -> None:
     enabled = sp.user["notifications"]
     hours = sp.user["hours"]
     await query.message.edit_text(
-        text=get_notify_message(sp),
-        reply_markup=get_notify_keyboard(sp, enabled, hours),
+        text=get_notify_message(enabled, hours),
+        reply_markup=get_notify_keyboard(enabled, hours),
     )
 
 @dp.callback_query(NotifyCallback.filter())
@@ -1142,8 +1740,8 @@ async def notify_mod_callback(
     hours = sp.user["hours"]
 
     await query.message.edit_text(
-        text=get_notify_message(sp),
-        reply_markup=get_notify_keyboard(sp, enabled, hours),
+        text=get_notify_message(enabled, hours),
+        reply_markup=get_notify_keyboard(enabled, hours),
     )
 
 
@@ -1159,33 +1757,33 @@ class UpdatesCallback(CallbackData, prefix="updates"):
 
     page (int): Текущаю страница списка изменений.
     cl (str): Для какого класса отображать список изменений.
+    intent (str): Имя намерения пользователя.
     """
     action: str
     page: int
     cl: str
+    intent: str
 
 @dp.callback_query(UpdatesCallback.filter())
 async def updates_callback(
-    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback
+    query: CallbackQuery, sp: SPMessages, callback_data: UpdatesCallback,
+    intents: UserIntents
 ) -> None:
-    text = "🔔 Изменения "
-
     # Смена режима просмотра: только для класса/всего расписния
     if callback_data.action == "switch":
         cl = sp.user["class_let"] if callback_data.cl == "None" else None
     else:
         cl = None if callback_data.cl == "None" else callback_data.cl
 
-    # Дополняем шапку сообщения
-    if cl is not None and sp.user["class_let"]:
-        text += f"для {cl}:\n"
-        intent = Intent.construct(sp.sc, cl)
-    else:
-        text += "в расписании:\n"
-        intent = Intent()
+    intent = intents.get_intent(callback_data.intent)
 
-    # Полчуаем список изменений
-    updates = sp.sc.get_updates(intent)
+    if cl is not None and sp.user["class_let"]:
+        intent = Intent.construct(sp.sc, cl)
+
+    if intent is None:
+        updates = sp.sc.updates
+    else:
+        updates = sp.sc.get_updates(intent)
     i = max(min(int(callback_data.page), len(updates) - 1), 0)
 
     if len(updates):
@@ -1198,17 +1796,15 @@ async def updates_callback(
         elif callback_data.action == "back":
             i = (i - 1) % len(updates)
 
-        update_text = send_update(updates[i], cl=cl)
-        if len(update_text) > 4000:
-            text += "\n < слишком много изменений >"
-        else:
-            text += update_text
-
+        update = updates[i]
     else:
-        text += "Нет новых обновлений."
+        update = None
 
     await query.message.edit_text(
-        text=text, reply_markup=get_updates_keyboard(i, updates, cl)
+        text=get_updates_message(update, cl, intent),
+        reply_markup=get_updates_keyboard(
+            i, updates, cl, intents, callback_data.intent
+        )
     )
 
 
@@ -1217,6 +1813,7 @@ class CounterCallback(CallbackData, prefix="count"):
 
     counter (str): Тип счётчика.
     target (str): Цль для отображения счётчика.
+    intent (str): Имя пользовательского намерения.
 
     +----------+-------------------------+
     | counter  | targets                 |
@@ -1229,10 +1826,12 @@ class CounterCallback(CallbackData, prefix="count"):
     """
     counter: str
     target: str
+    intent: str
 
 @dp.callback_query(CounterCallback.filter())
 async def counter_callback(
-    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback
+    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback,
+    intents: UserIntents
 ) -> None:
     """Клавитура для просмотра счётчиков расписания."""
     counter = callback_data.counter
@@ -1244,11 +1843,12 @@ async def counter_callback(
     if counter == "cl" and target == "lessons" and not sp.user["class_let"]:
         target = None
 
-    await query.message.edit_text(
-        text=get_counter_message(sp.sc, counter, target),
-        reply_markup=get_counter_keyboard(sp.user["class_let"], counter, target),
-    )
+    intent = intents.get_intent(callback_data.intent)
 
+    await query.message.edit_text(
+        text=get_counter_message(sp.sc, counter, target, intent),
+        reply_markup=get_counter_keyboard(sp.user["class_let"], counter, target, intents, callback_data.intent),
+    )
 
 
 class TutorlailCallback(CallbackData, prefix="tutorial"):
