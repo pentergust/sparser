@@ -2,7 +2,7 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.2 +2 (15, sp v5.7)
+Ver: 1.2 +2 (16, sp v5.7)
 """
 
 from sp.intents import Intent
@@ -279,10 +279,9 @@ async def counter_handler(message: Message, sp: SPMessages):
 # ======================
 
 @bot.on.message(command="updates")
-@bot.on.message(payload={"updates": "last"})
+@bot.on.message(payload={"group":"updates", "action": "last"})
 async def updates_command(message: Message, sp: SPMessages):
     """Оправляет список изменений в расписании."""
-
     text = "🔔 Изменения в расписании:\n"
 
     updates = sp.sc.updates
@@ -296,14 +295,17 @@ async def updates_command(message: Message, sp: SPMessages):
     )
     await message.answer(text, keyboard=kb)
 
-@bot.on.message(payload_contains={"updates": "switch"})
-async def switch_updates_handler(message: Message, sp: SPMessages):
-    """Переключает просмотр списка обновлений.
-    Между общим и для класса.
-    """
+@bot.on.message(payload_contains={"group":"updates"})
+async def updates_handler(message: Message, sp: SPMessages):
+    """Обработчик клавиатуры списка обновлений."""
     text = "🔔 Изменения "
     payload = message.get_payload_json()
-    cl = sp.user["class_let"] if payload["cl"] is None else None
+
+    # Смена класса, если требутеся
+    if payload["action"] == "switch":
+        cl = sp.user["class_let"] if payload["cl"] is None else None
+    else:
+        cl = payload["cl"]
 
     # Доплняем шапку сообщения
     if cl is not None and sp.user["set_class"]:
@@ -316,55 +318,18 @@ async def switch_updates_handler(message: Message, sp: SPMessages):
     updates = sp.sc.get_updates(intent)
 
     if len(updates):
-        text += send_update(updates[-1])
+        if payload["action"] == "switch":
+            text += send_update(updates[-1])
+            i = max(len(updates)-1, 0)
+        elif payload["action"] == "next":
+            i = (max(min(payload["i"], len(updates)-1), 0) + 1) % len(updates)
+            text += send_update(updates[i])
+        elif payload["action"] == "back":
+            i = (max(min(payload["i"], len(updates)-1), 0) - 1) % len(updates)
+            text += send_update(updates[i])
     else:
-        text += "Нет новых обновлений."
-
-    kb = keyboards.get_updates_keyboard(
-        max(len(updates)-1, 0), len(updates), cl
-    )
-    await message.answer(text, keyboard=kb)
-
-@bot.on.message(payload_contains={"updates": "next"})
-async def next_updates_handler(message: Message, sp: SPMessages):
-    """Получает следующую страницу обновлений расписания."""
-
-    text = "🔔 Изменения "
-    payload = message.get_payload_json()
-    cl = payload["cl"]
-
-    if cl is not None and sp.user["set_class"]:
-        text += f"для {cl}:\n"
-        intent = Intent.construct(sp.sc, cl=[cl])
-    else:
-        text += "в расписании:\n"
-        intent = Intent()
-
-    updates = sp.sc.get_updates(intent)
-    i = (max(min(payload["i"], len(updates)-1), 0) + 1) % len(updates)
-    text += send_update(updates[i])
-
-    kb = keyboards.get_updates_keyboard(i, len(updates), cl)
-    await message.answer(text, keyboard=kb)
-
-@bot.on.message(payload_contains={"updates": "back"})
-async def back_updates_handler(message: Message, sp: SPMessages):
-    """Получает предыдущую страницу обновлений расписания."""
-
-    text = "🔔 Изменения "
-    payload = message.get_payload_json()
-    cl = payload["cl"]
-
-    if cl is not None and sp.user["set_class"]:
-        text += f"для {cl}:\n"
-        intent = Intent.construct(sp.sc, cl=[cl])
-    else:
-        text += "в расписании:\n"
-        intent = Intent()
-
-    updates = sp.sc.get_updates(intent)
-    i = (max(min(payload["i"], len(updates)-1), 0) - 1) % len(updates)
-    text += send_update(updates[i])
+        text += "✨ Нет новых обновлений."
+        i = 0
 
     kb = keyboards.get_updates_keyboard(i, len(updates), cl)
     await message.answer(text, keyboard=kb)

@@ -52,7 +52,7 @@ def get_home_keyboard(sp: SPMessages) -> dict:
         kb.add(Text("🔔 Уведомления", payload={"notify": "info"}))
 
     kb.add(Text("📊 Счётчики", payload={"cmd": "counter"}))
-    kb.add(Text("📜 Изменения", payload={"updates": "last"}))
+    kb.add(Text("📜 Изменения", payload={"group":"updates", "action": "last"}))
 
     kb.row()
     kb.add(Text("⚙️ Сменить класс", payload={"cmd": "set_class"}))
@@ -203,11 +203,14 @@ def get_updates_keyboard(
     """
 
     return (Keyboard()
-    .add(Text("◁", payload={"updates": "back", "i": page, "cl": cl}))
-    .add(Text(f"{page+1}/{total}",
-        payload={"updates": "switch", "i": page, "cl": cl
-    }))
-    .add(Text("▷", payload={"updates": "next", "i": page, "cl": cl}))
-    .row()
-    .add(Text("🏠 Домой", payload={"cmd": "home"}))
-    .get_json())
+        .add(Text("◁",
+            payload={"group":"updates", "action": "back", "i": page, "cl": cl}))
+        .add(Text(f"{page+1}/{total}",
+            payload={"group":"updates", "action": "switch", "i": page, "cl": cl
+        }))
+        .add(Text("▷",
+            payload={"group":"updates", "action": "next", "i": page, "cl": cl}))
+        .row()
+        .add(Text("🏠 Домой", payload={"cmd": "home"}))
+        .get_json()
+    )
