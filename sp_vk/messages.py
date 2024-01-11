@@ -7,7 +7,7 @@ Author: Milinuri Nirvalen
 from sp.messages import send_counter
 from sp.messages import SPMessages
 from sp.parser import Schedule
-from sp.filters import construct_filters
+from sp.intents import Intent
 
 # Счётчики расписания
 from sp.counters import cl_counter
@@ -58,7 +58,8 @@ NO_CLASS_HOME = """💡 Некоторые примеры запросов:
 
 
 INFO = """
-🌲 Версия бота: 1.1.1 (13)"""
+🌲 Тестер @errorgirl2007
+🌲 Версия бота: 1.2 (14)"""
 
 
 SET_CLASS = """
@@ -143,18 +144,18 @@ def send_counter_message(sc: Schedule, counter: str, target: str) -> str:
         str: Готовое сообщение
     """
 
-    flt = construct_filters(sc)
+    intent = Intent()
 
     if counter == "cl":
         if target == "lessons":
-            flt = construct_filters(sc, cl=sc.cl)
-        res = cl_counter(sc, flt)
+            intent = Intent.construct(sc, cl=[sc.cl])
+        res = cl_counter(sc, intent)
     elif counter == "days":
-        res = days_counter(sc, flt)
+        res = days_counter(sc, intent)
     elif counter == "lessons":
-        res = index_counter(sc, flt)
+        res = index_counter(sc, intent)
     else:
-        res = index_counter(sc, flt, cabinets_mode=True)
+        res = index_counter(sc, intent, cabinets_mode=True)
 
     groups = group_counter_res(res)
     message = f"✨ Счётчик {counter}/{target}:"

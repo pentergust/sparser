@@ -2,11 +2,10 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.1.1 (13)
+Ver: 1.2 +1 (14, sp v5.7)
 """
 
-from sp.filters import construct_filters
-from sp.filters import parse_filters
+from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.messages import send_update
 from sp.messages import send_search_res
@@ -39,21 +38,23 @@ def process_request(sp: SPMessages, request_text: str) -> str:
     Returns:
         str: Результат запроса к расписанию
     """
-
-    flt = parse_filters(sp.sc, request_text.split())
+    intent = Intent.parse(sp.sc, request_text.split())
 
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
-    if len(flt.cabinets):
-        res = sp.sc.search(list(flt.cabinets)[-1], flt, True)
-        text = send_search_res(flt, res)
+    if len(intent.cabinets):
+        res = sp.sc.search(list(intent.cabinets)[-1], intent, True)
+        text = send_search_res(intent, res)
 
-    elif len(flt.lessons):
-        res = sp.sc.search(list(flt.lessons)[-1], flt, False)
-        text = send_search_res(flt, res)
+    elif len(intent.lessons):
+        res = sp.sc.search(list(intent.lessons)[-1], intent, False)
+        text = send_search_res(intent, res)
 
-    elif flt.cl or flt.days:
-        text = sp.send_lessons(flt) if flt.days else sp.send_today_lessons(flt)
+    elif intent.cl or intent.days:
+        if intent.days:
+            text = sp.send_lessons(intent)
+        else:
+            text = sp.send_today_lessons(intent)
 
     else:
         text = "👀 Кажется это пустой запрос."
@@ -161,15 +162,16 @@ async def sc_handler(message: Message, sp: SPMessages):
         if payload is not None:
             cl = payload.get("cl", sp.user["class_let"])
             days = payload.get("days")
-            flt = construct_filters(sp.sc, cl=cl, days=days)
 
             if days is not None:
-                text = sp.send_lessons(flt)
+                intent = Intent.construct(sp.sc, cl=[cl], days=days)
+                text = sp.send_lessons(intent)
             else:
-                text = sp.send_today_lessons(flt)
+                intent = Intent.construct(sp.sc, cl=[cl])
+                text = sp.send_today_lessons(intent)
 
         else:
-            text = sp.send_today_lessons(construct_filters(sp.sc))
+            text = sp.send_today_lessons(Intent())
 
     else:
         text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
@@ -181,8 +183,8 @@ async def sc_handler(message: Message, sp: SPMessages):
 async def week_sc_handler(message: Message, sp: SPMessages):
     """Отправляет расписание на неделю."""
     if sp.user["class_let"]:
-        flt = construct_filters(sp.sc, days=[0, 1, 2, 3, 4, 5])
-        text = sp.send_lessons(flt)
+        intent = Intent.construct(sp.sc, days=[0, 1, 2, 3, 4, 5])
+        text = sp.send_lessons(intent)
     else:
         text = "⚠️ Для быстрого получения расписания вам нужно указать класс."
 
@@ -299,7 +301,6 @@ async def switch_updates_handler(message: Message, sp: SPMessages):
     """Переключает просмотр списка обновлений.
     Между общим и для класса.
     """
-
     text = "🔔 Изменения "
     payload = message.get_payload_json()
     cl = sp.user["class_let"] if payload["cl"] is None else None
@@ -307,12 +308,12 @@ async def switch_updates_handler(message: Message, sp: SPMessages):
     # Доплняем шапку сообщения
     if cl is not None and sp.user["set_class"]:
         text += f"для {cl}:\n"
-        flt = construct_filters(sp.sc, cl=cl)
+        intent = Intent.construct(sp.sc, cl=[cl])
     else:
         text += "в расписании:\n"
-        flt = construct_filters(sp.sc)
+        intent = Intent()
 
-    updates = sp.sc.get_updates(flt)
+    updates = sp.sc.get_updates(intent)
 
     if len(updates):
         text += send_update(updates[-1])
@@ -334,12 +335,12 @@ async def next_updates_handler(message: Message, sp: SPMessages):
 
     if cl is not None and sp.user["set_class"]:
         text += f"для {cl}:\n"
-        flt = construct_filters(sp.sc, cl=cl)
+        intent = Intent.construct(sp.sc, cl=[cl])
     else:
         text += "в расписании:\n"
-        flt = construct_filters(sp.sc)
+        intent = Intent()
 
-    updates = sp.sc.get_updates(flt)
+    updates = sp.sc.get_updates(intent)
     i = (max(min(payload["i"], len(updates)-1), 0) + 1) % len(updates)
     text += send_update(updates[i])
 
@@ -356,12 +357,12 @@ async def back_updates_handler(message: Message, sp: SPMessages):
 
     if cl is not None and sp.user["set_class"]:
         text += f"для {cl}:\n"
-        flt = construct_filters(sp.sc, cl=cl)
+        intent = Intent.construct(sp.sc, cl=[cl])
     else:
         text += "в расписании:\n"
-        flt = construct_filters(sp.sc)
+        intent = Intent()
 
-    updates = sp.sc.get_updates(flt)
+    updates = sp.sc.get_updates(intent)
     i = (max(min(payload["i"], len(updates)-1), 0) - 1) % len(updates)
     text += send_update(updates[i])
 
