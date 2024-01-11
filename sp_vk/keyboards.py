@@ -13,8 +13,8 @@ from vkbottle import Keyboard, KeyboardButtonColor, Text, Callback
 
 # Для возвращение домой
 TO_HOME = (
-    Keyboard(one_time=True, inline=False)
-    .add(Callback("🏠Домой", payload={"cmd": "home"}))
+    Keyboard()
+    .add(Callback("🏠 Домой", payload={"cmd": "home"}))
     .get_json()
 )
 
@@ -22,7 +22,9 @@ TO_HOME = (
 SET_CLASS = (
     Keyboard()
     .add(Text("Ограничения", payload={"cmd": "restrictions"}))
-    .add(Text("Пропустить", payload={"cmd": "pass"}), color=KeyboardButtonColor.NEGATIVE)
+    .add(Text("Пропустить",
+        payload={"cmd": "pass"}), color=KeyboardButtonColor.NEGATIVE
+    )
     .get_json()
 )
 
@@ -35,27 +37,26 @@ def get_home_keyboard(sp: SPMessages) -> dict:
         sp (SPMessages): Экземпляр генератора сообщений.
 
     Returns:
-        dict: JSON клавиатуры
+        dict: JSON клавиатура.
     """
-
     cl = sp.user["class_let"]
     kb = Keyboard()
-    kb.add(Text("🏠Справка", payload={"cmd": "home"}))
+    kb.add(Text("🏠 Справка", payload={"cmd": "home"}))
 
     if cl is not None:
-        kb.add(Text("на неделю", payload={"cmd": "week"}))
-        kb.add(Text(f"📚Уроки {cl}", payload={"cmd": "sc"}),
+        kb.add(Text("📚 на неделю", payload={"cmd": "week"}))
+        kb.add(Text(f"📚 Уроки {cl}", payload={"cmd": "sc"}),
             color=KeyboardButtonColor.PRIMARY
         )
         kb.row()
-        kb.add(Text("🔔Уведомления", payload={"notify": "info"}))
+        kb.add(Text("🔔 Уведомления", payload={"notify": "info"}))
 
-    kb.add(Text("📊Счётчики", payload={"cmd": "counter"}))
-    kb.add(Text("📜Изменения", payload={"updates": "last"}))
+    kb.add(Text("📊 Счётчики", payload={"cmd": "counter"}))
+    kb.add(Text("📜 Изменения", payload={"updates": "last"}))
 
     kb.row()
-    kb.add(Text("Сменить класс", payload={"cmd": "set_class"}))
-    kb.add(Text("Инфо", payload={"cmd": "info"}))
+    kb.add(Text("⚙️ Сменить класс", payload={"cmd": "set_class"}))
+    kb.add(Text("🌲 Инфо", payload={"cmd": "info"}))
 
     return kb.get_json()
 
@@ -69,7 +70,6 @@ def get_main_keyboard(sp: SPMessages) -> dict:
     Returns:
         dict: JSON клавиатура.
     """
-
     return get_home_keyboard(sp) if sp.user["set_class"] else SET_CLASS
 
 
@@ -84,29 +84,28 @@ def get_notify_keyboad(sp: SPMessages) -> dict:
     Returns:
         InlineKeyboardMarkup: Готовая клавитура для настройки
     """
-
     enabled = sp.user["notifications"]
     kb = Keyboard()
-    kb.add(Text("🏠Домой", payload={"cmd": "home"}))
+    kb.add(Text("🏠 Домой", payload={"cmd": "home"}))
 
     if not enabled:
-        kb.add(Text("🔔Включить", payload={"notify": "switch"}),
+        kb.add(Text("🔔 Включить", payload={"notify": "switch"}),
             color=KeyboardButtonColor.POSITIVE
         )
     else:
-        kb.add(Text("🔕Выключить", payload={"notify": "switch"}),
+        kb.add(Text("🔕 Выключить", payload={"notify": "switch"}),
             color=KeyboardButtonColor.NEGATIVE
         )
         user_hours = set(sp.user["hours"])
 
         if user_hours:
-            kb.add(Text("❌Cброс", payload={"notify": "reset"}),
+            kb.add(Text("❌ Cбросить", payload={"notify": "reset"}),
                 color=KeyboardButtonColor.PRIMARY
             )
 
         kb.row()
         for i, x in enumerate(set(range(6, 18))):
-            if i>0 and i % 4 == 0:
+            if i > 0 and i % 4 == 0:
                 kb.row()
 
             if x in user_hours:
@@ -123,7 +122,7 @@ def get_notify_keyboad(sp: SPMessages) -> dict:
 # ====================
 
 _COUNTERS = {
-    "cl": "по классам",
+    "cl": "По классам",
     "days": "По дням",
     "lessons": "По урокам",
     "cabinets": "По кабинетам"
@@ -131,7 +130,7 @@ _COUNTERS = {
 
 _TARGETS = {
     "cl": "Классы",
-    "days": "дни",
+    "days": "Дни",
     "lessons": "Уроки",
     "cabinets": "Кабинеты",
     "main": "Общее"
@@ -150,7 +149,6 @@ def get_counter_keyboard(sp: SPMessages, counter: str, target: str) -> dict:
     Returns:
         dict: Собранная клавиатура
     """
-
     kb = Keyboard()
 
     # Группы счётчиков
@@ -186,17 +184,17 @@ def get_counter_keyboard(sp: SPMessages, counter: str, target: str) -> dict:
         ))
 
     kb.row()
-    kb.add(Text("🏠Домой", payload={"cmd": "home"}))
+    kb.add(Text("🏠 Домой", payload={"cmd": "home"}))
 
     return kb.get_json()
 
 
 def get_updates_keyboard(
-    current: int, total: int, cl: Optional[str]=None) -> dict:
+    page: int, total: int, cl: Optional[str]=None) -> dict:
     """Собирает клввиатуру для просмотра списка изменений расписания.
 
     Args:
-        current (int): Номер текущей страницы обновлений
+        page (int): Номер текущей страницы обновлений
         total (int): Список всех страниц
         cl (str, optional): Для какого класс собрать клавиатуру
 
@@ -205,11 +203,11 @@ def get_updates_keyboard(
     """
 
     return (Keyboard()
-    .add(Text("◁", payload={"updates": "back", "i": current, "cl": cl}))
-    .add(Text(f"{current+1}/{total}",
-        payload={"updates": "switch", "i": current, "cl": cl
+    .add(Text("◁", payload={"updates": "back", "i": page, "cl": cl}))
+    .add(Text(f"{page+1}/{total}",
+        payload={"updates": "switch", "i": page, "cl": cl
     }))
-    .add(Text("▷", payload={"updates": "next", "i": current, "cl": cl}))
+    .add(Text("▷", payload={"updates": "next", "i": page, "cl": cl}))
     .row()
-    .add(Text("🏠Домой", payload={"cmd": "home"}))
+    .add(Text("🏠 Домой", payload={"cmd": "home"}))
     .get_json())

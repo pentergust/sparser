@@ -16,7 +16,6 @@ from sp.counters import group_counter_res
 from sp.counters import index_counter
 
 
-
 HOME = """💡 Некоторые примеры запросов:
 -- 7в 6а на завтра
 -- уроки 6а на вторник ср
@@ -59,7 +58,7 @@ NO_CLASS_HOME = """💡 Некоторые примеры запросов:
 
 INFO = """
 🌲 Тестер @errorgirl2007
-🌲 Версия бота: 1.2 (14)"""
+🌲 Версия бота: 1.2 (15)"""
 
 
 SET_CLASS = """
@@ -100,7 +99,6 @@ def send_home_message(sp: SPMessages) -> str:
     Returns:
         str: Готовое сообщение
     """
-
     if sp.user["class_let"]:
         return HOME
     else:
@@ -115,7 +113,6 @@ def send_notifications_info(sp: SPMessages) -> str:
     Returns:
         str: Сообщение с информацией об уведомлениях.
     """
-
     message = "Вы получите уведомление, если расписание изменится.\n"
 
     if sp.user["notifications"]:
@@ -143,7 +140,6 @@ def send_counter_message(sc: Schedule, counter: str, target: str) -> str:
     Returns:
         str: Готовое сообщение
     """
-
     intent = Intent()
 
     if counter == "cl":

@@ -2,7 +2,7 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.2 +1 (14, sp v5.7)
+Ver: 1.2 +2 (15, sp v5.7)
 """
 
 from sp.intents import Intent
