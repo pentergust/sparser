@@ -2,7 +2,7 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.2 +2 (16, sp v5.7)
+Ver: 1.2 +4 (17, sp v5.7)
 """
 
 from sp.intents import Intent
@@ -109,12 +109,13 @@ async def set_class_hadler(message: Message, sp: SPMessages, args: tuple[str]):
         text = messages.send_home_message(sp)
     else:
         text = "👀 Такого класса не существует."
+        text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
 
     await message.answer(text, keyboard=keyboards.get_main_keyboard(sp))
 
 @bot.on.message(command="set_class")
 @bot.on.message(payload={"cmd": "set_class"})
-async def reset_user_hadler(message: Message, sp: SPMessages):
+async def reset_user_hadler(message: Message, sp: SPMessages, cl: Optional[str]=None):
     """Неявное изменение класса пользоватлея."""
     if message.reply_message is not None:
         cl = message.reply_message.text
@@ -126,6 +127,8 @@ async def reset_user_hadler(message: Message, sp: SPMessages):
         else:
             text = "👀 Такого класса не существует."
             kb = keyboards.get_main_keyboard(sp)
+            text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
+
     else:
         sp.reset_user()
         text = messages.SET_CLASS
@@ -352,3 +355,8 @@ async def message_handler(message: Message, sp: SPMessages):
         await message.answer(messages.send_home_message(sp),
             keyboard=keyboards.get_home_keyboard(sp)
         )
+    else:
+        text = "👀 Такого класса не существует."
+        text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
+        await message.answer(text)
+
