@@ -323,7 +323,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +1 (113)"
+        res = "🌟 Версия sp: 5.7 +2 (114)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -404,7 +404,11 @@ class SPMessages:
         # Обновление времени последней проверки расписания
         self.user["last_parse"] = self.sc.schedule["last_parse"]+1
         self.save_user()
-        return compact_updates(updates)
+
+        if len(updates) != 0:
+            return compact_updates(updates)
+        else:
+            return
 
 
     # Отображение расписания
