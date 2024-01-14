@@ -21,7 +21,7 @@ TO_HOME = (
 # Для меню выбора кдасса
 SET_CLASS = (
     Keyboard()
-    .add(Text("Ограничения", payload={"cmd": "restrictions"}))
+    .add(Text("Ограничения", payload={"cmd": "cl_features"}))
     .add(Text("Пропустить",
         payload={"cmd": "pass"}), color=KeyboardButtonColor.NEGATIVE
     )
@@ -129,6 +129,7 @@ _COUNTERS = {
 }
 
 _TARGETS = {
+    "none": "Ничего",
     "cl": "Классы",
     "days": "Дни",
     "lessons": "Уроки",

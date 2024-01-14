@@ -71,7 +71,7 @@ def process_request(sp: SPMessages, request_text: str) -> str:
 async def home_handler(message: Message, sp: SPMessages):
     """Справка и главная клавиатура."""
     if sp.user["set_class"]:
-        await message.answer(messages.send_home_message(sp),
+        await message.answer(messages.HOME,
             keyboard=keyboards.get_home_keyboard(sp)
         )
     else:
@@ -83,11 +83,11 @@ async def home_handler(message: Message, sp: SPMessages):
 # Текстовая информация
 # ====================
 
-@bot.on.message(command="restrictions")
-@bot.on.message(payload={"cmd": "restrictions"})
-async def restrictions_handler(message: Message):
+@bot.on.message(command="cl_features")
+@bot.on.message(payload={"cmd": "cl_features"})
+async def cl_features_handler(message: Message):
     """Список огранчиений при отвязанном классе."""
-    await message.answer(messages.RESTRICTIONS)
+    await message.answer(messages.CL_FEATURES)
 
 @bot.on.message(command="info")
 @bot.on.message(payload={"cmd": "info"})
@@ -106,7 +106,7 @@ async def set_class_hadler(message: Message, sp: SPMessages, args: tuple[str]):
     res = sp.set_class(None if cl in ("-", "pass") else cl)
 
     if res is True:
-        text = messages.send_home_message(sp)
+        text = messages.HOME
     else:
         text = "👀 Такого класса не существует."
         text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
@@ -122,7 +122,7 @@ async def reset_user_hadler(message: Message, sp: SPMessages, cl: Optional[str]=
         res = sp.set_class(cl)
 
         if res:
-            text = messages.send_home_message(sp)
+            text = messages.HOME
             kb = keyboards.get_home_keyboard(sp)
         else:
             text = "👀 Такого класса не существует."
@@ -202,7 +202,7 @@ async def week_sc_handler(message: Message, sp: SPMessages):
 async def notify_info_handler(message: Message, sp: SPMessages):
     """Отправдяет информацию об уведомлениях."""
     if sp.user["class_let"]:
-        text = messages.send_notifications_info(sp)
+        text = messages.send_notify_info(sp.user["enable"], sp.user["hours"])
         kb = keyboards.get_notify_keyboad(sp)
     else:
         text = "⚠️ Для работы системы уведомлений вам нужно указать класс."
@@ -219,7 +219,9 @@ async def switch_notify_handler(message: Message, sp: SPMessages):
         sp.user["notifications"] = True
 
     sp.save_user()
-    await message.answer(messages.send_notifications_info(sp),
+    await message.answer(messages.send_notify_info(
+            sp.user["enabled"], sp.user["hours"]
+        ),
         keyboard=keyboards.get_notify_keyboad(sp)
     )
 
@@ -285,23 +287,17 @@ async def counter_handler(message: Message, sp: SPMessages):
 @bot.on.message(payload={"group":"updates", "action": "last"})
 async def updates_command(message: Message, sp: SPMessages):
     """Оправляет список изменений в расписании."""
-    text = "🔔 Изменения в расписании:\n"
-
     updates = sp.sc.updates
-    if len(updates):
-        text = send_update(updates[-1])
-    else:
-        text = "Нет новых обновлений."
-
-    kb = keyboards.get_updates_keyboard(
-        max(len(updates)-1, 0), len(updates)
+    update = updates[-1] if len(updates) else None
+    await message.answer(messages.send_updates(update),
+        keyboard=keyboards.get_updates_keyboard(
+           max(len(updates)-1, 0), len(updates)
+        )
     )
-    await message.answer(text, keyboard=kb)
 
 @bot.on.message(payload_contains={"group":"updates"})
 async def updates_handler(message: Message, sp: SPMessages):
     """Обработчик клавиатуры списка обновлений."""
-    text = "🔔 Изменения "
     payload = message.get_payload_json()
 
     # Смена класса, если требутеся
@@ -310,32 +306,31 @@ async def updates_handler(message: Message, sp: SPMessages):
     else:
         cl = payload["cl"]
 
-    # Доплняем шапку сообщения
     if cl is not None and sp.user["set_class"]:
-        text += f"для {cl}:\n"
         intent = Intent.construct(sp.sc, cl=[cl])
     else:
-        text += "в расписании:\n"
         intent = Intent()
 
     updates = sp.sc.get_updates(intent)
 
     if len(updates):
         if payload["action"] == "switch":
-            text += send_update(updates[-1])
+            update = updates[-1]
             i = max(len(updates)-1, 0)
         elif payload["action"] == "next":
             i = (max(min(payload["i"], len(updates)-1), 0) + 1) % len(updates)
-            text += send_update(updates[i])
+            update = updates[i]
         elif payload["action"] == "back":
             i = (max(min(payload["i"], len(updates)-1), 0) - 1) % len(updates)
-            text += send_update(updates[i])
+            update = updates[i]
     else:
-        text += "✨ Нет новых обновлений."
+        update = None
         i = 0
 
-    kb = keyboards.get_updates_keyboard(i, len(updates), cl)
-    await message.answer(text, keyboard=kb)
+    await message.answer(
+        messages.send_updates(update, cl),
+        keyboard=keyboards.get_updates_keyboard(i, len(updates), cl)
+    )
 
 
 # Обработка текстовых запросов
@@ -352,11 +347,10 @@ async def message_handler(message: Message, sp: SPMessages):
 
     elif text in sp.sc.lessons:
         sp.set_class(text)
-        await message.answer(messages.send_home_message(sp),
+        await message.answer(messages.HOME,
             keyboard=keyboards.get_home_keyboard(sp)
         )
     else:
         text = "👀 Такого класса не существует."
         text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
         await message.answer(text)
-
