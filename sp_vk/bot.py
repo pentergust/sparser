@@ -2,7 +2,7 @@
 Вк бот для доступа к SPMessages.
 
 Author: Milinuri Nirvalen
-Ver: 1.2 +4 (17, sp v5.7)
+Ver: 1.2 +5 (20, sp v5.7)
 """
 
 from sp.intents import Intent
@@ -330,6 +330,20 @@ async def updates_handler(message: Message, sp: SPMessages):
     await message.answer(
         messages.send_updates(update, cl),
         keyboard=keyboards.get_updates_keyboard(i, len(updates), cl)
+    )
+
+
+# Многостраничная справка
+# =======================
+
+@bot.on.message(command="tutorial")
+@bot.on.message(payload_contains={"group":"tutorial"})
+async def tutorial_handler(message: Message):
+    """Обработчик многостраничной справки."""
+    payload = message.get_payload_json()
+    page = 0 if payload is None else int(payload.get("page", 0))
+    await message.answer(messages.TUTORIAL_MESSAGES[page],
+        keyboard=keyboards.get_tutorial_keyboard(page)
     )
 
 

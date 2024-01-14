@@ -5,6 +5,7 @@ Author: Milinuri Nirvalen
 """
 
 from sp.messages import SPMessages
+from sp_vk.messages import TUTORIAL_MESSAGES
 
 from typing import Optional
 
@@ -41,7 +42,7 @@ def get_home_keyboard(sp: SPMessages) -> dict:
     """
     cl = sp.user["class_let"]
     kb = Keyboard()
-    kb.add(Text("🏠 Справка", payload={"cmd": "home"}))
+    kb.add(Text("🌟 Обучения", payload={"group": "tutorial"}))
 
     if cl is not None:
         kb.add(Text("📚 на неделю", payload={"cmd": "week"}))
@@ -190,8 +191,7 @@ def get_counter_keyboard(sp: SPMessages, counter: str, target: str) -> dict:
     return kb.get_json()
 
 
-def get_updates_keyboard(
-    page: int, total: int, cl: Optional[str]=None) -> dict:
+def get_updates_keyboard(page: int, total: int, cl: Optional[str]=None) -> dict:
     """Собирает клввиатуру для просмотра списка изменений расписания.
 
     Args:
@@ -215,3 +215,38 @@ def get_updates_keyboard(
         .add(Text("🏠 Домой", payload={"cmd": "home"}))
         .get_json()
     )
+
+def get_tutorial_keyboard(page: int) -> dict:
+    """Клавиатура многостраничного обучения.
+
+    Испльзуется для перемещения между страницами обучения.
+
+    Args:
+        page (int): Текущая страница справки.
+
+    Returns:
+        dict: Клавиатура для перемещения по справке.
+    """
+    kb = Keyboard()
+    # Если это первая страница -> без кнопки назад
+    if page == 0:
+        kb.add(Text("🚀 Начать", payload={"group":"tutorial", "page":1}))
+
+    # Кнопкеи для управления просмотром
+    elif page != len(TUTORIAL_MESSAGES)-1:
+        kb.add(Text("◁", payload={"group":"tutorial", "page":page-1}))
+        kb.add(Text("🌟 Дальше", payload={"group":"tutorial", "page":page+1}))
+
+        for i, x in enumerate(TUTORIAL_MESSAGES[1:-1]):
+            kb.row()
+            kb.add(Text(x.splitlines()[0],
+                payload={"group":"tutorial", "page":i}
+            ))
+        kb.row()
+        kb.add(Text("🏠 Домой", payload={"cmd": "home"}))
+
+    # Завершение обучения
+    else:
+        kb.add(Text("🎉 Завершить", payload={"cmd": "home"}))
+
+    return kb.get_json()
