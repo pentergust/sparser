@@ -130,7 +130,6 @@ _COUNTERS = {
 }
 
 _TARGETS = {
-    "none": "Ничего",
     "cl": "Классы",
     "days": "Дни",
     "lessons": "Уроки",
@@ -156,6 +155,7 @@ def get_counter_keyboard(sp: SPMessages, counter: str, target: str) -> dict:
     # Группы счётчиков
     for k, name in _COUNTERS.items():
         if counter == k:
+            kb.add(Text(name), color=KeyboardButtonColor.POSITIVE)
             continue
 
         kb.add(Text(name,
@@ -166,7 +166,18 @@ def get_counter_keyboard(sp: SPMessages, counter: str, target: str) -> dict:
 
     # Типы счётчиков
     for k, name in _TARGETS.items():
-        if target == k or counter == k:
+        if counter == k:
+            continue
+
+        if target == k:
+            kb.add(Text(name,
+                    payload={
+                        "cmd": "counter",
+                        "counter": counter,
+                        "target": "none"}
+                ),
+                color=KeyboardButtonColor.POSITIVE
+            )
             continue
 
         # Исключаем пункт main если это не EXCLUDE
