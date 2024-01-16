@@ -228,25 +228,21 @@ def get_tutorial_keyboard(page: int) -> dict:
         dict: Клавиатура для перемещения по справке.
     """
     kb = Keyboard()
-    # Если это первая страница -> без кнопки назад
-    if page == 0:
-        kb.add(Text("🚀 Начать", payload={"group":"tutorial", "page":1}))
 
-    # Кнопкеи для управления просмотром
-    elif page != len(TUTORIAL_MESSAGES)-1:
-        kb.add(Text("◁", payload={"group":"tutorial", "page":page-1}))
-        kb.add(Text("🌟 Дальше", payload={"group":"tutorial", "page":page+1}))
+    for i, x in enumerate(TUTORIAL_MESSAGES):
+        kb.row()
+        if i == page:
+            kb.add(Text(x.splitlines()[0],
+                payload={"group":"tutorial", "page":i},
+            ),
+                color=KeyboardButtonColor.POSITIVE
+            )
 
-        for i, x in enumerate(TUTORIAL_MESSAGES[1:-1]):
-            kb.row()
+        else:
             kb.add(Text(x.splitlines()[0],
                 payload={"group":"tutorial", "page":i}
             ))
-        kb.row()
-        kb.add(Text("🏠 Домой", payload={"cmd": "home"}))
-
-    # Завершение обучения
-    else:
-        kb.add(Text("🎉 Завершить", payload={"cmd": "home"}))
+    kb.row()
+    kb.add(Text("🏠 Домой", payload={"cmd": "home"}))
 
     return kb.get_json()
