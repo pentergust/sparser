@@ -30,6 +30,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional, NamedTuple
 import sqlite3
 
 from aiogram import Bot, Dispatcher, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandObject
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
@@ -1593,8 +1594,14 @@ async def main_handler(message: Message, sp: SPMessages) -> None:
 # ============================
 
 @dp.callback_query(F.data == "delete_msg")
-async def delete_msg_callback(query: CallbackQuery) -> None:
-    await query.message.delete()
+async def delete_msg_callback(query: CallbackQuery, sp: SPMessages) -> None:
+    try:
+        await query.message.delete()
+    except TelegramBadRequest:
+        await query.message.edit_text(
+            text=get_home_message(sp.user["class_let"]),
+            reply_markup=get_main_keyboard(sp.user["class_let"])
+    )
 
 @dp.callback_query(F.data == "home")
 async def home_callback(query: CallbackQuery, sp: SPMessages) -> None:
