@@ -23,10 +23,15 @@ python-dotenv = "^1.0.0"
 
 [tool.ruff]
 line-length = 80
+indent-width = 4
+
+# Assume Python 3.8
+target-version = "py38"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "D", "N"]
-ignore = ["D407"]
+select = ["E", "F", "I", "D", "N", "PL"]
+ignore = ["D407", "D107"]
+unfixable = ["I"]
 
 [build-system]
 requires = ["poetry-core"]
