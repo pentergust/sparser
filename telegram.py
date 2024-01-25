@@ -27,7 +27,14 @@ import sqlite3
 from datetime import datetime
 from os import getenv
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, NamedTuple, Optional
+from typing import (
+    Any, Awaitable,
+    Callable,
+    Dict,
+    NamedTuple,
+    Optional,
+    Union
+)
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramBadRequest
@@ -74,6 +81,7 @@ DB_CONN = sqlite3.connect("sp_data/tg.db")
 #   - Предельная длинна для сообщения списка изменений
 #   - Минимальная длинна имена намерения.
 #   - Максимальная длинна имена намерения.
+_BOT_VERSION = "v2.2"
 _MAX_INTENTS = 9
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 _MAX_UPDATE_MESSAGE_LENGTHT = 4000
@@ -224,13 +232,19 @@ class UserIntents:
 
 @dp.message.middleware()
 @dp.callback_query.middleware()
+@dp.error.middleware()
 async def user_middleware(
     handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
-    event: Update,
+    event: Union[Update, CallbackQuery, ErrorEvent],
     data: Dict[str, Any],
 ) -> Any:
     """Добавляет экземпляр SPMessages и намерения пользователя."""
-    if isinstance(event, CallbackQuery):
+    if isinstance(event, ErrorEvent):
+        if event.update.callback_query is not None:
+            uid = event.update.callback_query.message.chat.id
+        else:
+            uid = event.update.message.chat.id
+    elif isinstance(event, CallbackQuery):
         uid = event.message.chat.id
     else:
         uid = event.chat.id
@@ -1117,7 +1131,7 @@ def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
         str: Информацинное сообщение.
     """
     message = sp.send_status()
-    message += "\n⚙️ Версия бота: 2.2\n🛠️ Тестер @sp6510"
+    message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
 
     timetag = get_update_timetag(timetag_path)
     timedelta = datetime.now().timestamp() - timetag
@@ -2058,10 +2072,62 @@ async def callback_handler(query: CallbackQuery) -> None:
     logger.warning("Unprocessed query - {}", query.data)
 
 
+def send_error_messsage(exception: ErrorEvent, sp: SPMessages):
+    """Отпрвляет отладочное сообщние об ошибке пользователю.
+
+    Data:
+        user_name => Кто вызвал ошибку.
+        user_id => Какой пользователь вызвал ошибку.
+        class_let => К какому класс относился пользователь.
+        chat_id => Где была вызвана ошибка.
+        exception => Описание текста ошибки.
+        action => Callback data или текст сообщение, вызвавший ошибку.
+
+    Args:
+        exception (ErrorEvent): Событие ошибки aiogram.
+        sp (SPMessage): Экземпляр генератора сообщений пользователя.
+
+    Returns:
+        str: Отладочное сообщение с данными об ошибке в боте.
+    """
+    if exception.update.callback_query is not None:
+        action = f"-- Данные: {exception.update.callback_query.data}"
+        message = exception.update.callback_query.message
+    else:
+        action = f"-- Текст: {exception.update.message.text}"
+        message = exception.update.message
+
+    user_name = message.from_user.first_name
+    chat_id = message.chat.id
+
+    return ("⚠️ Произошла ошибка в работе бота."
+        f"\n-- Версия: {_BOT_VERSION}"
+        "\n\n👤 Пользователь"
+        f"\n-- Имя: {user_name}"
+        f"\n-- Класс: {sp.user['class_let']}"
+        f"\n-- ID: {chat_id}"
+        "\n\n🚫 Описание ошибки:"
+        f"\n-- {exception.exception}"
+        "\n\n🔍 Доплнительная информаиция"
+        f"\n{action}"
+        "\n\nПожалуйста, свяжитесь с @milinuri для решения проблемы."
+    )
+
 @dp.errors()
-async def error_handler(exception: ErrorEvent) -> None:
-    """Ловит и обрабатывает все исключения."""
+async def error_handler(exception: ErrorEvent, sp: SPMessages) -> None:
+    """Ловит и обрабатывает все исключения.
+
+    Отправляет сообщение об ошибке пользователям.
+    """
     logger.exception(exception.exception)
+    if exception.update.callback_query is not None:
+        await exception.update.callback_query.message.answer(
+            send_error_messsage(exception, sp)
+        )
+    else:
+        await exception.update.message.answer(
+            send_error_messsage(exception, sp)
+        )
 
 
 # Запуск бота
