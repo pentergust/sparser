@@ -277,6 +277,18 @@ def get_cl_counter_str(cl_counter: Counter) -> str:
 
     return res
 
+def get_hour_counter_str(hour_counter: Counter) -> str:
+    groups = defaultdict(list)
+    for k, v in hour_counter.items():
+        groups[v].append(k)
+
+    res = ""
+    for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
+        res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+
+    return res
+
+
 
 class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
@@ -311,6 +323,7 @@ class SPMessages:
         lp_delta = get_str_timedelta((now - last_parse).seconds)
 
         cl_counter = Counter()
+        hour_counter = Counter()
         notify_count = 0
         active_users = 0
         users = load_file(self._users_path, {})
@@ -319,16 +332,20 @@ class SPMessages:
                 active_users += 1
             if v.get("notifications") and v.get("set_class"):
                 notify_count += 1
+                for h in v.get("hours"):
+                    hour_counter[h] += 1
+
             cl_counter[v["class_let"]] += 1
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +2 (114)"
+        res = "🌟 Версия sp: 5.7 +3 (115)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
         res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
         res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
+        res += f"\n🌲 {get_hour_counter_str(hour_counter)}"
         res += f"\n🌲 {self.user['class_let']} класс"
         res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
         res += f"\n🌲 {get_cl_counter_str(cl_counter)}"
