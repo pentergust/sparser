@@ -19,7 +19,7 @@ help - Главное меню
 info - Информация о боте
 
 Author: Milinuri Nirvalen
-Ver: 2.2 (sp v5.7)
+Ver: 2.2.1 (sp v5.7)
 """
 
 import asyncio
@@ -1913,12 +1913,12 @@ async def notify_mod_callback(
         sp.user["notifications"] = False
 
     elif callback_data.action == "add":
-        if callback_data.hour not in sp.user["hours"]:
-            sp.user["hours"].append(callback_data.hour)
+        if int(callback_data.hour) not in sp.user["hours"]:
+            sp.user["hours"].append(int(callback_data.hour))
 
     elif callback_data.action == "remove":
-        if callback_data.hour in sp.user["hours"]:
-            sp.user["hours"].remove(callback_data.hour)
+        if int(callback_data.hour) in sp.user["hours"]:
+            sp.user["hours"].remove(int(callback_data.hour))
 
     elif callback_data.action == "reset":
         sp.user["hours"] = []
