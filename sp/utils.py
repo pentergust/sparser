@@ -1,32 +1,42 @@
-"""
-Вспомогательные функции для работы парсера.
+"""Вспомогательные функции для работы проекта.
 
-Author: Muilinuri Nirvalen
+Используется как набор общих вспомогательных функций
+которые работают внутри проект, но редко выходят за его пределы.
+
+Содержит:
+
+- Функции для работы с json файлами.
+- Проверка ключей словаря по шаблону.
+- Склонение слов относительно числа.
+- Получение строкового таймера обратного отсчёта.
+- Упаковка нескольких записей об обновлениях в одну.
+
+Author: Milinuri Nirvalen
 """
 
 from pathlib import Path
-from typing import Optional
-# from typing import Iterable
-from typing import Union
-from typing import Any
-from types import NoneType
+from typing import Any, Optional, Union
 
+# Как более быстрый, чем стандартный json
 import ujson
 from loguru import logger
-
 
 # Работа с json файлами
 # =====================
 
-def save_file(path: Path, data: dict) -> dict:
-    """Записывает данные в файл.
+def save_file(path: Path, data: Union[dict, list]):
+    """Записывает данные в json файл.
 
-    Args:
-        path (Path): Путь к файлу для записи
-        data (dict): Данные для записи
+    Используется как обёртка для более удобной упаковки данных
+    в json файлы.
+    Автоматически создаёт файл, есть его не существует.
 
-    Returns:
-        dict: Данные для записи
+    :param path: Путь к файлу для записи данных.
+    :type path: Path
+    :param data: Данные для записи в файл.
+    :type data: Union[dict, list]
+    :return: Ваши данные для записи.
+    :rtype: dict
     """
     if not path.exists():
         path.parents[0].mkdir(parents=True, exist_ok=True)
@@ -35,38 +45,44 @@ def save_file(path: Path, data: dict) -> dict:
         f.write(ujson.dumps(data, indent=4, ensure_ascii=False))
     return data
 
-def load_file(path: Path, data: Optional[dict]=None):
-    """Читает данные из файла.
+def load_file(path: Path, data: Optional[dict]=None) -> Union[dict, list]:
+    """Читает данные из json файла.
 
-    Args:
-        path (Path): Путь к файлу для чтения
-        data (dict, optional): Данные для записи при отцуцтвии файла
+    Используется как обёртка для более удобного чтения данных из
+    json файла.
+    Если переданы данные и файла не существует -> создаёт новый файл
+    и записывает переданные данные.
+    Если файла не суещствует и данные переданы или возникло исключение
+    при чтении файла -> возвращаем пустой словарь.
 
-    Returns:
-        dict: Данные из файла/данные для записи
+    :param path: Путь к файлу для чтения.
+    :type path: Path
+    :param data: Данные для записи, по умолчанию не указаны.
+    :type data: Optional[dict], optional
+    :return: Распакованные данные из файла.
+    :rtype: Union[dict, list]
     """
-    if path.is_file():
+    try:
         with open(path) as f:
             return ujson.loads(f.read())
-
-    elif data is not None:
-        return save_file(path, data)
-
-    else:
+    except FileNotFoundError:
+        if data is not None:
+            logger.warning("File not found {} -> create", path)
+            save_file(path, data)
+            return data
+        else:
+            logger.error("File not found {}", path)
+            return {}
+    except Exception as e:
+        logger.exception(e)
         return {}
 
 
+# Работа с контейнерами
+# =====================
+
 def check_keys(data: dict, model: dict) -> dict:
-    """Проверяет ключи словоря с шаблоном.
-    Дополняет отцуцтвуюшие ключи.
-
-    Args:
-        data (dict): Исходный словарь
-        model (dict): Шаблон для проверки
-
-    Returns:
-        dict: Проверенный словарь
-    """
+    """Устарел, будет заменено на UserData..."""
     res = data.copy()
 
     for k, v in model.items():
@@ -75,66 +91,73 @@ def check_keys(data: dict, model: dict) -> dict:
 
     return res
 
-def ensure_list(a):
-    return (a,) if isinstance(a, (str, int, NoneType)) else a
 
 
-def plural_form(n: int, v: list[str]) -> str:
-    """Возвращает просклонённое слово в зависимости от числа.
+# Прочие утилиты
+# ==============
 
-    plural_form(difference.days, ("день", "дня", "дней"))
+def plural_form(n: int, v: tuple[str]) -> str:
+    """Возаращает просклонённое значение в зивисимости от числа.
 
-    Args:
-        n (int): Число
-        v (list[str]): Варианты слова (для 1, для 2, для 5)
+    Возвращает просклонённое слово "для одного", "для двух",
+    "для пяти" значений.
 
-    Returns:
-        str: ПРосклонённое слово в зависимости от числа
+    .. code-block:: python
+
+        plural_form(difference.days, ("день", "дня", "дней"))
+        # difference.days = 1 -> день
+        # difference.days = 32 -> дня
+        # difference.days = 65 -> дней
+
+    :param n: Некоторое число, используемое в склонении.
+    :type n: int
+    :param v: Варианты слова (для 1, для 2, для 5).
+    :type v: tuple[str]
+    :return: Просклонённое слово в зависимости от числа.
+    :rtype: str
     """
-    return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]]
+    return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]] #noqa
 
-
-def get_str_timedelta(s: int | float, hours: Optional[bool]=True) -> str:
-    """Возаращает строковый обратный отсчёт из количества секунд.
+def get_str_timedelta(s: int, hours: Optional[bool]=True) -> str:
+    """Возвращает строковый обратный отсчёт из количества секунд.
 
     Если hours = False -> ММ:SS.
     Если hours = True -> HH:MM:SS.
 
-    Args:
-        s (int | float): Количество секунд прошедшего времени.
-        hours (bool, optional): Учитывать ли часы.
-
-    Returns:
-        str: Строковый обраный отсчёт.
+    :param s: Количество секунд для обратного отсчёта.
+    :type s: int
+    :param hours: Использовать ли часы, по умолчанию да.
+    :type hours: Optional[bool], optional
+    :return: Строковый обратный отсчёт.
+    :rtype: str
     """
     if hours:
-        hours, remainder = divmod(int(s), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{hours:02}:{minutes:02}:{seconds:02}"
+        h, r = divmod(s, 3600)
+        m, s = divmod(r, 60)
+        return f"{h:02}:{m:02}:{s:02}"
     else:
-        minutes, seconds = divmod(int(s), 60)
-        return f"{minutes:02}:{seconds:02}"
+        m, s = divmod(s, 60)
+        return f"{m:02}:{s:02}"
 
 
-def compact_updates(updates: list[dict]) -> dict:
-    """Собиарет несколько записей об обновлениях в одну.
+def compact_updates(updates: list[dict[str, Any]]) -> dict[str, Any]:
+    """Упаковывает несколько записей об обновлениях в одну.
 
     Используется чтобы совместить несколько записей об изменениях.
-    Например чтобы покзаать все имзеенния в расписании за неделю.
+    Например чтобы покзаать все изменения в расписании за неделю.
     Или использваоть при получении обнолвений.
 
-    Правила совмещения:
+    **Правила совмешения**:
 
-    1. Если урока ранее не было -> добавляем урок.
-    2. Если Урок A, сменился на B, а после снова на A -> удаляем урок.
-    3. Если A -> B, B -> C, то A => C.
-    4. Иначе добавить запись.
+    - Если урока ранее не было -> добавляем урок.
+    - Если Урок A, сменился на B, а после снова на A -> удаляем урок.
+    - Если A -> B, B -> C, то A => C.
+    - Иначе добавить запись.
 
-    Args:
-        updates (list[Dict]): Спиоск записей обновлений расписания.
-
-    Returns:
-        dict: Новая совмешённая запись об обновлении расписания.
+    :param updates: Список записей об обновлениях расписания.
+    :type updates: list[dict[str, Any]]
+    :return: Новая упакованная запись об обновлённом расписании.
+    :rtype: dict[str, Any]
     """
     res = updates[0]["updates"].copy()
 
@@ -146,7 +169,7 @@ def compact_updates(updates: list[dict]) -> dict:
                     res[day][cl] = cl_updates
                     continue
 
-                new_lessons = []
+                new_lessons: list[Union[tuple, None]] = []
                 old_lessons = res[day][cl]
 
                 for i, lesson in enumerate(cl_updates):

@@ -1,17 +1,14 @@
-"""
-Вспомогательные функции для подсчёта
+"""Вспомогательные функции для подсчёта
 количества элементов в расписании.
 
 Author: Milinuri Nirvalen
 """
 
-from .intents import Intent
-from .parser import Schedule
-
-from collections import Counter
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Optional
 
+from .intents import Intent
+from .parser import Schedule
 
 # Вспомогательные функции
 # =======================
@@ -25,7 +22,6 @@ def group_counter_res(res: dict) -> dict:
     Returns:
         dict: Сгруппированыый результат работы счётчиков
     """
-
     groups = defaultdict(dict)
     for k, v in res.items():
         key = v["total"]
@@ -60,7 +56,6 @@ def cl_counter(sc: Schedule, intent: Intent) -> dict:
     Returns:
         dict: Результат работы счётчика
     """
-
     res = {}
 
     for cl, days in sc.lessons.items():
@@ -100,7 +95,6 @@ def days_counter(sc: Schedule, intent: Intent) -> dict:
     Returns:
         dict: Результаты счётчика
     """
-
     res = {
         str(x): {"cl": Counter(),
                  "total": 0,
@@ -139,7 +133,6 @@ def index_counter(sc: Schedule, intent: Intent,
     Returns:
         dict: Результаты счётчика
     """
-
     res = {}
 
     if cabinets_mode:

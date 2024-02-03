@@ -1,24 +1,20 @@
-"""
-Самостоятельный парсер школьного расписания.
+"""Самостоятельный парсер школьного расписания.
 
 Author: Milinuri Nirvalen
 """
 
-from .intents import Intent
-from .utils import load_file
-from .utils import save_file
-
 import csv
 import hashlib
-import requests
-
-from collections import deque
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import requests
 from loguru import logger
+
+from .intents import Intent
+from .utils import load_file, save_file
 
 url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=csv"
 sc_path = "sp_data/sc.json"
@@ -48,7 +44,7 @@ def get_sc_updates(a: dict, b: dict) -> list:
     updates = [defaultdict(lambda: [None] * 8) for x in range(6)]
 
     for k, v in b.items():
-        if not k in a:
+        if k not in a:
             continue
 
         # Пробегаемся по дням недели в новом расписании
@@ -164,6 +160,7 @@ def parse_lessons(csv_file: str) -> dict:
 
 class Schedule:
     """Расписания уроков и способы взаимодействия с ним."""
+
     def __init__(self, cl: str) -> None:
         super(Schedule, self).__init__()
         self.cl = cl
@@ -278,7 +275,7 @@ class Schedule:
     def get(self) -> dict:
         """Получает и запускает процесс обновления расписания.
 
-        Returns:
+        Returns
             dict: Расписание уроков
         """
         now = datetime.timestamp(datetime.now())

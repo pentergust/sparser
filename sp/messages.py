@@ -1,28 +1,20 @@
-"""
-Генератор текстовых сообщений с использованием Schedule.
+"""Генератор текстовых сообщений с использованием Schedule.
 
 Author: Milinuri Nirvalen
 """
 
-from .intents import Intent
-from .utils import load_file
-from .utils import save_file
-from .utils import plural_form
-from .utils import check_keys
-from .utils import compact_updates
-from .utils import get_str_timedelta
-from .parser import Schedule
-from .counters import reverse_counter
-
-from collections import Counter
-from collections import defaultdict
-from datetime import datetime
-from datetime import time
+from collections import Counter, defaultdict
+from datetime import datetime, time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from loguru import logger
 
+from .counters import reverse_counter
+from .intents import Intent
+from .parser import Schedule
+from .utils import (check_keys, compact_updates, get_str_timedelta, load_file,
+                    plural_form, save_file)
 
 users_path = "sp_data/users.json"
 default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
@@ -96,7 +88,6 @@ def get_update_header(update: dict, extend_info: Optional[bool]=True) -> str:
     Returns:
         str: Заголовок списка изменений.
     """
-
     # Получаем timestamp обновления
     end_timestamp = update.get("end_time", 0)
     start_timespamp = update.get("start_time", end_timestamp)
@@ -108,8 +99,8 @@ def get_update_header(update: dict, extend_info: Optional[bool]=True) -> str:
     message += f"➜ {t}"
 
     if extend_info:
-        update_delta = end_timestamp - start_timespamp
-        now_delta = datetime.now().timestamp() - end_timestamp
+        update_delta = int(end_timestamp - start_timespamp)
+        now_delta = int(datetime.now().timestamp() - end_timestamp)
         extend_message = ""
 
         if update_delta <= 172800:
@@ -190,8 +181,7 @@ def send_search_res(intent: Intent, res: list) -> str:
     Returns:
         str: Готовое сообщение
     """
-
-    message = f"🔎 поиск "
+    message = "🔎 поиск "
     if intent.cabinets:
         message += f" [{', '.join(intent.cabinets)}]"
     if intent.cl:
@@ -277,14 +267,17 @@ def get_cl_counter_str(cl_counter: Counter) -> str:
 
     return res
 
-def get_hour_counter_str(hour_counter: Counter) -> str:
+def get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
     groups = defaultdict(list)
     for k, v in hour_counter.items():
         groups[v].append(k)
 
     res = ""
     for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
-        res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+        if k == 1:
+            res += f" 🔸{', '.join(sorted(map(str, v)))}"
+        else:
+            res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
 
     return res
 
@@ -294,11 +287,10 @@ class SPMessages:
     """Генератор текстовых сообщений для Schedule."""
 
     def __init__(self, uid: str, user_data: Optional[dict]=None) -> None:
-        """
-        Args:
-            uid (str): Кто пользуется расписанием
-            sc (Schedule): Расписание уроков
-            users_path (str, optional): Путь к файлу данных пользователей
+        """Args:
+        uid (str): Кто пользуется расписанием
+        sc (Schedule): Расписание уроков
+        users_path (str, optional): Путь к файлу данных пользователей
         """
         super(SPMessages, self).__init__()
 
@@ -319,14 +311,14 @@ class SPMessages:
         nu_str = get_next_update_str(next_update, now)
         lp_str = get_next_update_str(last_parse, now)
 
-        nu_delta = get_str_timedelta((next_update - now).seconds, False)
-        lp_delta = get_str_timedelta((now - last_parse).seconds)
+        nu_delta = get_str_timedelta(int((next_update - now).seconds), hours=False)
+        lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
         cl_counter = Counter()
         hour_counter = Counter()
         notify_count = 0
         active_users = 0
-        users = load_file(self._users_path, {})
+        users = load_file(self._users_path)
         for k, v in users.items():
             if v["last_parse"] == self.sc.schedule["last_parse"]:
                 active_users += 1
@@ -339,13 +331,15 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +3 (115)"
+        res = "🌟 Версия sp: 5.7 +3 (116)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
         res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
         res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
-        res += f"\n🌲 {get_hour_counter_str(hour_counter)}"
+        if len(hour_counter) > 0:
+            res += "\n🌲 Уведомления пользователей:"
+            res += f"\n🔔 {get_hour_counter_str(hour_counter)}"
         res += f"\n🌲 {self.user['class_let']} класс"
         res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
         res += f"\n🌲 {get_cl_counter_str(cl_counter)}"
@@ -369,7 +363,6 @@ class SPMessages:
         Returns:
             dict: Данные пользователя
         """
-
         if user_data is None:
             user_data = load_file(self._users_path).get(self.uid)
             if user_data is None:
@@ -379,14 +372,14 @@ class SPMessages:
 
     def save_user(self) -> None:
         """Записывает данные пользователя в self._users_path."""
-        users = load_file(self._users_path, {})
+        users: dict[str, Any] = load_file(self._users_path)
         users.update({self.uid: self.user})
         save_file(self._users_path, users)
         logger.info("Save user: {}", self.uid)
 
     def reset_user(self) -> None:
         """ЦУдаляет даныне о пользователе"""
-        users = load_file(self._users_path, {})
+        users: dict[str, Any] = load_file(self._users_path)
         users.update({self.uid: default_user_data.copy()})
         save_file(self._users_path, users)
         logger.info("Reset user: {}", self.uid)
@@ -440,7 +433,6 @@ class SPMessages:
         Returns:
             str: Сообщение с расписание уроков
         """
-
         cl = intent.cl or (self.user["class_let"],)
         lessons = {x: self.sc.get_lessons(x) for x in cl}
         message = ""
@@ -454,7 +446,7 @@ class SPMessages:
         # Обновления в расписаниии
         update = self.get_lessons_updates()
         if update is not None:
-            message += f"\nУ вас изменилось расписание! 🎉"
+            message += "\nУ вас изменилось расписание! 🎉"
             message += f"\n{send_update(update, cl)}"
         return message
 
@@ -468,7 +460,6 @@ class SPMessages:
         Returns:
             str: Сообщение с расписанием на сегодня/завтра
         """
-
         now = datetime.now()
         today = now.weekday()
 

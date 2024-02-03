@@ -1,5 +1,4 @@
-"""
-Вспомогательный класс намерений для уточнения работы
+"""Вспомогательный класс намерений для уточнения работы
 и фильтрации результатов методов Schedule.
 
 При получении например списка изменений может потребоваться уточнить
@@ -10,16 +9,16 @@ lesons. cabinets, а также их валидацию и сборку.
 Author: Milinuri Nirvalen
 """
 
-from .utils import ensure_list
-
 from datetime import datetime
-from typing import NamedTuple
-from typing import Union
-from typing import Iterable
-
+from types import NoneType
+from typing import Iterable, NamedTuple, TypeVar, Union
 
 _days_names = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
 _short_days_names = ["пн", "вт", "ср", "чт", "пт", "сб"]
+
+_T = TypeVar("T")
+def _ensure_list(a: _T) -> tuple[_T]:
+    return (a,) if isinstance(a, (str, int, NoneType)) else a
 
 
 class Intent(NamedTuple):
@@ -89,12 +88,11 @@ class Intent(NamedTuple):
         Returns:
             Intent: Новый экземпляр намерений
         """
-
         return Intent(
-            {sc.get_class(x) for x in ensure_list(cl)},
-            {x for x in ensure_list(days) if x < 6},
-            {x for x in ensure_list(lessons) if x in sc.l_index},
-            {x for x in ensure_list(cabinets) if x in sc.c_index},
+            {sc.get_class(x) for x in _ensure_list(cl)},
+            {x for x in _ensure_list(days) if x < 6},
+            {x for x in _ensure_list(lessons) if x in sc.l_index},
+            {x for x in _ensure_list(cabinets) if x in sc.c_index},
         )
 
     @classmethod
@@ -117,7 +115,6 @@ class Intent(NamedTuple):
         Returns:
             Intent: Новый экземпляр намерений
         """
-
         weekday = datetime.today().weekday()
         cl = []
         days = []
@@ -192,12 +189,11 @@ class Intent(NamedTuple):
         Returns:
             Intent: Новый пересобранный экземпляр намерений
         """
-
         return Intent(
-            {sc.get_class(x) for x in ensure_list(cl)} or self.cl,
-            {x for x in ensure_list(days) if x < 6} or self.days,
-            {x for x in ensure_list(lessons) if x in sc.l_index}  or self.lessons,
-            {x for x in ensure_list(cabinets) if x in sc.c_index}  or self.cabinets,
+            {sc.get_class(x) for x in _ensure_list(cl)} or self.cl,
+            {x for x in _ensure_list(days) if x < 6} or self.days,
+            {x for x in _ensure_list(lessons) if x in sc.l_index}  or self.lessons,
+            {x for x in _ensure_list(cabinets) if x in sc.c_index}  or self.cabinets,
         )
 
     def reparse(self, sc, args: list[str]):
@@ -224,7 +220,6 @@ class Intent(NamedTuple):
         Returns:
             Intent: Новый экземпляр намерений
         """
-
         weekday = datetime.today().weekday()
         cl = []
         days = []
