@@ -1,6 +1,15 @@
+# IDE
+.idea/
+.vscode/
+
 # Python
 /venv
 __pycache__/
+
+# project
+.ruff_cache
+.mypy_cache
+_build/
 
 # Sparser
 /sp_data
