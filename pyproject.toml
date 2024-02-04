@@ -21,6 +21,7 @@ mypy = "^1.8.0"
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.2.6"
 furo = "^2024.1.29"
+sphinx-copybutton = "^0.5.2"
 
 [tool.poetry.group.telegram.dependencies]
 aiogram = "^3.2.0"

@@ -15,10 +15,14 @@ release = '5.7'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'sphinx.ext.todo',
     'sphinx.ext.autodoc',  # Core library for html generation from docstrings
     'sphinx.ext.autosummary',  # Create neat summary tables
     # 'sphinx.ext.viewcode '
+    'sphinx_copybutton'
 ]
+
+todo_include_todos = True
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
@@ -29,5 +33,6 @@ language = 'ru'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
+html_logo = "_images/sp_ava.png"
 html_static_path = ['_static']
 highlight_language = "python3"
