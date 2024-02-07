@@ -9,7 +9,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.10 (sp v5.7+2b, telegram v2.0)
+Ver: 0.10.1 (sp v5.7+2b, telegram v2.0)
 """
 
 from datetime import datetime
@@ -81,10 +81,9 @@ async def process_update(bot, hour: int, sp: SPMessages) -> None:
 
     # Отправляем уведомления об обновлениях
     updates = sp.get_lessons_updates()
-    if updates:
+    if updates is not None:
         message = "🎉 У вас изменилось расписание!"
-        for update in updates:
-            message += f"\n{send_update(update, cl=sp.user['class_let'])}"
+        message += f"\n{send_update(updates, cl=sp.user['class_let'])}"
 
         await bot.send_message(sp.uid, text=message,
             reply_markup=get_updates_keyboard(sp.user["class_let"]
