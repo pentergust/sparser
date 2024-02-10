@@ -16,3 +16,4 @@
 
    install
    sp/index
+   changelog
