@@ -6,7 +6,7 @@ Author: Milinuri Nirvalen
 from collections import Counter, defaultdict
 from datetime import datetime, time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from loguru import logger
 
@@ -150,7 +150,7 @@ def send_update(update: dict, cl: Optional[str]=None) -> str:
 
     return message
 
-def send_day_lessons(lessons: list) -> str:
+def send_day_lessons(lessons: list[Union[list, str]]) -> str:
     """Собирает сообщение с расписанием уроков на день.
 
     Args:
@@ -176,7 +176,12 @@ def send_day_lessons(lessons: list) -> str:
         else:
             message += " │ "
 
-        message += "; ".join(x) if isinstance(x, list) else x
+        # Если несколько уроков, выводим их все по порядку
+        if isinstance(x, list):
+            message += f"; ".join(x)
+        # Если есть урок
+        elif len(x) > 0 and x.split(":")[0] not in ("None", "---"):
+            message += x
 
     return message
 
@@ -340,7 +345,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +3 (116)"
+        res = "🌟 Версия sp: 5.7 +4 (117)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -424,7 +429,7 @@ class SPMessages:
         self.user["last_parse"] = self.sc.schedule["last_parse"]+1
         self.save_user()
 
-        if len(updates) != 0:
+        if len(updates) > 0:
             return compact_updates(updates)
         else:
             return
