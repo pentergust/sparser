@@ -19,7 +19,7 @@ help - Главное меню
 info - Информация о боте
 
 Author: Milinuri Nirvalen
-Ver: 2.2.1 (sp v5.7)
+Ver: 2.2.2 (sp v5.7)
 """
 
 import asyncio
@@ -81,7 +81,7 @@ DB_CONN = sqlite3.connect("sp_data/tg.db")
 #   - Предельная длинна для сообщения списка изменений
 #   - Минимальная длинна имена намерения.
 #   - Максимальная длинна имена намерения.
-_BOT_VERSION = "v2.2"
+_BOT_VERSION = "v2.2.2"
 _MAX_INTENTS = 9
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 _MAX_UPDATE_MESSAGE_LENGTHT = 4000
@@ -1131,10 +1131,10 @@ def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
         str: Информацинное сообщение.
     """
     message = sp.send_status()
-    message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
+    message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @micronuri"
 
     timetag = get_update_timetag(timetag_path)
-    timedelta = datetime.now().timestamp() - timetag
+    timedelta = int(datetime.now().timestamp()) - timetag
     message += f"\n📀 Проверка была {get_str_timedelta(timedelta)} назад"
 
     if timedelta > _ALERT_AUTOUPDATE_AFTER_SECONDS:
