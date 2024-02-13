@@ -10,7 +10,6 @@ Author: Milinuri Nirvalen
 """
 
 from datetime import datetime
-from types import NoneType
 from typing import Iterable, NamedTuple, TypeVar, Union
 
 _days_names = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот"]
@@ -18,7 +17,8 @@ _short_days_names = ["пн", "вт", "ср", "чт", "пт", "сб"]
 
 _T = TypeVar("T")
 def _ensure_list(a: _T) -> tuple[_T]:
-    return (a,) if isinstance(a, (str, int, NoneType)) else a
+    if a is not None:
+        return (a,) if isinstance(a, (str, int)) else a
 
 
 class Intent(NamedTuple):
