@@ -5,9 +5,10 @@
 ![](docs/_images/telegram.png)
 
  <!-- some shields -->
-<!-- [![Documentation Status](https://readthedocs.org/projects/sparser/badge/?version=latest)](https://sparser.readthedocs.io/ru/latest/?badge=latest) -->
-
 <p align="center">
+  <a href='https://sparser.readthedocs.io/ru/latest/?badge=latest'>
+    <img src='https://readthedocs.org/projects/sparser/badge/?version=latest' alt='Documentation Status' />
+  </a>
   <img alt="Version" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.version&prefix=v&label=SParser&color=green">
   <img alt="License" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.license&label=License&color=red">
   <img alt="Python verion" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.dependencies.python&label=Python">
@@ -267,6 +268,8 @@ python spcli.py
 
 ## Возможности парсера
 
+> Этот раздел перемещается в документацию ...
+
 На одном парсере всё не заканчивается.
 В проекте представлен класс `sp.parser.Schedule` для работы с расписанием.
 Например для поиска уроков/кабинетов и просмотра списка изменений.
@@ -326,43 +329,3 @@ python spcli.py
 - Отправка расписания уроков. (использует намерения)
   - Отображение изменений в расписании пользователя при наличии.
 - Отправка расписания уроков на сегодня/завтра. (использует намерения)
-
-`sp.parser` **Парсер**:
-
-- Отслеживание изменений во всём расписании.
-- Получение индексов расписания (`l_index`, `c_index`).
-  - Словарь по урокам/кабинетом.
-  - Какие, когда, где и для кого проводятся уроки/кабинеты.
-- Парсер уроков (`CSV -> Dict`).
-- Умное обновление расписания.
-  - Ежечасное сравнение хешей расписания.
-  - Если хеши расписаний отличаются - начинается процесс обновления.
-  - Обновляется расписание, индексы, список изменений.
-  - Результаты работы сохраняются в `sp_data/`.
-- Получение списка уроков для выбранного класса.
-- Получение списка обновлений в расписании (использует фильтры).
-- Поиск данных в расписании (использует фильтры).
-
-`sp.utils` **Дополнительные инструменты**:
-
-- Сжатие списка изменений в расписании.
-
-## Документация
-
-![](docs/_images/docs.png)
-
-После завершения документации, многие разделы будут убраны из README.
-
-Для всех заинтересованных в проекте появилась оффлайн документация.
-
-Для сборки оффлайн документации. загрузите необходимые зависимости.
-
-```bash
-poetry install --with docs
-```
-
-Дальше перейдите в директорию `docs/` и выполните:
-
-```bash
-make html
-```
