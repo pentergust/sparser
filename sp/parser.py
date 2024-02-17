@@ -1,12 +1,14 @@
 """Самостоятельный парсер школьного расписания.
 
-Предоставялет компоненты, используемые для
-получения расписания и последующей работы с ним.
+Содержит компоненты, свзяанные с работой расписания.
+Такие как парсер расписания, функции для работы с индексами,
+а также класс расписания.
 
 Содержит:
 
 - Функция для сравнения двух расписаний.
 - Функция получения индекса.
+- Фнкцмя получения расписания.
 - Класс Schedule для работы с самим расписанием.
 """
 
@@ -15,7 +17,7 @@ import hashlib
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union, Iterable
 
 import requests
 from loguru import logger
@@ -212,10 +214,8 @@ def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
                 day += 1
             last_row = int(row[1])
 
-            logger.debug("Row: {}", row)
             for cl, i in cl_header:
                 # Если класса нет в расписании, то добавляем его
-                logger.debug("{}:{}", row[i], row[i+1])
                 lesson = row[i].strip(" .-").lower() or None
                 cabinet = row[i+1].strip().lower() or 0
                 lessons[cl][day].append(f"{lesson}:{cabinet}")
@@ -268,8 +268,10 @@ class Schedule:
         self._c_index = None
         self._updates = None
 
-        self.schedule = self.get()
-        self.lessons = self.schedule["lessons"]
+        #: Полное расписание уроков, включая время получения и прочее
+        self.schedule: dict[str, Union[int, dict, str]] = self.get()
+        #: Расписание уроков, он же индекс классов (часто используется)
+        self.lessons: dict[str, list[str]] = self.schedule["lessons"]
 
     @property
     def l_index(self) -> Optional[dict[str, list[dict]]]:
@@ -699,3 +701,59 @@ class Schedule:
                         else:
                             res[day][x].append(f"{cl}:{obj}")
         return res
+
+    # Работа с намерениями
+    # ====================
+
+    def construct_intent(self,
+        cl: Union[Iterable[str], str]=(),
+        days: Union[Iterable[int], int]=(),
+        lessons: Union[Iterable[str], str]=(),
+        cabinets: Union[Iterable[str], str]=()
+    ) -> Intent:
+        """Создаёт новое намерение для текущего расписания.
+
+        Является сокращением для Intent.construct(sc, ...)
+
+        .. code-block:: python
+
+            sc = Schedule()
+
+            # Можно использовать любой вариант
+            i = Intent.construct(sc, ...)
+            i = sc.construct_intent(...)
+
+        :param cl: Какие классы расписания добавить в намерение
+        :type cl: Union[Iterable[str], str]
+        :param days: Какие дни добавить в намерение (0-5)
+        :type days: Union[Iterable[int], int]
+        :param lessons: Какие уроки добавить в намерение (из l_index).
+        :type lessons: Union[Iterable[str], str]
+        :param cabinets: Какие кабинеты добавить в намерение (c_index).
+        :type cabinets: Union[Iterable[str], str]
+        :return: Проверенное намерение из переданных аргументов
+        :rtype: Intent
+        """
+        return Intent.construct(self, cl, days, lessons, cabinets)
+
+    def parse_intent(self, args: Iterable[str]) -> Intent:
+        """Парсит намерение из строковых аргументов.
+
+        Парсит для текущего расписания.
+        Является сокращением для Intent.parse(sc, args)
+
+        .. code-block:: python
+
+            sc = Schedule()
+            args = "матем 204".split()
+
+            # Можно использовать любой вариант
+            i = Intent.parse(sc, args)
+            i = sc.parse_intent(args)
+
+        :param args: Арнументы парсинга намерений.
+        :type args: Iterable[str]
+        :return: Готовое намерение из строковых аргументов.
+        :rtype: Intent
+        """
+        return Intent.parse(self, args)
