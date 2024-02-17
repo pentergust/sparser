@@ -3,13 +3,6 @@ parser
 
 .. automodule:: sp.parser
 
-.. warning::
-
-    **Не завершённый раздел.**
-
-    Раздел будет дополнен после рефакторинга кода
-    соответствующего модуля в проекте.
-
 
 Функции для работы с расписанием
 --------------------------------
@@ -42,12 +35,21 @@ parser
 
 .. autoclass:: sp.parser.Schedule
 
+    .. autoattribute:: schedule
+    .. autoattribute:: lessons
+
+    .. tip::
+
+        Более подробно прочитать про значение `schedule` можно в методе
+        `get`.
+
+        Более побробно почитать про значение `lessons` можно в функции
+        `parse_lessons`.
+
     Аттрибуты расписания:
 
     .. autoproperty:: l_index
-
     .. autoproperty:: c_index
-
     .. autoproperty:: updates
 
     Методы для получения расписания:
@@ -57,9 +59,11 @@ parser
     Методы для работы с расписанием:
 
     .. automethod:: get_class
-
     .. automethod:: get_lessons
-
     .. automethod:: get_updates
-
     .. automethod:: search
+
+    Методы для работы с намерениями:
+
+    .. automethod:: construct_intent
+    .. automethod:: parse_intent
