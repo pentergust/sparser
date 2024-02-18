@@ -3,11 +3,6 @@ intents
 
 .. automodule:: sp.intents
 
-.. todo:: Раздел в процессе.
-
-    Раздел будет дополнен после рефакторинга кода
-    соответствующего модуля в проекте.
-
 .. autoclass:: Intent
 
     .. autoattribute:: cl

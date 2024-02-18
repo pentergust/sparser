@@ -3,7 +3,18 @@ counters
 
 .. automodule:: sp.counters
 
-.. todo:: Раздел в процессе.
+Вспомогательные функции
+-----------------------
 
-    Раздел будет дополнен после рефакторинга кода
-    соответствующего модуля в проекте.
+Используеются для поддержания работы основных функций счётчиков.
+
+.. autofunction:: group_counter_res
+.. autofunction:: reverse_counter
+
+
+Функции счётчиков
+-----------------
+
+.. autofunction:: cl_counter
+.. autofunction:: days_counter
+.. autofunction:: index_counter
