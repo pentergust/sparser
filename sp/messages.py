@@ -60,6 +60,7 @@ def send_cl_updates(cl_updates: list) -> str:
 
     Returns:
         str: Сообщение с изменениями в расписании для класса
+
     """
     message = ""
     for i, u in enumerate(cl_updates):
@@ -96,6 +97,7 @@ def get_update_header(update: dict, extend_info: Optional[bool]=True) -> str:
 
     Returns:
         str: Заголовок списка изменений.
+
     """
     # Получаем timestamp обновления
     end_timestamp = update.get("end_time", 0)
@@ -134,6 +136,7 @@ def send_update(update: dict, cl: Optional[str]=None) -> str:
 
     Returns:
         str: Готовое сообщение с изменениями в расписании
+
     """
     message = get_update_header(update)
     for day, day_updates in enumerate(update["updates"]):
@@ -158,6 +161,7 @@ def send_day_lessons(lessons: list[Union[list, str]]) -> str:
 
     Returns:
         str: Сообщение с расписанием на день
+
     """
     message = ""
     complited_lessons = get_complited_lessons()
@@ -178,7 +182,7 @@ def send_day_lessons(lessons: list[Union[list, str]]) -> str:
 
         # Если несколько уроков, выводим их все по порядку
         if isinstance(x, list):
-            message += f"; ".join(x)
+            message += "; ".join(x)
         # Если есть урок
         elif len(x) > 0 and x.split(":")[0] not in ("None", "---"):
             message += x
@@ -194,6 +198,7 @@ def send_search_res(intent: Intent, res: list) -> str:
 
     Returns:
         str: Готовое сообщение
+
     """
     message = "🔎 поиск "
     if intent.cabinets:
@@ -224,6 +229,7 @@ def send_counter(groups: dict, target: Optional[str]=None) -> str:
 
     Returns:
         str: Сообщение с результатами работы счётчика
+
     """
     message = ""
 
@@ -345,7 +351,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.7 +9 (123)"
+        res = "🌟 Версия sp: 5.7 +10 (124)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -376,6 +382,7 @@ class SPMessages:
 
         Returns:
             dict: Данные пользователя
+
         """
         if user_data is None:
             user_data = load_file(self._users_path).get(self.uid)
@@ -403,6 +410,7 @@ class SPMessages:
 
         Args:
             cl (str): Целевой класс пользователя
+
         """
         if cl is None or cl in self.sc.lessons:
             self.user["join_date"] = datetime.now().timestamp()
@@ -446,6 +454,7 @@ class SPMessages:
 
         Returns:
             str: Сообщение с расписание уроков
+
         """
         cl = intent.cl or (self.user["class_let"],)
         lessons = {x: self.sc.get_lessons(x) for x in cl}
@@ -473,6 +482,7 @@ class SPMessages:
 
         Returns:
             str: Сообщение с расписанием на сегодня/завтра
+
         """
         now = datetime.now()
         today = now.weekday()

@@ -56,12 +56,6 @@ def group_counter_res(counter_res: dict[str, dict[str, Union[int, Counter]]]
     :type counter_res: dict[str, dict[str, Union[int, Counter]]]
     :return: Сгруппированные результаты работы счётчика.
     :rtype: dict[int, dict[str, dict]]
-
-    Args:
-        counter_res (dict): Результат работы счётчиков
-
-    Returns:
-        dict: Сгруппированыый результат работы счётчиков
     """
     groups = defaultdict(dict)
     for k, v in counter_res.items():
@@ -136,7 +130,7 @@ def cl_counter(sc: Schedule, intent: Intent
                 continue
 
             for x in lessons:
-                x = x.split(":")
+                x = x.split(":") # noqa
 
                 lessons_counter[x[0]] += 1
                 for cabinet in x[1].split("/"):
@@ -193,7 +187,7 @@ def days_counter(sc: Schedule, intent: Intent
                 continue
 
             for lesson in lessons:
-                lesson = lesson.split(":")
+                lesson = lesson.split(":") # noqa
                 res[str(day)]["cl"][cl] += 1
                 res[str(day)]["lessons"][lesson[0]] += 1
                 res[str(day)]["total"] += 1
