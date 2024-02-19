@@ -33,3 +33,10 @@ intents
 
     .. automethod:: reconstruct
     .. automethod:: reparse
+
+
+Смотрите также
+--------------
+
+- :doc:`parser` - Класс для прямой работы с расписанием.
+- :doc:`messages` - Генератор текстовых сообещний расписания.
