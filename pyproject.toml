@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sp"
-version = "5.7"
+version = "5.8"
 description = "School timetable parser."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
@@ -20,7 +20,6 @@ mypy = "^1.8.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.2.6"
-furo = "^2024.1.29"
 sphinx-copybutton = "^0.5.2"
 sphinx-book-theme = "^1.1.2"
 
@@ -37,7 +36,7 @@ target-version = "py38"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "D", "N", "PL"]
-ignore = ["D407", "D107"]
+ignore = ["D407", "D107", "D213", "D203"]
 unfixable = ["I"]
 
 [build-system]
