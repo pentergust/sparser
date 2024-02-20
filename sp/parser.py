@@ -17,7 +17,7 @@ import hashlib
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union, Iterable
+from typing import Iterable, Optional, Union
 
 import requests
 from loguru import logger
@@ -346,7 +346,7 @@ class Schedule:
         return self._c_index
 
     @property
-    def updates(self) -> Optional[list[dict[str, Union[int, dict]]]]:
+    def updates(self) -> Optional[list[dict[str, Union[int, list[dict]]]]]:
         """Список изменений в расписании.
 
         Загружает полный список изменений из файла.
@@ -389,7 +389,7 @@ class Schedule:
             }
 
         :return: Полный список изменений в расписании.
-        :rtype: list[dict[str, Union[int, dict]]]
+        :rtype: list[list[dict[str, Union[int, list[dict]]]]]
         """
         if self._updates is None:
             self._updates = load_file(self.updates_path)
@@ -560,7 +560,7 @@ class Schedule:
         return self.lessons.get(cl, [[], [], [], [], [], []])
 
     def get_updates(self, intent: Intent, offset: Optional[int]=None
-    ) -> list[dict[str, Union[int, dict]]]:
+    ) -> list[list[dict[str, Union[int, list[dict]]]]]:
         """Получает список изменений расписания.
 
         Проходится по списку обновленй в расписании.
@@ -573,7 +573,7 @@ class Schedule:
         :param offset: С какой временной метки обновления начать.
         :type offset: int
         :return: Список обновлений расписания.
-        :rtype: list[dict[str, Union[int, dict]]]
+        :rtype: list[list[dict[str, Union[int, list[dict]]]]]
         """
         updates = []
 
@@ -668,9 +668,12 @@ class Schedule:
 
         :param target: Цель для поиска, урок или кабинет.
         :type target: str
+        :param intent: Намерения для уточнения результатов поиска.
+        :type intent: Intent
         :param cabinets: Что ищём, урок или кабинет. Обычно урок.
         :type cabinets: bool
         :return: Результаты поиска в расписании
+        :rtype: list[list[list[str]]]
         """
         res = [[[] for x in range(8)] for x in range(6)]
 
