@@ -68,9 +68,3 @@ parser
 
     .. automethod:: construct_intent
     .. automethod:: parse_intent
-
-
-Смотрите также
---------------
-
-- :doc:`messages` - Генератор текстовых сообещний расписания.

@@ -20,11 +20,3 @@ counters
 .. autofunction:: cl_counter
 .. autofunction:: days_counter
 .. autofunction:: index_counter
-
-
-Смотрите также
---------------
-
-- :doc:`intents` - Класс для уточнения результатов работы.
-- :doc:`messages` - Генератор текстовых сообщений.
-- :doc:`parser` - Класс для прямой работы с расписанием.
