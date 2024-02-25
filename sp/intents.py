@@ -304,7 +304,7 @@ class Intent(NamedTuple):
             (
                 {x for x in _ensure_list(lessons) if x in sc.l_index}
                 or self.lessons,
-            )
+            ),
             (
                 {x for x in _ensure_list(cabinets) if x in sc.c_index}
                 or self.cabinets,

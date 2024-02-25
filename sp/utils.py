@@ -36,8 +36,10 @@ def save_file(path: Path, data: Union[dict, list]):
     :return: Ваши данные для записи.
     :rtype: dict
     """
+    logger.info("Write file {} ...", path)
     if not path.exists():
         path.parents[0].mkdir(parents=True, exist_ok=True)
+        logger.info("Created not exists dirs")
 
     with open(path, 'w') as f:
         f.write(ujson.dumps(data, indent=4, ensure_ascii=False))

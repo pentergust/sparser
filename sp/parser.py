@@ -476,7 +476,7 @@ class Schedule:
             # Сравниваем хеши расписаний
             if t.get("hash", "") == h:
                 logger.info("Schedule is up to date")
-                t["last_parse"] = timestamp + 1800
+                t["next_parse"] = timestamp + 1800
                 save_file(self.sc_path, t)
             else:
                 lessons = parse_lessons(csv_file.decode("utf-8"))
