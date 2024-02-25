@@ -12,11 +12,14 @@ from typing import Any, Optional, Union
 
 from loguru import logger
 
-from .counters import reverse_counter
+from .counters import reverse_counter, CounterTarget
 from .intents import Intent
 from .parser import Schedule
 from .utils import (check_keys, compact_updates, get_str_timedelta, load_file,
                     plural_form, save_file)
+
+# Некоторые настройки генератора сообщений
+# ========================================
 
 users_path = "sp_data/users.json"
 default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
@@ -24,6 +27,8 @@ default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
 DAYS_NAMES = [
     "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"
 ]
+_SHORT_DAYS_NAMES = ["пн", "вт", "ср", "чт", "пт", "сб"]
+
 _EMPTY_LESSONS = ("---", "None")
 # Максимальные обображаемый диапазон временного промежутка (2 дня)
 _UPDATE_DELTA = 172800
@@ -307,7 +312,8 @@ def send_search_res(intent: Intent, res: list) -> str:
 
 def send_counter(
     groups: dict[int, dict[str, dict]],
-    target: Optional[str]=None
+    target: Optional[CounterTarget]=None,
+    days_counter: Optional[bool]=False
 ) -> str:
     """Возвращает сообщение с результами работы счётчика.
 
@@ -329,6 +335,8 @@ def send_counter(
     :type groups: dict[int, dict[str, dict]]
     :param target: Режим просмотра расписания.
     :type target: str
+    :param days_counter: Заменять имена групп на названия дней недели.
+    :type days_counter: Optional[bool]
     :return: Сообщение с результатами работы счётчиков.
     :rtype: str
     """
@@ -338,16 +346,27 @@ def send_counter(
         group_plural_form = plural_form(group, ["раз", "раза", "раз"])
         message += f"\n🔘 {group} {group_plural_form}:"
 
+
+        # Доабвляем подгруппу
         if target is not None:
             for obj, cnt in res.items():
+                # Заменям числа на название дней недели для счётчка по дням
+                if days_counter:
+                    print(obj)
+                    obj = _SHORT_DAYS_NAMES[int(obj)]
+
                 if len(res) > 1:
                     message += "\n--"
 
                 message += f" {obj}:"
-                cnt_groups = reverse_counter(cnt.get(target, {}))
+                cnt_groups = reverse_counter(cnt.get(target.value, {}))
 
                 for cnt_group, k in sorted(cnt_groups.items(),
                                     key=lambda x: x[0], reverse=True):
+                    # Заменяем числа на дни недели в подгруппу счётчика
+                    if target == CounterTarget.DAYS:
+                        k = [_SHORT_DAYS_NAMES[int(x)] for x in k]
+
                     if cnt_group == 1:
                         message += f" 🔸{' '.join(k)}"
                     elif cnt_group == group:
@@ -358,6 +377,10 @@ def send_counter(
             message += "\n"
 
         else:
+            # Заменям числа на название дней недели для счётчка по дням
+            if days_counter:
+                res = [_SHORT_DAYS_NAMES[int(x)] for x in res]
+
             message += f" {', '.join(res)}"
 
     return message
@@ -475,7 +498,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8 (130)"
+        res = "🌟 Версия sp: 5.8 +1 (133)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
