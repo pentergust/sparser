@@ -39,7 +39,7 @@
 
 Скопируйте репозиторий проекта:
 ```bash
-git clone https://notabug.org/milinuri/sparser
+git clone https://codeberg.org/Salormoon/sparser
 cd sparser
 ```
 

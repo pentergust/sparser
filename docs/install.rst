@@ -11,7 +11,7 @@
 
 .. code-block:: bash
 
-    git clone https://notabug.org/milinuri/sparser
+    git clone https://codeberg.org/Salormoon/sparser
 
 
 Через poetry
