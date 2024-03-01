@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sp"
-version = "5.8"
+version = "5.8.2"
 description = "School timetable parser."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"

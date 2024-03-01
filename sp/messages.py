@@ -454,9 +454,12 @@ class SPMessages:
         self.user: Optional[dict[str, Any]] = self.get_user(user_data)
         #: Экземпдяр расписания.
         self.sc: Schedule = Schedule(self.user["class_let"])
-        self.user_intent: Intent = Intent.construct(
-            self.sc, cl=self.user["class_let"]
-        )
+        if self.user["class_let"] is not None:
+            self.user_intent: Intent = self.sc.construct_intent(
+                cl=self.user["class_let"]
+            )
+        else:
+            self.user_intent: Intent = Intent()
 
     def send_status(self) -> str:
         """Возвращает информацию о парсере и пользователях.
@@ -498,7 +501,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8.1 (135)"
+        res = "🌟 Версия sp: 5.8.2 (136)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
