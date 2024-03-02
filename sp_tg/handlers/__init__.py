@@ -6,8 +6,8 @@
 """
 
 # Импортируем все обработчики
-from sp_tg.handlers import (intents, notify, request, schedule, tutorial,
-                            updates, set_class, counters)
+from sp_tg.handlers import (counters, intents, notify, request, schedule,
+                            set_class, tutorial, updates)
 
 # Список всех экземпляров роутеров обработчиков
 routers = (

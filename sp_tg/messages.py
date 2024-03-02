@@ -5,8 +5,6 @@
 
 from sp.intents import Intent
 
-from icecream import ic
-
 # Краткие названия дней недели
 days_names = ("пн", "вт", "ср", "чт", "пт", "сб")
 
@@ -57,7 +55,6 @@ def get_intent_status(i: Intent) -> str:
     :return: Краткое строковое описание содержимого намерения.
     :rtype: str
     """
-    ic(i)
     return (
         f"< {', '.join(i.cl)} /"
         f" {', '.join((days_names[x] for x in i.days))} /"
