@@ -303,11 +303,11 @@ class Intent(NamedTuple):
             {x for x in _ensure_list(days) if x < 6} or self.days, # noqa: PLR2004
             (
                 {x for x in _ensure_list(lessons) if x in sc.l_index}
-                or self.lessons,
+                or self.lessons
             ),
             (
                 {x for x in _ensure_list(cabinets) if x in sc.c_index}
-                or self.cabinets,
+                or self.cabinets
             )
         )
 
