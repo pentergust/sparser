@@ -9,7 +9,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.10.1 (sp v5.7+2b, telegram v2.0)
+Ver: 0.10.2 (sp v5.7+2b, telegram v2.2)
 """
 
 from datetime import datetime
@@ -52,7 +52,9 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
 def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="◁", callback_data="home"),
-        InlineKeyboardButton(text="Изменения", callback_data=f"updates:last:0:{cl}"),
+        InlineKeyboardButton(
+            text="Изменения", callback_data=f"updates:last:0:{cl}:"
+        ),
         InlineKeyboardButton(text="Уроки", callback_data=f"sc:{cl}:today")
     ]])
 
