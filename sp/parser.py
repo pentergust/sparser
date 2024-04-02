@@ -524,7 +524,7 @@ class Schedule:
         now = datetime.timestamp(datetime.now())
         t = load_file(self.sc_path)
 
-        if not t or t.get("next_update", 0) < now:
+        if not t or t.get("next_parse", 0) < now:
             self._process_update(t)
 
         return t
