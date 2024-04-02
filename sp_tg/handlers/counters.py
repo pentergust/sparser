@@ -272,7 +272,7 @@ async def counter_handler(message: Message, sp: SPMessages,
 ) -> None:
     """Переводит в меню просмора счётчиков расписания."""
     await message.answer(
-        text=get_counter_message(sp.sc, "lessons", "main"),
+        text=get_counter_message(sp.sc, "lessons", CounterTarget.MAIN),
         reply_markup=get_counter_keyboard(
             cl=(sp.user["class_let"]),
             counter="lessons",

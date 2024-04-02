@@ -22,4 +22,4 @@ Author: Milinuri Nirvalen
 Ver: 2.3 (sp v5.8)
 """
 
-__version__ = "2.3"
+__version__ = "2.3.1"
