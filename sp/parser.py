@@ -17,7 +17,7 @@ import hashlib
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, NamedTuple
 
 import requests
 from loguru import logger
@@ -228,6 +228,19 @@ def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
         _clear_day_lessons(x) for x in v
     ] for k, v in lessons.items()}
 
+class ScheduleFile(NamedTuple):
+    """Описывает скачанный из сети файл расписания.
+
+    :param content: Содержимое файла расписания.
+    :type content: bytes
+    :param hash: Посчитанный хеш расписания.
+    :type hash: str
+    """
+
+    content: bytes
+    hash: str
+
+
 
 class Schedule:
     """Предоставляет доступ к расписанию уроков.
@@ -399,6 +412,17 @@ class Schedule:
     # Получаем расписание
     # ===================
 
+    def _load_schedule(self, url: str) -> Optional[ScheduleFile]:
+        logger.info("Download schedule csv_file ...")
+        try:
+            csv_file = requests.get(url).content
+            h = hashlib.md5(csv_file).hexdigest()
+            return ScheduleFile(csv_file, h)
+        except Exception as e:
+            logger.exception(e)
+            return
+
+
     def _update_diff_file(
         self,
         a: dict[str, Union[list, int, str]],
@@ -461,37 +485,43 @@ class Schedule:
         timestamp = int(datetime.timestamp(now))
 
         # Скачяиваем файла с расписанием
+        csv_file = self._load_schedule(url)
+
+        if csv_file is None:
+            # Откладываем обновление на минуту
+            t["next_update"] = timestamp+60
+            save_file(self.sc_path, t)
+            return
+
+        # Сравниваем хеши расписаний
+        if t.get("hash", "") == csv_file.hash:
+            logger.info("Schedule is up to date")
+            t["next_parse"] = timestamp + 1800
+            save_file(self.sc_path, t)
+            return
+
         try:
-            logger.info("Download schedule csv_file ...")
-            csv_file = requests.get(url).content
+            lessons = parse_lessons(csv_file.content.decode("utf-8"))
         except Exception as e:
             logger.exception(e)
 
             # Откладываем обновление на минуту
             t["next_update"] = timestamp+60
             save_file(self.sc_path, t)
-        else:
-            h = hashlib.md5(csv_file).hexdigest()
+            return
 
-            # Сравниваем хеши расписаний
-            if t.get("hash", "") == h:
-                logger.info("Schedule is up to date")
-                t["next_parse"] = timestamp + 1800
-                save_file(self.sc_path, t)
-            else:
-                lessons = parse_lessons(csv_file.decode("utf-8"))
-                self._update_index_files(lessons)
+        self._update_index_files(lessons)
 
-                # Собираем новое расписанеи уроков
-                new_t = {
-                    "hash": h,
-                    "lessons": lessons,
-                    "last_parse": timestamp,
-                    "next_parse": timestamp+1800
-                }
+        # Собираем новое расписанеи уроков
+        new_t = {
+            "hash": csv_file.hash,
+            "lessons": lessons,
+            "last_parse": timestamp,
+            "next_parse": timestamp+1800
+        }
 
-                self._update_diff_file(t, new_t)
-                save_file(self.sc_path, new_t)
+        self._update_diff_file(t, new_t)
+        save_file(self.sc_path, new_t)
 
 
     def get(self) -> dict[str, Union[int, dict, str]]:
