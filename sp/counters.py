@@ -46,6 +46,7 @@ class CounterTarget(Enum):
             target=CounterTarget.CL
         )
 
+    - `NONE`: То же самое что и None, без цели отображения.
     - `CL`: По классам в расписании.
     - `DAYS`: По дням недели.
     - `LESSONS`: По урокам (l_index).
@@ -55,6 +56,7 @@ class CounterTarget(Enum):
         И напротив, если это счётчик кабентов, то по урокам.
     """
 
+    NONE = "none"
     CL = "cl"
     DAYS = "days"
     LESSONS = "lessons"
