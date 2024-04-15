@@ -501,7 +501,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8.7 (142)"
+        res = "🌟 Версия sp: 5.8.8 (143)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -640,6 +640,39 @@ class SPMessages:
             message += f"\n{send_update(update, cl)}"
         return message
 
+    def get_current_day(self, intent: Intent) -> int:
+        """Получате текщий или следующий день если уроки кончились.
+
+        Работает это так, что если уроки ещё не кончились,
+        то метод вернёт номер текущего дня.
+        Иначе же прибавит +1 к текущему.
+        Также автоматически происходи сдвиг на понедельник, если нужно.
+        это используется при умном получении расписания на сегодня
+        или завтра в зависимости от времени.
+
+        :param intent: Намерение для получения расписания
+        :type intent: Intent
+        :return: Номер дня недели, для которого получать расписание
+        :rtype: int
+        """
+        now = datetime.now()
+        today = now.weekday()
+
+        # Если сегодня воскресенье, получаем уроки на понедельник
+        # В воскресение же нету уроков?
+        if today == 6: # noqa: PLR2004
+            return 0
+
+        cl = intent.cl or (self.user["class_let"],)
+        max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
+        hour = timetable[max_lessons-1][2]
+
+        if now.hour >= hour:
+            today += 1
+
+        # Опять же, в воскресение не может быть уроков, не шутите так
+        return 0 if today > 5 else today
+
     def send_today_lessons(self, intent: Intent) -> str:
         """Расписание уроков на сегодня/завтра.
 
@@ -658,23 +691,10 @@ class SPMessages:
         :return: Расписание уроков на сегодня/завтра.
         :rtype: str
         """
-        now = datetime.now()
-        today = now.weekday()
+        return self.send_lessons(intent.reconstruct(
+            self.sc, days=self.get_current_day(intent)
+        ))
 
-        if today == 6: # noqa: PLR2004
-            today = 0
-        else:
-            cl = intent.cl or (self.user["class_let"],)
-            max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
-            hour = timetable[max_lessons-1][2]
-
-            if now.hour >= hour:
-                today += 1
-
-            if today > 5: # noqa: PLR2004
-                today = 0
-
-        return self.send_lessons(intent.reconstruct(self.sc, days=today))
 
     # Методы для работы с расписанием
     # ===============================
