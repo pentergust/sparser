@@ -8,7 +8,7 @@
 from collections import Counter, defaultdict
 from datetime import datetime, time
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, NamedTuple
 
 from loguru import logger
 
@@ -17,6 +17,8 @@ from .intents import Intent
 from .parser import Schedule
 from .utils import (check_keys, compact_updates, get_str_timedelta, load_file,
                     plural_form, save_file)
+
+from icecream import ic
 
 # Некоторые настройки генератора сообщений
 # ========================================
@@ -56,23 +58,41 @@ timetable = [
 # Вспомогательныек функции отображения
 # ====================================
 
-def get_complited_lessons() -> list[int]:
-    """Возвращает номера завершённых уроков.
+class Lesson(NamedTuple):
+    start: time
+    end: time
+    index: int
 
-    Список содержит индексы уже завершённых уроков.
-    Если уроки не начались или уже закончились, возаращает `[-1]`.
+def time_to_seconds(now: time) -> int:
+    """Переводит datetime.time в полное количество секунд."""
+    return now.hour * 3600 + now.minute * 60 + now.second
 
-    :return: Список индексов уже прошедших уроков.
-    :rtype: list[int]
+def seconds_to_time(now: int) -> time:
+    """Переводит полное количество секунд в datetime.time."""
+    h, d = divmod(now, 3600)
+    m, s = divmod(d, 60)
+    return time(h, m, s)
+
+def get_current_lesson(now: time) -> Optional[Lesson]:
+    """Возаращет текущий урок.
+
+    Если пары ещё не начались или уже кончились -> None.
+    Если время между пар -> Специальная пара "перерыв".
+
+    :return: Текущий урок, если он есть.
+    :rtype: Lesson | None
     """
-    now = datetime.now().time()
-    first_lesson = time(*timetable[0][:1])
-    last_lesson = time(*timetable[-1][2:])
+    l_end_time = None
+    for i, l in enumerate(timetable):
+        start_time = time(l[0], l[1])
+        end_time = time(l[2], l[3])
 
-    if now >= last_lesson or now < first_lesson:
-        return [-1]
+        if l_end_time is not None and now >= l_end_time and now < start_time:
+            return Lesson(l_end_time, start_time, i)
+        elif now >= start_time and now < end_time:
+            return Lesson(start_time, end_time, i)
 
-    return [i for i, x in enumerate(timetable) if now >= time(x[0], x[1])]
+        l_end_time = end_time
 
 
 # Функции отображения списка изменений
@@ -249,22 +269,34 @@ def send_day_lessons(lessons: list[Union[list[str], str]]) -> str:
     :return: Сообщение с расписанием на день.
     :rtype: str
     """
+    now = datetime.now().time()
+    current_lesson = get_current_lesson(now)
+    ic(current_lesson)
     message = ""
-    complited_lessons = get_complited_lessons()
 
     for i, x in enumerate(lessons):
-        cursor = "➜" if i == complited_lessons[-1] else f"{i+1}."
+        if current_lesson is not None:
+            if current_lesson.index == i and now > current_lesson.start:
+                cursor = "🠗"
+            elif current_lesson.index == i:
+                cursor = "➜"
+            else:
+                cursor = f"{i+1}."
+        else:
+            cursor = f"{i+1}."
+
         message += f"\n{cursor}"
 
         tt = timetable[i]
-        if i not in complited_lessons:
+        if current_lesson is not None and current_lesson.index < i:
             message += time(tt[0], tt[1]).strftime(" %H:%M -")
+
         message += time(tt[2], tt[3]).strftime(" %H:%M")
 
-        if i in complited_lessons:
-            message += " ┃ "
-        else:
+        if current_lesson is not None and current_lesson.index < i:
             message += " │ "
+        else:
+            message += " ┃ "
 
         # Если несколько уроков, выводим их все по порядку
         if isinstance(x, list):
@@ -501,7 +533,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8.8 (143)"
+        res = "🌟 Версия sp: 5.8.9 (144)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
