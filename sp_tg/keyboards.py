@@ -8,8 +8,7 @@ from typing import Optional
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-# Краткие названия дней недели
-days_names = ("пн", "вт", "ср", "чт", "пт", "сб")
+from sp_tg.utils.days import days_names
 
 
 # Статическая клавиатура для выбора класса.
@@ -68,7 +67,7 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
         ]
     )
 
-def get_sc_keyboard(cl: str) -> InlineKeyboardMarkup:
+def get_sc_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     """Возаращает клавиатуру, для получения расписания на сегодня.
 
     Используется в сообщениях с расписанием уроков.
@@ -83,6 +82,8 @@ def get_sc_keyboard(cl: str) -> InlineKeyboardMarkup:
 
     :param cl: Класс для подстановки в клавиатуру.
     :type cl: str
+    :param relative_day: название ближайшего дня недели.
+    :type relative_day: str
     :return: Кдавиатура для просмотра расписнаия на неделю.
     :rtype: InlineKeyboardMarkup
     """
@@ -91,14 +92,14 @@ def get_sc_keyboard(cl: str) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="🏠Домой", callback_data="home"),
                 InlineKeyboardButton(
-                    text="На сегодня", callback_data=f"sc:{cl}:today"
+                    text=relative_day, callback_data=f"sc:{cl}:today"
                 ),
                 InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}")
             ]
         ]
     )
 
-def get_select_day_keyboard(cl: str) -> InlineKeyboardMarkup:
+def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     """Возаращает клавиатуру выбора дня недели в рассписания.
 
     Мспользуется в сообщения с расписанием.
@@ -113,6 +114,8 @@ def get_select_day_keyboard(cl: str) -> InlineKeyboardMarkup:
 
     :param cl: Класс для подстановки в клавиатуру.
     :type cl: str
+    :param relative_day: название ближайшего дня недели.
+    :type relative_day: str
     :return: Клавиатура для выбора дня недели для просмотра расписнаия.
     :rtype: InlineKeyboardMarkup
     """
@@ -125,7 +128,7 @@ def get_select_day_keyboard(cl: str) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="◁", callback_data="home"),
                 InlineKeyboardButton(
-                    text="Сегодня", callback_data=f"sc:{cl}:today"
+                    text=relative_day, callback_data=f"sc:{cl}:today"
                 ),
                 InlineKeyboardButton(
                     text="Неделя", callback_data=f"sc:{cl}:week"
@@ -189,7 +192,10 @@ def get_other_keyboard(
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_main_keyboard(cl: Optional[str]=None) -> InlineKeyboardMarkup:
+def get_main_keyboard(
+    cl: Optional[str]=None,
+    relative_day: Optional[str]=None
+) -> InlineKeyboardMarkup:
     """Возращает главную клавиатуру бота.
 
     Главная клавиатуры предоставляет доступ к самым часто используемым
@@ -206,6 +212,8 @@ def get_main_keyboard(cl: Optional[str]=None) -> InlineKeyboardMarkup:
 
     :param cl: Класс пользователя для подстановки в клавиатуру.
     :type cl: Optional[str]
+    :param relative_day: название ближайшего дня недели.
+    :type relative_day: str
     :return: Главная (домашная) клавиатура бота.
     :rtype: InlineKeyboardMarkup
     """
@@ -220,7 +228,7 @@ def get_main_keyboard(cl: Optional[str]=None) -> InlineKeyboardMarkup:
                     text="🔔 Уведомления", callback_data="notify"
                 ),
                 InlineKeyboardButton(
-                    text=f"📚 Уроки {cl}", callback_data=f"sc:{cl}:today"
+                    text=f"📚 На {relative_day}", callback_data=f"sc:{cl}:today"
                 ),
             ]
         ]

@@ -26,6 +26,8 @@ from sp_tg.keyboards import (PASS_SET_CL_MARKUP, get_main_keyboard,
                              get_other_keyboard)
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 from sp_tg.utils.intents import UserIntents
+from sp_tg.utils.days import get_relative_day
+
 
 # Настройкки и константы
 # ======================
@@ -37,7 +39,7 @@ _TIMETAG_PATH = Path("sp_data/last_update")
 DB_CONN = sqlite3.connect("sp_data/tg.db")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.3.1"
+_BOT_VERSION = "v2.3.2"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 
@@ -93,12 +95,10 @@ def get_update_timetag(path: Path) -> int:
     Если время последней проверки будет дольше одного часа,
     то это повод задуматься о правильноти работы скрипта.
 
-    Args:
-        path (Path): Путь к файлу временной метки обновлений.
-
-    Returns:
-        int: UNIXtime последней удачной проверки обновлений.
-    
+    :param path: Путь к файлу временной метки обновлений.
+    :type path: Path
+    :return: UNIXtime последней удачной проверки обновлений.
+    :rtype: int
     """
     try:
         with open(path) as f:
@@ -116,13 +116,12 @@ def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
     Также осдержит метку последнего автоматического обновления.
     Если давно не было автообновлений - выводит предупреждение.
 
-    Args:
-        sp (SPMessages): Экземпляр генератора сообщений.
-        timetag_path (Path): Путь к файлу временной метки обновления.
-
-    Returns:
-        str: Информацинное сообщение.
-    
+    :param sp: Экземпляр генератора сообщений.
+    :type sp: SPMessages
+    :param timetag_path: Путь к файлу временной метки обновления.
+    :type timetag_path: Path
+    :return: Информацинное сообщение.
+    :rtype: str
     """
     message = sp.send_status()
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
@@ -158,9 +157,12 @@ async def start_handler(message: Message, sp: SPMessages) -> None:
     """
     await message.delete()
     if sp.user["set_class"]:
+        today = datetime.today().weekday()
+        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        relative_day = get_relative_day(today, tomorrow)
         await message.answer(
             text=get_home_message(sp.user["class_let"]),
-            reply_markup=get_main_keyboard(sp.user["class_let"]),
+            reply_markup=get_main_keyboard(sp.user["class_let"], relative_day),
         )
     else:
         await message.answer(SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
@@ -178,17 +180,24 @@ async def delete_msg_callback(query: CallbackQuery, sp: SPMessages) -> None:
     try:
         await query.message.delete()
     except TelegramBadRequest:
+        today = datetime.today().weekday()
+        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        relative_day = get_relative_day(today, tomorrow)
         await query.message.edit_text(
             text=get_home_message(sp.user["class_let"]),
-            reply_markup=get_main_keyboard(sp.user["class_let"])
+            reply_markup=get_main_keyboard(sp.user["class_let"], relative_day)
     )
 
 @dp.callback_query(F.data == "home")
 async def home_callback(query: CallbackQuery, sp: SPMessages) -> None:
     """Возаращает в главный раздел."""
+    today = datetime.today().weekday()
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+    relative_day = get_relative_day(today, tomorrow)
+
     await query.message.edit_text(
         text=get_home_message(sp.user["class_let"]),
-        reply_markup=get_main_keyboard(sp.user["class_let"])
+        reply_markup=get_main_keyboard(sp.user["class_let"], relative_day)
     )
 
 @dp.callback_query(F.data == "other")

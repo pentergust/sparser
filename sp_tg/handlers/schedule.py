@@ -4,6 +4,8 @@
 дни недели или на всю неделю.
 """
 
+from datetime import datetime
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
@@ -13,6 +15,8 @@ from sp.intents import Intent
 from sp.messages import SPMessages
 from sp_tg.keyboards import (get_sc_keyboard, get_select_day_keyboard,
                              get_week_keyboard)
+from sp_tg.utils.days import get_relative_day
+
 
 router = Router(name=__name__)
 
@@ -48,11 +52,14 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 
 @router.message(Command("week"))
 async def week_sc_command(message: Message, sp: SPMessages):
+    today = datetime.today().weekday()
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+    relative_day = get_relative_day(today, tomorrow)
     await message.answer(
         text=sp.send_lessons(Intent.construct(
             sp.sc, days=[0, 1, 2, 3, 4, 5], cl=sp.user["class_let"]
         )),
-        reply_markup=get_sc_keyboard(sp.user["class_let"])
+        reply_markup=get_sc_keyboard(sp.user["class_let"], relative_day)
     )
 
 
@@ -63,7 +70,7 @@ async def week_sc_command(message: Message, sp: SPMessages):
 async def sc_callback(
     query: CallbackQuery, callback_data: ScCallback, sp: SPMessages
 ):
-    """Отпарвляет расписание уроков для класса в указанный день."""
+    """Отправляет расписание уроков для класса в указанный день."""
     # Расписание на неделю
     if callback_data.day == "week":
         text = sp.send_lessons(
@@ -71,7 +78,10 @@ async def sc_callback(
                 sp.sc, days=[0, 1, 2, 3, 4, 5], cl=callback_data.cl
             )
         )
-        reply_markup = get_sc_keyboard(callback_data.cl)
+        today = datetime.today().weekday()
+        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        relative_day = get_relative_day(today, tomorrow)
+        reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
     # Расипсание на сегодня/завтра
     elif callback_data.day == "today":
