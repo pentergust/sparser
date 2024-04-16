@@ -107,7 +107,10 @@ async def select_day_callback(
     query: CallbackQuery, callback_data: ScCallback, sp: SPMessages
 ):
     """Отобржает клавиатуру для выбора дня расписания уроков."""
+    today = datetime.today().weekday()
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+    relative_day = get_relative_day(today, tomorrow)
     await query.message.edit_text(
         text=f"📅 на ...\n🔶 Для {callback_data.cl}:",
-        reply_markup=get_select_day_keyboard(callback_data.cl),
+        reply_markup=get_select_day_keyboard(callback_data.cl, relative_day),
     )
