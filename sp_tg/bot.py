@@ -39,7 +39,7 @@ _TIMETAG_PATH = Path("sp_data/last_update")
 DB_CONN = sqlite3.connect("sp_data/tg.db")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.3.2"
+_BOT_VERSION = "v2.3.3"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 

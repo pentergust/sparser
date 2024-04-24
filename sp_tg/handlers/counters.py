@@ -240,7 +240,7 @@ def get_counter_message(
     else:
         intent = Intent()
 
-    counter = TextCounter(sc)
+    text_counter = TextCounter(sc)
 
     # Счётчик по классам
     if counter == "cl":
@@ -248,17 +248,17 @@ def get_counter_message(
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
             intent = intent.reconstruct(sc, cl=sc.cl)
-        message += counter.cl(intent, target)
+        message += text_counter.cl(intent, target)
 
     # Счётчик по дням
     elif counter == "days":
-        message += counter.days(intent, target)
+        message += text_counter.days(intent, target)
 
     # Счётчики по индексам
     elif counter == "lessons":
-        message += counter.index(intent, cabinets_mode=False, target=target)
+        message += text_counter.index(intent, cabinets_mode=False, target=target)
     else:
-        message += counter.index(intent, cabinets_mode=True, target=target)
+        message += text_counter.index(intent, cabinets_mode=True, target=target)
 
     return message
 
