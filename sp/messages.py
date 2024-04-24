@@ -18,7 +18,6 @@ from .parser import Schedule
 from .utils import (check_keys, compact_updates, get_str_timedelta, load_file,
                     plural_form, save_file)
 
-from icecream import ic
 
 # Некоторые настройки генератора сообщений
 # ========================================
@@ -271,7 +270,6 @@ def send_day_lessons(lessons: list[Union[list[str], str]]) -> str:
     """
     now = datetime.now().time()
     current_lesson = get_current_lesson(now)
-    ic(current_lesson)
     message = ""
 
     for i, x in enumerate(lessons):
@@ -533,7 +531,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8.9 (144)"
+        res = "🌟 Версия sp: 5.8.10 (145)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
