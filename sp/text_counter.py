@@ -35,7 +35,6 @@
     )
 """
 
-from enum import Enum
 from typing import Optional
 
 from sp.parser import Schedule
@@ -47,8 +46,7 @@ from sp.counters import (
 
 
 class TextCounter:
-    """Вспомогательный класс для более удобной работы со счётчиками
-    элементов расписания.
+    """Вспомогательный класс для более удобной работы со счётчиками.
 
     Предоставляет доступ к счётчикам расписнаия.
     Предварительно обработв результат и собрав текстовые сообщения.
@@ -56,6 +54,7 @@ class TextCounter:
     :param sc: Экземпляр расписания, для которого считать элементы.
     :type sc: Schedule
     """
+
     def __init__(self, sc: Schedule):
         self.sc = sc
 
