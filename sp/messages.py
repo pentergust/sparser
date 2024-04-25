@@ -101,9 +101,9 @@ def get_current_lesson(now: time) -> Optional[LessonTime]:
         end_time = time(lesson[2], lesson[3])
 
         if l_end_time is not None and now >= l_end_time and now < start_time:
-            return LessonTime(l_end_time, start_time, lesson)
+            return LessonTime(l_end_time, start_time, i)
         elif now >= start_time and now < end_time:
-            return LessonTime(start_time, end_time, lesson)
+            return LessonTime(start_time, end_time, i)
 
         l_end_time = end_time
 
@@ -549,7 +549,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8.10 (147)"
+        res = "🌟 Версия sp: 5.8.11 (148)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
