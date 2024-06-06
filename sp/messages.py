@@ -17,13 +17,12 @@ from .intents import Intent
 from .parser import Schedule
 from .utils import (check_keys, compact_updates, get_str_timedelta, load_file,
                     plural_form, save_file)
+from .users import User
+
 
 # Некоторые настройки генератора сообщений
 # ========================================
 
-users_path = "sp_data/users.json"
-default_user_data = {"class_let":None, "set_class": False, "last_parse": 0,
-             "join_date": 0, "notifications": True, "hours": []}
 DAYS_NAMES = [
     "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"
 ]
@@ -491,20 +490,17 @@ class SPMessages:
 
     def __init__(
         self,
-        uid: str,
-        user_data: Optional[dict[str, Any]]=None
+        user: User
     ) -> None:
         super(SPMessages, self).__init__()
 
-        self.uid = uid
-        self._users_path = Path(users_path)
         #: Денные пользователя.
-        self.user: Optional[dict[str, Any]] = self.get_user(user_data)
+        self.user = user
         #: Экземпдяр расписания.
-        self.sc: Schedule = Schedule(self.user["class_let"])
-        if self.user["class_let"] is not None:
+        self.sc: Schedule = Schedule(self.user.data.cl)
+        if self.user.data.cl is not None:
             self.user_intent: Intent = self.sc.construct_intent(
-                cl=self.user["class_let"]
+                cl=self.user.data.cl
             )
         else:
             self.user_intent: Intent = Intent()
@@ -532,128 +528,24 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        cl_counter = Counter()
-        hour_counter = Counter()
-        notify_count = 0
-        active_users = 0
-        users = load_file(self._users_path)
-        for k, v in users.items():
-            if v["last_parse"] == self.sc.schedule["last_parse"]:
-                active_users += 1
-            if v.get("notifications") and v.get("set_class"):
-                notify_count += 1
-                for h in v.get("hours"):
-                    hour_counter[h] += 1
-
-            cl_counter[v["class_let"]] += 1
-
-        active_pr = round(active_users/len(users)*100, 2)
-
-        res = "🌟 Версия sp: 5.8.11 (148+3)"
+        res = "🌟 Версия sp: 5.8.11 (148+4)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
-        res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
-        res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
-        if len(hour_counter) > 0:
-            res += "\n🌲 Уведомления пользователей:"
-            res += f"\n🔔 {_get_hour_counter_str(hour_counter)}"
-        res += f"\n🌲 {self.user['class_let']} класс"
+        res += f"\n🌲 {self.user.data.cl} класс"
         res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
-        res += f"\n🌲 {_get_cl_counter_str(cl_counter)}"
+        # res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
+        # res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
+        # if len(hour_counter) > 0:
+        #     res += "\n🌲 Уведомления пользователей:"
+        #     res += f"\n🔔 {_get_hour_counter_str(hour_counter)}"
+        # res += f"\n🌲 {_get_cl_counter_str(cl_counter)}"
 
-        other_cl = sorted(set(self.sc.lessons) - set(cl_counter))
-        if other_cl:
-            res += f" 🔸{', '.join(other_cl)}"
+        # other_cl = sorted(set(self.sc.lessons) - set(cl_counter))
+        # if other_cl:
+        #     res += f" 🔸{', '.join(other_cl)}"
 
         return res
-
-
-    # Управление данными пользователя
-    # ===============================
-
-    def get_user(self, user_data: Optional[dict[str, Any]]=None
-    ) -> dict[str, Any]:
-        """Возвращает данные пользователя или данные по умолчанию.
-
-        :param user_data: Данные пользователя по умолчанию.
-        :type user_data: Optional[dict[str, Any]]
-        :return: Данные пользователя или данные по умолчанию.
-        :rtype: dict[str, Any]
-        """
-        if user_data is None:
-            user_data = load_file(self._users_path).get(self.uid)
-            if user_data is None:
-                return default_user_data.copy()
-
-        return check_keys(user_data, default_user_data)
-
-    def save_user(self) -> None:
-        """Записывает данные пользователя в файл."""
-        users: dict[str, Any] = load_file(self._users_path)
-        users.update({self.uid: self.user})
-        save_file(self._users_path, users)
-        logger.info("Save user: {}", self.uid)
-
-    def reset_user(self) -> None:
-        """Сбрасывает данные пользователя до значений по умолчанию."""
-        users: dict[str, Any] = load_file(self._users_path)
-        users.update({self.uid: default_user_data.copy()})
-        save_file(self._users_path, users)
-        logger.info("Reset user: {}", self.uid)
-
-    def set_class(self, cl: Optional[str]=None) -> bool:
-        """Изменяет класс пользователя.
-
-        Изменяет класс пользователя на укащанный.
-        Выставляет временную метку join_data на данный момент.
-        Устанавливает флаг set_class в True.
-        Перемещаеь временную метку проверки расписания на данный
-        момент.
-
-        Если передать None - переходит в состояние "отвязанного класса".
-
-        :param cl: Какой класс установить пользователю.
-        :type cl: Optional[str]
-        :return: Установился ли класс пользователю.
-        :rtupe: bool
-        """
-        if cl is None or cl in self.sc.lessons:
-            self.user["join_date"] = datetime.now().timestamp()
-            self.user["class_let"] = cl
-            self.user["set_class"] = True
-            self.user["last_parse"] = self.sc.schedule["last_parse"]
-            self.save_user()
-            return True
-        return False
-
-    def get_lessons_updates(self) -> Optional[dict]:
-        """Возвращает упаковынный списк изменний пользователя.
-
-        Проверяет наличие новых обнволений по временной метке.
-        Если расписание изменилось, получает список исземеий для класса.
-        После упаковывает список изменений.
-        Наконец, выравнивает временную метку последнего обновления
-        пользователя с временной меткой послдней проверки расписания.
-
-        :return: Упокаванный список изменений расписания расписания.
-        :rtype: dict[str, Any]
-        """
-        if self.user["class_let"] is None:
-            return
-
-        if self.sc.schedule["last_parse"] <= self.user["last_parse"]:
-            return
-
-        logger.info("Get lessons updates")
-        updates = self.sc.get_updates(self.user_intent, self.user["last_parse"])
-
-        # Обновление времени последней проверки расписания
-        self.user["last_parse"] = self.sc.schedule["last_parse"]+1
-        self.save_user()
-
-        if len(updates) > 0:
-            return compact_updates(updates)
 
 
     # Отображение расписания
@@ -671,7 +563,7 @@ class SPMessages:
         :return: Сообщение с расписанием уроков.
         :rtype: str
         """
-        cl = intent.cl or (self.user["class_let"],)
+        cl = intent.cl or (self.user.data.cl,)
         lessons = {x: self.sc.get_lessons(x) for x in cl}
         message = ""
         for day in intent.days:
@@ -682,7 +574,7 @@ class SPMessages:
             message += "\n"
 
         # Обновления в расписаниии
-        update = self.get_lessons_updates()
+        update = self.user.get_updates(self.sc)
         if update is not None:
             message += "\nУ вас изменилось расписание! 🎉"
             message += f"\n{send_update(update, cl)}"
@@ -711,7 +603,7 @@ class SPMessages:
         if today == 6: # noqa: PLR2004
             return 0
 
-        cl = intent.cl or (self.user["class_let"],)
+        cl = intent.cl or (self.user.data.cl,)
         max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
         hour = timetable[max_lessons-1][2]
 
