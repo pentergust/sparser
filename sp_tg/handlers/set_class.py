@@ -134,6 +134,6 @@ async def pass_class_callback(query: CallbackData, sp: SPMessages, user: User):
     """
     user.set_class(None, sp.sc)
     await query.message.edit_text(
-        text=get_home_message(sp.user["class_let"]),
-        reply_markup=get_main_keyboard(sp.user["class_let"])
+        text=get_home_message(user.data.cl),
+        reply_markup=get_main_keyboard(user.data.cl)
     )

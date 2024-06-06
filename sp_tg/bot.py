@@ -40,7 +40,7 @@ DB_CONN = sqlite3.connect("sp_data/tg.db")
 USER_STORAGE = FileUserStorage("sp_data/users/tg.json")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.4"
+_BOT_VERSION = "v2.4.1"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 
@@ -66,9 +66,10 @@ async def user_middleware(
     else:
         uid = event.chat.id
 
-    data["sp"] = SPMessages(str(uid))
+    user = User(USER_STORAGE, str(uid))
     data["intents"] = UserIntents(DB_CONN, uid)
-    data["user"] = User(USER_STORAGE, str(uid))
+    data["user"] = user
+    data["sp"] = SPMessages(user)
     return await handler(event, data)
 
 # Если вы хотите отключить логгирование в боте
