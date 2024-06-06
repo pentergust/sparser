@@ -10,7 +10,6 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from sp_tg.utils.days import days_names
 
-
 # Статическая клавиатура для выбора класса.
 # Она появляется, когда пользователь переходит в состояние выбра класса.
 # Позволяет быстро отвязатель пользователя от класса.

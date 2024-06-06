@@ -14,6 +14,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message)
 
 from sp.messages import SPMessages
+from sp.users import User
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 
@@ -54,7 +55,7 @@ async def restrictions_handler(message: Message):
     await message.answer(text=CL_FEATURES_MESSAGE)
 
 @router.message(Command("set_class"))
-async def set_class_command(message: Message, sp: SPMessages,
+async def set_class_command(message: Message, sp: SPMessages, user: User,
     command: CommandObject
 ):
     """Изменяет класс или удаляет данные о пользователе.
@@ -67,7 +68,7 @@ async def set_class_command(message: Message, sp: SPMessages,
     """
     # Если указали класс в команде
     if command.args is not None:
-        if sp.set_class(command.args):
+        if user.set_class(command.args, sp.sc):
             await message.answer(
                 text=get_home_message(command.args),
                 reply_markup=get_main_keyboard(command.args)
@@ -80,23 +81,23 @@ async def set_class_command(message: Message, sp: SPMessages,
 
     # Сбрасываем пользвоателя и переводим в состояние выбора класса
     else:
-        sp.reset_user()
+        user.unset_class()
         await message.answer(
             text=SET_CLASS_MESSAGE,
             reply_markup=PASS_SET_CL_MARKUP
         )
 
 @router.message(Command("pass"))
-async def pass_handler(message: Message, sp: SPMessages):
+async def pass_handler(message: Message, sp: SPMessages, user: User):
     """Отвязаывает пользователя от класса по умолчанию.
 
     Если более конкретно, то устанавливает калсс пользователя в
     None и отправляет главное сообщение и клавиатуру.
     """
-    sp.set_class(None)
+    user.set_class(None, sp.sc)
     await message.answer(
-        text=get_home_message(sp.user["class_let"]),
-        reply_markup=get_main_keyboard(sp.user["class_let"]),
+        text=get_home_message(user.data.cl),
+        reply_markup=get_main_keyboard(user.data.cl),
     )
 
 
@@ -112,26 +113,26 @@ async def cl_features_callback(query: CallbackData, sp: SPMessages):
     )
 
 @router.callback_query(F.data == "set_class")
-async def set_class_callback(query: CallbackQuery, sp: SPMessages):
+async def set_class_callback(query: CallbackQuery, user: User):
     """Сбрасывает класс пользователя.
 
     Сбрасывает данные пользователя и переводит в состояние выбора
     класса по умолчанию.
     """
-    sp.reset_user()
+    user.unset_class()
     await query.message.edit_text(
         text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
     )
 
 @router.callback_query(F.data == "pass")
-async def pass_class_callback(query: CallbackData, sp: SPMessages):
+async def pass_class_callback(query: CallbackData, sp: SPMessages, user: User):
     """Отвязывает пользователя от класса.
 
     Как и в случае с командой /pass.
     Просто устанавливает класс пользвотеля в None и отправляет
     главное сообщение с основной клавиатурой бота.
     """
-    sp.set_class(None)
+    user.set_class(None, sp.sc)
     await query.message.edit_text(
         text=get_home_message(sp.user["class_let"]),
         reply_markup=get_main_keyboard(sp.user["class_let"])

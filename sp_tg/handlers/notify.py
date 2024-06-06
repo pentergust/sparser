@@ -13,6 +13,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message)
 
 from sp.messages import SPMessages
+from sp.users import User
 
 router = Router(name=__name__)
 
@@ -136,10 +137,10 @@ def get_notify_message(enabled: bool, hours: list[int]) -> str:
 # ================
 
 @router.message(Command("notify"))
-async def notify_handler(message: Message, sp: SPMessages):
+async def notify_handler(message: Message, user: User):
     """Переводит в меню настройки системы уведомлений."""
-    enabled = sp.user["notifications"]
-    hours = sp.user["hours"]
+    enabled = user.data.notifications
+    hours = user.data.hours
     await message.answer(
         text=get_notify_message(enabled, hours),
         reply_markup=get_notify_keyboard(enabled, hours),
@@ -150,10 +151,10 @@ async def notify_handler(message: Message, sp: SPMessages):
 # ===========================
 
 @router.callback_query(F.data == "notify")
-async def notify_callback(query: CallbackQuery, sp: SPMessages) -> None:
+async def notify_callback(query: CallbackQuery, user: User) -> None:
     """Переходит к разделу настройки системы уведомлений."""
-    enabled = sp.user["notifications"]
-    hours = sp.user["hours"]
+    enabled = user.data.notifications
+    hours = user.data.hours
     await query.message.edit_text(
         text=get_notify_message(enabled, hours),
         reply_markup=get_notify_keyboard(enabled, hours),
@@ -161,7 +162,8 @@ async def notify_callback(query: CallbackQuery, sp: SPMessages) -> None:
 
 @router.callback_query(NotifyCallback.filter())
 async def notify_mod_callback(
-    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback
+    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback,
+    user: User
 ) -> None:
     """Применяет настройки к системе уведомлениям.
 
@@ -171,30 +173,28 @@ async def notify_mod_callback(
     """
     # Включает отправку всех уведомлений
     if callback_data.action == "on":
-        sp.user["notifications"] = True
+        user.set_notify_on()
 
     # Отключает отправку всех уведомлений
     elif callback_data.action == "off":
-        sp.user["notifications"] = False
+        user.set_notify_off()
 
     # Включает расслыку расписнаия в определённый час
     elif callback_data.action == "add":
-        if callback_data.hour not in sp.user["hours"]:
-            sp.user["hours"].append(callback_data.hour)
+        user.add_notify_hour(callback_data.hour)
 
     # Отключает расслыку уведомленяи в определённый час
     elif callback_data.action == "remove":
-        if callback_data.hour in sp.user["hours"]:
-            sp.user["hours"].remove(callback_data.hour)
+        user.remove_notify_hour(callback_data.hour)
 
     # Сбрасывает расслыку расписания в определённый часы
     elif callback_data.action == "reset":
-        sp.user["hours"] = []
+        user.reset_notify()
 
     # Сохраняем данные пользователя
-    sp.save_user()
-    enabled = sp.user["notifications"]
-    hours = sp.user["hours"]
+    user.update()
+    enabled = user.data.notifications
+    hours = user.data.hours
 
     # Обновленяем сообщение о статусе и обновлеяет клавиатуру для
     # настройки системы уведомлений

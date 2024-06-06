@@ -13,10 +13,10 @@ from aiogram.types import CallbackQuery, Message
 
 from sp.intents import Intent
 from sp.messages import SPMessages
+from sp.users import User
 from sp_tg.keyboards import (get_sc_keyboard, get_select_day_keyboard,
                              get_week_keyboard)
 from sp_tg.utils.days import get_relative_day
-
 
 router = Router(name=__name__)
 
@@ -51,15 +51,15 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 # ===============
 
 @router.message(Command("week"))
-async def week_sc_command(message: Message, sp: SPMessages):
+async def week_sc_command(message: Message, sp: SPMessages, user: User):
     today = datetime.today().weekday()
     tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
     relative_day = get_relative_day(today, tomorrow)
     await message.answer(
         text=sp.send_lessons(Intent.construct(
-            sp.sc, days=[0, 1, 2, 3, 4, 5], cl=sp.user["class_let"]
+            sp.sc, days=[0, 1, 2, 3, 4, 5], cl=user.data.cl
         )),
-        reply_markup=get_sc_keyboard(sp.user["class_let"], relative_day)
+        reply_markup=get_sc_keyboard(user.data.cl, relative_day)
     )
 
 

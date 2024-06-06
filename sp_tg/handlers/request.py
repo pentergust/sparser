@@ -15,6 +15,7 @@ from aiogram.types import Message
 from loguru import logger
 
 from sp.messages import SPMessages, send_search_res
+from sp.users import User
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
 
@@ -63,7 +64,7 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 
 @router.message(Command("sc"))
 async def sc_handler(
-    message: Message, sp: SPMessages, command: CommandObject
+    message: Message, sp: SPMessages, command: CommandObject, user: User
 ):
     """Отправляет расписание уроков пользовтелю.
 
@@ -76,10 +77,10 @@ async def sc_handler(
         else:
             await message.answer(text="👀 Кажется это пустой запрос...")
 
-    elif sp.user["class_let"]:
+    elif user.data.set_class:
         await message.answer(
             text=sp.send_today_lessons(sp.sc.construct_intent()),
-            reply_markup=get_week_keyboard(sp.user["class_let"]),
+            reply_markup=get_week_keyboard(user.data.cl),
         )
     else:
         await message.answer(
@@ -87,7 +88,7 @@ async def sc_handler(
         )
 
 @router.message()
-async def main_handler(message: Message, sp: SPMessages) -> None:
+async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
     """Главный обработчик сообщений бота.
 
     Перенаправляет входящий текст в запросы к расписанию.
@@ -100,7 +101,7 @@ async def main_handler(message: Message, sp: SPMessages) -> None:
     text = message.text.strip().lower()
 
     # Если у пользователя установлек класс -> создаём запрос
-    if sp.user["set_class"]:
+    if user.data.set_class:
         answer = process_request(sp, text)
 
         if answer is not None:
@@ -111,10 +112,10 @@ async def main_handler(message: Message, sp: SPMessages) -> None:
     # Устанавливаем класс пользователя, если он ввёл класс
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
-        sp.set_class(text)
+        user.set_class(text, sp.sc)
         await message.answer(
-            text=get_home_message(sp.user["class_let"]),
-            reply_markup=get_main_keyboard(sp.user["class_let"])
+            text=get_home_message(user.data.cl),
+            reply_markup=get_main_keyboard(user.data.cl)
         )
 
     # Отправляем список классов, в личные сообщения.

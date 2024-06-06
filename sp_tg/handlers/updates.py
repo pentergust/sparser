@@ -16,6 +16,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 
 from sp.intents import Intent
 from sp.messages import SPMessages, send_update
+from sp.users import User
 from sp_tg.messages import get_intent_status
 from sp_tg.utils.intents import UserIntents
 
@@ -186,7 +187,7 @@ async def updates_handler(message: Message, sp: SPMessages,
 @router.callback_query(UpdatesCallback.filter())
 async def updates_callback(
     query: CallbackQuery, sp: SPMessages, callback_data: UpdatesCallback,
-    intents: UserIntents
+    intents: UserIntents, user: User
 ) -> None:
     """Обрабатывает нажатия на клавиатуру просмтра списка изменений.
 
@@ -196,7 +197,7 @@ async def updates_callback(
     """
     # Смена режима просмотра: только для класса/всего расписния
     if callback_data.action == "switch":
-        cl = sp.user["class_let"] if callback_data.cl == "None" else None
+        cl = user.data.cl if callback_data.cl == "None" else None
     else:
         cl = None if callback_data.cl == "None" else callback_data.cl
 
@@ -205,7 +206,7 @@ async def updates_callback(
 
     # Если указан класс и выбран класс по умолчанию
     # Заменяем намерения на просмотр для класса по умолчанию
-    if cl is not None and sp.user["class_let"]:
+    if cl is not None and user.data.cl:
         if intent is not None:
             intent = intent.reconstruct(sp.sc, cl=cl)
         else:

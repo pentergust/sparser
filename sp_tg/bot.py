@@ -20,14 +20,14 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from sp.messages import SPMessages
+from sp.users import FileUserStorage, User, UserData
 from sp.utils import get_str_timedelta
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (PASS_SET_CL_MARKUP, get_main_keyboard,
                              get_other_keyboard)
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
-from sp_tg.utils.intents import UserIntents
 from sp_tg.utils.days import get_relative_day
-
+from sp_tg.utils.intents import UserIntents
 
 # Настройкки и константы
 # ======================
@@ -37,9 +37,10 @@ TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 dp = Dispatcher()
 _TIMETAG_PATH = Path("sp_data/last_update")
 DB_CONN = sqlite3.connect("sp_data/tg.db")
+USER_STORAGE = FileUserStorage("sp_data/users/tg.json")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.3.3"
+_BOT_VERSION = "v2.4"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 
@@ -67,6 +68,7 @@ async def user_middleware(
 
     data["sp"] = SPMessages(str(uid))
     data["intents"] = UserIntents(DB_CONN, uid)
+    data["user"] = User(USER_STORAGE, str(uid))
     return await handler(event, data)
 
 # Если вы хотите отключить логгирование в боте
@@ -142,27 +144,35 @@ def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
 # ==================
 
 @dp.message(Command("info"))
-async def info_handler(message: Message, sp: SPMessages) -> None:
+async def info_handler(
+    message: Message,
+    sp: SPMessages,
+    user: User
+) -> None:
     """Сообщение о статусе рабты бота и парсера."""
     await message.answer(
         text=get_status_message(sp, _TIMETAG_PATH),
-        reply_markup=get_other_keyboard(sp.user["class_let"]),
+        reply_markup=get_other_keyboard(user.data.cl),
     )
 
 @dp.message(Command("help", "start"))
-async def start_handler(message: Message, sp: SPMessages) -> None:
+async def start_handler(
+    message: Message,
+    sp: SPMessages,
+    user: User
+) -> None:
     """Отправляет сообщение справки и главную клавиатуру.
 
-    Если класс не указан, отпраляет сообщение указания класса.
+    Если класс не указан, отпраляет сообщение смены класса.
     """
     await message.delete()
-    if sp.user["set_class"]:
+    if user.data.set_class:
         today = datetime.today().weekday()
         tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
         relative_day = get_relative_day(today, tomorrow)
         await message.answer(
-            text=get_home_message(sp.user["class_let"]),
-            reply_markup=get_main_keyboard(sp.user["class_let"], relative_day),
+            text=get_home_message(user.data.cl),
+            reply_markup=get_main_keyboard(user.data.cl, relative_day),
         )
     else:
         await message.answer(SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
@@ -172,7 +182,11 @@ async def start_handler(message: Message, sp: SPMessages) -> None:
 # ============================
 
 @dp.callback_query(F.data == "delete_msg")
-async def delete_msg_callback(query: CallbackQuery, sp: SPMessages) -> None:
+async def delete_msg_callback(
+    query: CallbackQuery,
+    sp: SPMessages,
+    user: User
+) -> None:
     """Удаляет сообщение.
 
     Если не удалось удалить, отправляет гланый раздел.
@@ -184,35 +198,43 @@ async def delete_msg_callback(query: CallbackQuery, sp: SPMessages) -> None:
         tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
         relative_day = get_relative_day(today, tomorrow)
         await query.message.edit_text(
-            text=get_home_message(sp.user["class_let"]),
-            reply_markup=get_main_keyboard(sp.user["class_let"], relative_day)
+            text=get_home_message(user.data.cl),
+            reply_markup=get_main_keyboard(user.data.cl, relative_day)
     )
 
 @dp.callback_query(F.data == "home")
-async def home_callback(query: CallbackQuery, sp: SPMessages) -> None:
+async def home_callback(
+    query: CallbackQuery,
+    sp: SPMessages,
+    user: User
+) -> None:
     """Возаращает в главный раздел."""
     today = datetime.today().weekday()
     tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
     relative_day = get_relative_day(today, tomorrow)
 
     await query.message.edit_text(
-        text=get_home_message(sp.user["class_let"]),
-        reply_markup=get_main_keyboard(sp.user["class_let"], relative_day)
+        text=get_home_message(user.data.cl),
+        reply_markup=get_main_keyboard(user.data.cl, relative_day)
     )
 
 @dp.callback_query(F.data == "other")
-async def other_callback(query: CallbackQuery, sp: SPMessages) -> None:
+async def other_callback(
+    query: CallbackQuery,
+    sp: SPMessages,
+    user: User
+) -> None:
     """Возвращает сообщение статуса и доплнительную клавиатуру."""
     await query.message.edit_text(
         text=get_status_message(sp, _TIMETAG_PATH),
-        reply_markup=get_other_keyboard(sp.user["class_let"]),
+        reply_markup=get_other_keyboard(user.data.cl),
     )
 
 
 # Обработка исключений
 # ====================
 
-def send_error_messsage(exception: ErrorEvent, sp: SPMessages) -> str:
+def send_error_messsage(exception: ErrorEvent, user: User) -> str:
     """Отпрвляет отладочное сообщние об ошибке пользователю.
 
     Data:
@@ -245,7 +267,7 @@ def send_error_messsage(exception: ErrorEvent, sp: SPMessages) -> str:
         f"\n-- Версия: {_BOT_VERSION}"
         "\n\n👤 Пользователь"
         f"\n-- Имя: {user_name}"
-        f"\n-- Класс: {sp.user['class_let']}"
+        f"\n-- Класс: {user.data.cl}"
         f"\n-- ID: {chat_id}"
         "\n\n🚫 Описание ошибки:"
         f"\n-- {exception.exception}"
@@ -255,7 +277,7 @@ def send_error_messsage(exception: ErrorEvent, sp: SPMessages) -> str:
     )
 
 @dp.errors()
-async def error_handler(exception: ErrorEvent, sp: SPMessages) -> None:
+async def error_handler(exception: ErrorEvent, user: User) -> None:
     """Ловит и обрабатывает все исключения.
 
     Отправляет сообщение об ошибке пользователям.
@@ -263,11 +285,11 @@ async def error_handler(exception: ErrorEvent, sp: SPMessages) -> None:
     logger.exception(exception.exception)
     if exception.update.callback_query is not None:
         await exception.update.callback_query.message.answer(
-            send_error_messsage(exception, sp)
+            send_error_messsage(exception, user)
         )
     else:
         await exception.update.message.answer(
-            send_error_messsage(exception, sp)
+            send_error_messsage(exception, user)
         )
 
 
