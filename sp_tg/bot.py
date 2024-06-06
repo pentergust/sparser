@@ -40,7 +40,7 @@ DB_CONN = sqlite3.connect("sp_data/tg.db")
 USER_STORAGE = FileUserStorage("sp_data/users/tg.json")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.4.1"
+_BOT_VERSION = "v2.4.2"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 

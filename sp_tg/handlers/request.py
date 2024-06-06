@@ -7,6 +7,7 @@
 в расписании.
 """
 
+from datetime import datetime
 from typing import Optional
 
 from aiogram import Router
@@ -18,6 +19,7 @@ from sp.messages import SPMessages, send_search_res
 from sp.users import User
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
+from sp_tg.utils.days import get_relative_day
 
 router = Router(name=__name__)
 
@@ -113,9 +115,13 @@ async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
         user.set_class(text, sp.sc)
+        today = datetime.today().weekday()
+        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        relative_day = get_relative_day(today, tomorrow)
+
         await message.answer(
             text=get_home_message(user.data.cl),
-            reply_markup=get_main_keyboard(user.data.cl)
+            reply_markup=get_main_keyboard(user.data.cl, relative_day)
         )
 
     # Отправляем список классов, в личные сообщения.
