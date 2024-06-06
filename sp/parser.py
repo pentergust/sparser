@@ -41,7 +41,7 @@ def _clear_day_lessons(day_lessons: list[str]) -> list[str]:
     """Удаляет все пустые уроки с конца списка."""
     while day_lessons:
         lesson = day_lessons[-1].split(":")[0]
-        if lesson or lesson not in ("---", "None"):
+        if lesson and lesson not in ("---", "None"):
             return day_lessons
         else:
             day_lessons.pop()
