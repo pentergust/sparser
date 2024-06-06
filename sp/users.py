@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import NamedTuple, Optional, Union
 
 import ujson
-# from icecream import ic
 from loguru import logger
 
 from sp.intents import Intent
@@ -146,6 +145,17 @@ class FileUserStorage:
         else:
             return False
 
+    def unset_class(self, uid: str) -> None:
+        user = self.get_user(uid)
+        self._users[uid] = UserData(
+            create_time=user.create_time,
+            cl=None,
+            set_class=False,
+            last_parse=user.last_parse,
+            notifications=user.notifications,
+            hours=user.hours
+        )
+
     def update_user(self, uid: str, user: UserData) -> None:
         if self._users is None:
             self.get_users()
@@ -162,6 +172,7 @@ class User:
 
     def create(self) -> None:
         self._storage.create_user(self.uid)
+        self._storage.save_users()
         self.data = self._storage.get_user(self.uid)
 
     def remove(self) -> None:
@@ -174,13 +185,21 @@ class User:
         res = self._storage.set_class(self.uid, cl, sc)
         if res:
             self._storage.save_users()
-            self.data = self._storage.get_user(self.uid)
+            self.update()
         return res
+
+    def unset_class(self) -> None:
+        self._storage.unset_class(self.uid)
+        self._storage.save_users()
+        self.update()
 
     def save(self, save_users: Optional[bool]=True) -> None:
         self._storage.update_user(self.uid, self.data)
         if save_users:
             self._storage.save_users()
+
+    def update(self) -> None:
+        self.data = self._storage.get_user(self.uid)
 
     def get_updates(self, sc: Schedule, save_users: Optional[bool]=True
     ) -> list[dict[str, Union[str, dict]]]:
@@ -246,7 +265,7 @@ class User:
 
     def remove_notify_hour(self, hour: int) -> None:
         if hour in self.data.hours:
-            self.data.hours.remove()
+            self.data.hours.remove(hour)
             self.save()
 
     def reset_notify(self) -> None:
