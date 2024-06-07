@@ -109,7 +109,7 @@ def get_update_timetag(path: Path) -> int:
     except (ValueError, FileNotFoundError):
         return 0
 
-def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
+def get_status_message(sp: SPMessages, timetag_path: Path, user: User) -> str:
     """Отправляет информационно сособщение о работа бота и парсера.
 
     Инфомарционно сообщения содержит некоторую вспомогательную
@@ -126,7 +126,7 @@ def get_status_message(sp: SPMessages, timetag_path: Path) -> str:
     :return: Информацинное сообщение.
     :rtype: str
     """
-    message = sp.send_status()
+    message = sp.send_status(user)
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
 
     timetag = get_update_timetag(timetag_path)
@@ -152,7 +152,7 @@ async def info_handler(
 ) -> None:
     """Сообщение о статусе рабты бота и парсера."""
     await message.answer(
-        text=get_status_message(sp, _TIMETAG_PATH),
+        text=get_status_message(sp, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
 
@@ -196,7 +196,10 @@ async def delete_msg_callback(
         await query.message.delete()
     except TelegramBadRequest:
         today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        tomorrow = sp.get_current_day(
+            sp.sc.construct_intent(days=today),
+            user
+        )
         relative_day = get_relative_day(today, tomorrow)
         await query.message.edit_text(
             text=get_home_message(user.data.cl),
@@ -211,7 +214,10 @@ async def home_callback(
 ) -> None:
     """Возаращает в главный раздел."""
     today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+    tomorrow = sp.get_current_day(
+        sp.sc.construct_intent(days=today),
+        user
+    )
     relative_day = get_relative_day(today, tomorrow)
 
     await query.message.edit_text(
@@ -227,7 +233,7 @@ async def other_callback(
 ) -> None:
     """Возвращает сообщение статуса и доплнительную клавиатуру."""
     await query.message.edit_text(
-        text=get_status_message(sp, _TIMETAG_PATH),
+        text=get_status_message(sp, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
 

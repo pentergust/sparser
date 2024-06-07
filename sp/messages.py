@@ -490,28 +490,19 @@ class SPMessages:
 
     def __init__(
         self,
-        user: User
     ) -> None:
-        super(SPMessages, self).__init__()
-
-        #: Денные пользователя.
-        self.user = user
         #: Экземпдяр расписания.
-        self.sc: Schedule = Schedule(self.user.data.cl)
-        if self.user.data.cl is not None:
-            self.user_intent: Intent = self.sc.construct_intent(
-                cl=self.user.data.cl
-            )
-        else:
-            self.user_intent: Intent = Intent()
+        self.sc: Schedule = Schedule()
 
-    def send_status(self) -> str:
+    def send_status(self, user: User) -> str:
         """Возвращает информацию о парсере и пользователях.
 
         Эта статистическая информация, о работа парсера, времени
         послдней проерки и обновления и прочих параметрах, связанных
         с парсером и пользователями обёрток.
 
+        :param user: Для какого пользователя получить информацию.
+        :type user: User
         :return: Статус парсера и пользователей.
         :rtype: str
         """
@@ -528,11 +519,11 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 5.8.11 (148+5)"
+        res = "🌟 Версия sp: 5.8.11 (148+6)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
-        res += f"\n🌲 {self.user.data.cl} класс"
+        res += f"\n🌲 {user.data.cl} класс"
         res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
         # res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
         # res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
@@ -551,7 +542,7 @@ class SPMessages:
     # Отображение расписания
     # ======================
 
-    def send_lessons(self, intent: Intent) -> str:
+    def send_lessons(self, intent: Intent, user: User) -> str:
         """Собирает сообщение с расписанием уроков.
 
         Обрётка над методов Schedule для получения расписания.
@@ -560,10 +551,12 @@ class SPMessages:
 
         :param intent: Намерения для уточнения параметров расписания.
         :type intent: Intent
+        :param user: Кто хочет получить расписание уроков.
+        :type user: User
         :return: Сообщение с расписанием уроков.
         :rtype: str
         """
-        cl = intent.cl or (self.user.data.cl,)
+        cl = intent.cl or (user.data.cl,)
         lessons = {x: self.sc.get_lessons(x) for x in cl}
         message = ""
         for day in intent.days:
@@ -574,13 +567,13 @@ class SPMessages:
             message += "\n"
 
         # Обновления в расписаниии
-        update = self.user.get_updates(self.sc)
+        update = user.get_updates(self.sc)
         if update is not None:
             message += "\nУ вас изменилось расписание! 🎉"
             message += f"\n{send_update(update, cl)}"
         return message
 
-    def get_current_day(self, intent: Intent) -> int:
+    def get_current_day(self, intent: Intent, user: User) -> int:
         """Получате текщий или следующий день если уроки кончились.
 
         Работает это так, что если уроки ещё не кончились,
@@ -592,6 +585,8 @@ class SPMessages:
 
         :param intent: Намерение для получения расписания
         :type intent: Intent
+        :param user: Кто хочет получить расписание.
+        :type user: Uaer,
         :return: Номер дня недели, для которого получать расписание
         :rtype: int
         """
@@ -603,7 +598,7 @@ class SPMessages:
         if today == 6: # noqa: PLR2004
             return 0
 
-        cl = intent.cl or (self.user.data.cl,)
+        cl = intent.cl or (user.data.cl,)
         max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
         hour = timetable[max_lessons-1][2]
 

@@ -24,13 +24,15 @@ from sp_tg.utils.days import get_relative_day
 router = Router(name=__name__)
 
 
-def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
+def process_request(user: User, sp: SPMessages, request_text: str) -> Optional[str]:
     """Обрабатывает текстовый запрос к расписанию.
 
     Преобразует входящий текст в набор намерений или запрос.
     Производит поиск по урокам/кабинетам
     или получает расписание, в зависимости от намерений.
 
+    :param user: Кто захотел получить расписание.
+    :type user: User
     :param sp: Экземпляр генератора сообщений.
     :type sp: SPMessages
     :param request_text: Текст запроса к расписнаию.
@@ -52,9 +54,9 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 
     elif intent.cl or intent.days:
         if intent.days:
-            text = sp.send_lessons(intent)
+            text = sp.send_lessons(intent, user)
         else:
-            text =sp.send_today_lessons(intent)
+            text =sp.send_today_lessons(intent, user)
     else:
         text = None
 
@@ -104,7 +106,7 @@ async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
 
     # Если у пользователя установлек класс -> создаём запрос
     if user.data.set_class:
-        answer = process_request(sp, text)
+        answer = process_request(user, sp, text)
 
         if answer is not None:
             await message.answer(text=answer)
@@ -116,7 +118,10 @@ async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
         logger.info("Set class {}", text)
         user.set_class(text, sp.sc)
         today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        tomorrow = sp.get_current_day(
+            sp.sc.construct_intent(days=today),
+            user,
+        )
         relative_day = get_relative_day(today, tomorrow)
 
         await message.answer(
