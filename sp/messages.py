@@ -487,6 +487,7 @@ class SPMessages:
     :param user_data: Установленные данные пользователя.
     :type user_data: Optional[dict[str, Any]]
     """
+    API_VERSION = 1
 
     def __init__(
         self,
