@@ -13,7 +13,7 @@ from aiogram.types import CallbackQuery, Message
 
 from sp.intents import Intent
 from sp.messages import SPMessages
-from sp.users import User
+from sp.users.storage import User
 from sp_tg.keyboards import (get_sc_keyboard, get_select_day_keyboard,
                              get_week_keyboard)
 from sp_tg.utils.days import get_relative_day

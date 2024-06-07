@@ -17,7 +17,7 @@ from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.parser import Schedule
 from sp.text_counter import TextCounter
-from sp.users import User
+from sp.users.storage import User
 from sp_tg.messages import get_intent_status
 from sp_tg.utils.intents import UserIntents
 

@@ -13,7 +13,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message)
 
 from sp.messages import SPMessages
-from sp.users import User
+from sp.users.storage import User
 
 router = Router(name=__name__)
 

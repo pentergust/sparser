@@ -16,7 +16,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 
 from sp.intents import Intent
 from sp.messages import SPMessages, send_update
-from sp.users import User
+from sp.users.storage import User
 from sp_tg.messages import get_intent_status
 from sp_tg.utils.intents import UserIntents
 

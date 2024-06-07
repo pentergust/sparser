@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from sp.messages import SPMessages
-from sp.users import FileUserStorage, User, UserData
+from sp.users.storage import FileUserStorage, User, UserData
 from sp.utils import get_str_timedelta
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (PASS_SET_CL_MARKUP, get_main_keyboard,

@@ -16,7 +16,7 @@ from aiogram.types import Message
 from loguru import logger
 
 from sp.messages import SPMessages, send_search_res
-from sp.users import User
+from sp.users.storage import User
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
 from sp_tg.utils.days import get_relative_day

@@ -17,7 +17,7 @@ from .intents import Intent
 from .parser import Schedule
 from .utils import (check_keys, compact_updates, get_str_timedelta, load_file,
                     plural_form, save_file)
-from .users import User
+from .users.storage import User
 
 
 # Некоторые настройки генератора сообщений
@@ -528,7 +528,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 5.8.11 (148+4)"
+        res = "🌟 Версия sp: 5.8.11 (148+5)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
