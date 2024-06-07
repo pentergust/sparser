@@ -7,9 +7,12 @@
 доступ к расписанию.
 """
 
+from typing import Optional
+
 from sp.exceptions import ViewNotCompatible, ViewNotSelected
 from sp.messages import SPMessages
 from sp.users.storage import FileUserStorage, User
+from sp.users.intents import UserIntentsStorage
 
 from loguru import logger
 
@@ -36,6 +39,9 @@ class Platform():
         self._view = None
 
 
+    # Работа с классом просмотра
+    # ==========================
+
     def _check_api_version(self, api_verion: int) -> bool:
         if api_verion < self.api_version:
             raise ViewNotCompatible("Platform API is higher than view API")
@@ -60,5 +66,21 @@ class Platform():
         self._check_api_version(view.API_VERSION)
         self._view = view
 
+
+    # Получение хранилищ пользователей
+    # ================================
+
     def get_user(self, uid: str) -> User:
         return User(self.users, uid)
+
+    def get_intents(self, uid: int) -> UserIntentsStorage:
+        return UserIntentsStorage(f"sp_data/users/{self.pid}.db", uid)
+
+
+    # Абстрактное представление представления
+    # =======================================
+
+    def get_default_intent(self, intent: Optional[Intent]) -> Intent:
+        return self.view.sc.construct_intent(
+            cl=self.user.data.cl
+        ) if intent is None else intent
