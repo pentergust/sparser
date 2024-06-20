@@ -520,7 +520,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 5.8.11 (148+6)"
+        res = "🌟 Версия sp: 5.8.11 (148+9)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -612,7 +612,7 @@ class SPMessages:
         # Всё, не надо мне тут начинать.
         return 0 if today > 5 else today # noqa: PLR2004
 
-    def send_today_lessons(self, intent: Intent) -> str:
+    def send_today_lessons(self, intent: Intent, user: User) -> str:
         """Расписание уроков на сегодня/завтра.
 
         Работает как send_lessons.
@@ -627,12 +627,16 @@ class SPMessages:
 
         :param intent: Намерения для уточнения расписания.
         :type intent: Intent
+        :param user: Кто хочет получить расписание уроков.
+        :type user: User
         :return: Расписание уроков на сегодня/завтра.
         :rtype: str
         """
         return self.send_lessons(intent.reconstruct(
-            self.sc, days=self.get_current_day(intent)
-        ))
+            self.sc, days=self.get_current_day(intent, user)
+        ),
+            user
+        )
 
 
     # Методы для работы с расписанием

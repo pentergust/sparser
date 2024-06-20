@@ -144,4 +144,3 @@ class Platform():
         :rtype: UserIntentsStorage
         """
         return UserIntentsStorage(f"sp_data/users/{self.pid}.db", uid)
-
