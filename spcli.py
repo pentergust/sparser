@@ -1,22 +1,21 @@
-"""
-Командный интерфейc для доступа к генератору сообщений.
+"""Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.5 (sp 6)
+Ver: 1.6 (sp v6)
 """
 
-from time import time
 import argparse
-from typing import Optional
+from time import time
 
-from sp.counters import (cl_counter, days_counter, group_counter_res,
-                         index_counter)
+from sp.counters import CounterTarget
 from sp.intents import Intent
-from sp.messages import SPMessages, send_counter, send_search_res, send_update
-from sp.users import FileUserStorage, User, UserData, CountedUsers
+from sp.messages import SPMessages, send_search_res, send_update
+from sp.platform import Platform
+from sp.text_counter import TextCounter
 from sp.utils import get_str_timedelta
 
-def get_parser() -> argparse.ArgumentParser:
+
+def _get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--version", help="Информация о парсере",
         action="store_true"
@@ -51,9 +50,10 @@ def get_parser() -> argparse.ArgumentParser:
     sp = subparsers.add_parser("counter", help="Счётчик уроков/кабинетов")
     sp.add_argument("counter", help="Тип Счётчика", default="lessons",
                     choices=["cl", "days", "lessons", "cabinets"])
-    sp.add_argument("target", help="Вторичный ключ для отображения",
-                    default=None,
-                    choices=["cl", "days", "lessons", "cabinets", "main"])
+    sp.add_argument(
+        "target", help="Вторичный ключ для отображения",
+        type=CounterTarget, default=CounterTarget.NONE, nargs='?'
+    )
 
     # Аргументы хранилища пользователей
     # =================================
@@ -73,12 +73,13 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 def main() -> None:
-    parser = get_parser()
+    """Запускает обработку аргументов командной строки."""
+    parser = _get_parser()
     args = parser.parse_args()
 
-    user_storage = FileUserStorage(args.ustorage)
-    user = User(user_storage, args.uid)
-    sp = SPMessages(args.uid)
+    platform = Platform(0, "Console", "v1.6", 1)
+    platform.view = SPMessages()
+    user = platform.get_user(args.uid)
 
 
     # Обработка генератора сообщений
@@ -86,11 +87,11 @@ def main() -> None:
 
     # Статус генератора сообщений
     if args.version:
-        print(sp.send_status())
+        print(platform.view.send_status())
 
     # Получение намерений для расписания
     if args.intents is not None:
-        intent = sp.sc.parse_intent(args.intent.split())
+        intent = platform.view.sc.parse_intent(args.intent.split())
     else:
         intent = Intent()
 
@@ -100,9 +101,13 @@ def main() -> None:
     if args.cmd == "user":
         # Получает данные пользователя
         if args.action == "get":
-            create_delta = get_str_timedelta(int(time()) - user.data.create_time)
+            create_delta = get_str_timedelta(
+                int(time()) - user.data.create_time
+            )
             if user.data.last_parse != 0:
-                parse_delta = get_str_timedelta(int(time()) - user.data.last_parse)
+                parse_delta = get_str_timedelta(
+                    int(time()) - user.data.last_parse
+                )
             else:
                 parse_delta = 0
 
@@ -114,7 +119,7 @@ def main() -> None:
 
         # Счаитет пользователей в базе данных
         elif args.action == "count":
-            counted_users = user_storage.count_users(sp.sc)
+            counted_users = platform.users.count_users(platform.view.sc)
             print(f"Active: {counted_users.active}")
             print(f"Class counter ({len(counted_users.cl)}):")
             for k, v in counted_users.cl.items():
@@ -132,7 +137,7 @@ def main() -> None:
 
         # Установить класс пользователю
         elif args.action == "class":
-            status = user.set_class(args.value, sp.sc)
+            status = user.set_class(args.value, platform.view.sc)
             if status:
                 print(f"User {user.uid} set class {args.value}")
             else:
@@ -168,54 +173,55 @@ def main() -> None:
                 print("Please enter a hour (6-20) in value.")
 
         # Сбрасывает рассылку уведомлений
-        elif args.action == "hourremove":
+        elif args.action == "hourreset":
             user.reset_notify()
             print(f"Reset notify hours for {user.uid}")
 
         else: # artion == "users"
-            for k, v in user_storage.get_users().items():
+            for k, v in platform.users.get_users().items():
                 print(f"-- {k} / {v.cl} - {v.set_class}")
 
     # # Получить расписание уроков
     elif args.cmd == "sc":
         if intent.days:
-            print(sp.send_lessons(intent))
+            print(platform.view.send_lessons(intent, user))
         else:
-            print(sp.send_today_lessons(intent))
+            print(platform.view.send_today_lessons(intent), user)
 
     # Просмотреть обновления в расписании
     elif args.cmd == "updates":
-        for u in sp.sc.get_updates(intent):
+        for u in platform.view.sc.get_updates(intent):
             print(send_update(u))
 
     # Поиск в расписании
     elif args.cmd == "search":
-        res = sp.sc.search(args.target, intent, args.cabinets)
+        res = platform.view.sc.search(args.target, intent, args.cabinets)
         print(send_search_res(intent, res))
 
     # Работа с счётчиками расписания
     elif args.cmd == "counter":
+        cnt = TextCounter(platform.view.sc)
         header = "✨ Счётчик"
 
         if args.counter == "cl":
             header += " по классам:"
-            res = cl_counter(sp.sc, intent)
+            res = cnt.cl(intent, args.target)
         elif args.counter == "days":
             header += " по дням:"
-            res = days_counter(sp.sc, intent)
+            res = cnt.days(intent, args.target)
         elif args.counter == "lessons":
             header += " по урокам:"
-            res = index_counter(sp.sc, intent)
+            res = cnt.index(intent, target=args.target)
+
         elif args.counter == "cabinets":
             header += " по кабинетам:"
-            res = index_counter(sp.sc, intent, cabinets_mode=True)
+            res = cnt.index(intent, cabinets_mode=True, target=args.target)
 
-        groups = group_counter_res(res)
         print(header)
-        print(send_counter(groups, target=args.target))
+        print(res)
 
     else:
-        print(sp.send_today_lessons(intent))
+        print(platform.view.send_today_lessons(intent, user))
 
 # Запуск скрипта
 # ==============
