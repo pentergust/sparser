@@ -9,17 +9,21 @@ from typing import Optional
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from sp.counters import CounterTarget
 from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.parser import Schedule
 from sp.text_counter import TextCounter
+from sp.users.intents import UserIntentsStorage
 from sp.users.storage import User
 from sp_tg.messages import get_intent_status
-from sp_tg.utils.intents import UserIntents
 
 router = Router(name=__name__)
 
@@ -81,7 +85,7 @@ class CounterCallback(CallbackData, prefix="count"):
 # =======================
 
 def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
-    intents: UserIntents, intent_name: Optional[str]=""
+    intents: UserIntentsStorage, intent_name: Optional[str]=""
 ) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра счётчиков расписания.
 
@@ -116,7 +120,7 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
     :param target: Текущий тип просмотра счётчика.
     :type target: Optional[CounterTarget]
     :param intents: Экземпляр хранилища намерений пользователя.
-    :type intent: UserIntents
+    :type intent: UserIntentsStorage
     :param intent_name: Текущее выбранное имя намерения пользователя.
     :type intent_name: Optional[str]
     :return: Клавиатура для просмотра счётчиков расписания.
@@ -258,7 +262,9 @@ def get_counter_message(
 
     # Счётчики по индексам
     elif counter == "lessons":
-        message += text_counter.index(intent, cabinets_mode=False, target=target)
+        message += text_counter.index(
+            intent, cabinets_mode=False, target=target
+        )
     else:
         message += text_counter.index(intent, cabinets_mode=True, target=target)
 
@@ -270,7 +276,7 @@ def get_counter_message(
 
 @router.message(Command("counter"))
 async def counter_handler(message: Message, sp: SPMessages,
-    intents: UserIntents, user: User
+    intents: UserIntentsStorage, user: User
 ) -> None:
     """Переводит в меню просмора счётчиков расписания."""
     await message.answer(
@@ -287,7 +293,7 @@ async def counter_handler(message: Message, sp: SPMessages,
 @router.callback_query(CounterCallback.filter())
 async def counter_callback(
     query: CallbackQuery, sp: SPMessages, callback_data: CounterCallback,
-    intents: UserIntents, user: User
+    intents: UserIntentsStorage, user: User
 ) -> None:
     """Клавитура для переключения счётчиков расписания."""
     counter = callback_data.counter

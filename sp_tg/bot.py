@@ -3,13 +3,19 @@
 Полностью реализует доступ ко всем методам SPMessages.
 Не считая некоторых ограничений в настройке "намерений" (Intents).
 
-Главный файл с основными методами обработчиками доба.
+Получает обновления в первую очередь.
+Является основной платформой для работы расписания.
+
+Это главный файл с саммыми необходимыми обработчиками.
+С функцией для загрузки всех дополнительных обработчиков и последующего
+запуска бота.
 """
 
 import sqlite3
 from datetime import datetime
 from os import getenv
 from pathlib import Path
+from sys import exit
 from typing import Any, Awaitable, Callable, Dict, Union
 
 from aiogram import Bot, Dispatcher, F
@@ -19,29 +25,58 @@ from aiogram.types import CallbackQuery, ErrorEvent, Message, Update
 from dotenv import load_dotenv
 from loguru import logger
 
+from sp.exceptions import ViewNotCompatible
 from sp.messages import SPMessages
-from sp.users.storage import FileUserStorage, User, UserData
+from sp.platform import Platform
+from sp.users.storage import FileUserStorage, User
 from sp.utils import get_str_timedelta
 from sp_tg.handlers import routers
-from sp_tg.keyboards import (PASS_SET_CL_MARKUP, get_main_keyboard,
-                             get_other_keyboard)
+from sp_tg.keyboards import (
+    PASS_SET_CL_MARKUP,
+    get_main_keyboard,
+    get_other_keyboard,
+)
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 from sp_tg.utils.days import get_relative_day
-from sp_tg.utils.intents import UserIntents
 
 # Настройкки и константы
 # ======================
 
 load_dotenv()
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
-dp = Dispatcher()
 _TIMETAG_PATH = Path("sp_data/last_update")
 DB_CONN = sqlite3.connect("sp_data/tg.db")
 USER_STORAGE = FileUserStorage("sp_data/users/tg.json")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.4.2"
+_BOT_VERSION = "v2.4.3"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
+
+
+# Настройки платформы
+# ===================
+
+platform = Platform(
+    pid=1, # RESERVED FOR TELEGRAM
+    name="Telegram",
+    version=_BOT_VERSION,
+    api_version=0
+)
+
+try:
+    platform.view = SPMessages()
+except ViewNotCompatible as e:
+    logger.exception(e)
+    exit()
+
+
+# Настраиваем диспетчер бота
+# ==========================
+
+dp = Dispatcher(
+    # `platform=platform,
+    sp=platform.view
+)
 
 
 # Добавление Middleware
@@ -66,10 +101,8 @@ async def user_middleware(
     else:
         uid = event.chat.id
 
-    user = User(USER_STORAGE, str(uid))
-    data["intents"] = UserIntents(DB_CONN, uid)
-    data["user"] = user
-    data["sp"] = SPMessages(user)
+    data["user"] = platform.get_user(str(uid))
+    data["intents"] = platform.get_intents(uid)
     return await handler(event, data)
 
 # Если вы хотите отключить логгирование в боте
@@ -169,7 +202,10 @@ async def start_handler(
     await message.delete()
     if user.data.set_class:
         today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
+        tomorrow = sp.get_current_day(
+            sp.sc.construct_intent(days=today),
+            user
+        )
         relative_day = get_relative_day(today, tomorrow)
         await message.answer(
             text=get_home_message(user.data.cl),
@@ -244,21 +280,21 @@ async def other_callback(
 def send_error_messsage(exception: ErrorEvent, user: User) -> str:
     """Отпрвляет отладочное сообщние об ошибке пользователю.
 
-    Data:
-        user_name => Кто вызвал ошибку.
-        user_id => Какой пользователь вызвал ошибку.
-        class_let => К какому класс относился пользователь.
-        chat_id => Где была вызвана ошибка.
-        exception => Описание текста ошибки.
-        action => Callback data или текст сообщение, вызвавший ошибку.
+    Data
 
-    Args:
-        exception (ErrorEvent): Событие ошибки aiogram.
-        sp (SPMessage): Экземпляр генератора сообщений пользователя.
+    - user_name => Кто вызвал ошибку.
+    - user_id => Какой пользователь вызвал ошибку.
+    - class_let => К какому класс относился пользователь.
+    - chat_id => Где была вызвана ошибка.
+    - exception => Описание текста ошибки.
+    - action => Callback data или текст сообщение, вызвавший ошибку.
 
-    Returns:
-        str: Отладочное сообщение с данными об ошибке в боте.
-    
+    :param exception: Событие исключения в aiogram.
+    :type exception: ErrorEvent
+    :param sp: Экземпляр генератора сообщений пользователя.
+    :type sp: SPMessages
+    :return: Отладочное сообщение с данными об исключении в боте.
+    :rtype: str
     """
     if exception.update.callback_query is not None:
         action = f"-- Данные: {exception.update.callback_query.data}"
@@ -278,7 +314,7 @@ def send_error_messsage(exception: ErrorEvent, user: User) -> str:
         f"\n-- ID: {chat_id}"
         "\n\n🚫 Описание ошибки:"
         f"\n-- {exception.exception}"
-        "\n\n🔍 Доплнительная информаиция"
+        "\n\n🔍 Дополнительная информация:"
         f"\n{action}"
         "\n\nПожалуйста, свяжитесь с @milinuri для решения проблемы."
     )
@@ -289,6 +325,10 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
 
     Отправляет сообщение об ошибке пользователям.
     """
+    if isinstance(exception.exception, (TelegramBadRequest,)):
+        logger.error(exception)
+        return
+
     logger.exception(exception.exception)
     if exception.update.callback_query is not None:
         await exception.update.callback_query.message.answer(

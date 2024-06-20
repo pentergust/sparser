@@ -13,13 +13,17 @@ from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from sp.intents import Intent
 from sp.messages import SPMessages
+from sp.users.intents import IntentObject, UserIntentsStorage
 from sp_tg.messages import get_intent_status
-from sp_tg.utils.intents import IntentObject, UserIntents
 
 router = Router(name=__name__)
 
@@ -289,7 +293,7 @@ class IntentCallback(CallbackData, prefix="intent"):
 
 @router.message(Command("intents"))
 async def manage_intents_handler(message: Message,
-    intents: UserIntents
+    intents: UserIntentsStorage
 ) -> None:
     """Команда для просмотра списка намерений пользователя."""
     await message.answer(
@@ -298,7 +302,7 @@ async def manage_intents_handler(message: Message,
     )
 
 @router.callback_query(F.data=="intents")
-async def intents_callback(query: CallbackQuery, intents: UserIntents) -> None:
+async def intents_callback(query: CallbackQuery, intents: UserIntentsStorage):
     """Кнопка для просмотра списка намерений пользователя."""
     await query.message.edit_text(
         text=get_intents_message(intents.get()),
@@ -315,7 +319,7 @@ async def add_intent_callback(query: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(Command("add_intent"))
 async def add_intent_handler(
-    message: Message, state: FSMContext, intents: UserIntents
+    message: Message, state: FSMContext, intents: UserIntentsStorage
 ) -> None:
     """Команда для добавления нового намерения.
 
@@ -350,8 +354,9 @@ async def intent_name_handler(message: Message, state: FSMContext) -> None:
 
 @router.message(EditIntentStates.parse)
 async def parse_intent_handler(
-    message: Message, state: FSMContext, intents: UserIntents, sp: SPMessages
-) -> None:
+    message: Message, state: FSMContext,
+    intents: UserIntentsStorage, sp: SPMessages
+):
     """Устанавливает парамеры намерения."""
     i = Intent.parse(sp.sc, message.text.lower().strip().split())
     name = (await state.get_data())["name"]
@@ -366,8 +371,10 @@ async def parse_intent_handler(
 
 @router.callback_query(IntentCallback.filter(F.action=="show"))
 async def show_intent_callback(
-    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback
-) -> None:
+    query: CallbackQuery,
+    intents: UserIntentsStorage,
+    callback_data: IntentCallback
+):
     """Просматривать информацию о намерении."""
     intent = intents.get_intent(callback_data.name)
     if intent is None:
@@ -380,7 +387,9 @@ async def show_intent_callback(
 
 @router.callback_query(IntentCallback.filter(F.action=="remove"))
 async def remove_intent_callback(
-    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback
+    query: CallbackQuery,
+    intents: UserIntentsStorage,
+    callback_data: IntentCallback
 ) -> None:
     """Удаляет намерение по имени."""
     intents.remove(callback_data.name)
@@ -391,7 +400,9 @@ async def remove_intent_callback(
 
 @router.callback_query(IntentCallback.filter(F.action=="reparse"))
 async def reparse_intent_callback(
-    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback,
+    query: CallbackQuery,
+    intents: UserIntentsStorage,
+    callback_data: IntentCallback,
     state: FSMContext
 ) -> None:
     """Изменение параметров намерения."""
@@ -404,7 +415,7 @@ async def reparse_intent_callback(
 
 @router.message(Command("remove_intents"))
 async def intents_remove_mode_handler(
-    message: Message, intents: UserIntents
+    message: Message, intents: UserIntentsStorage
 ) -> None:
     """Переключает в режим удаления намерений."""
     await message.answer(
@@ -414,7 +425,7 @@ async def intents_remove_mode_handler(
 
 @router.callback_query(F.data=="intents:remove_mode")
 async def intents_remove_mode_callback(
-    query: CallbackQuery, intents: UserIntents
+    query: CallbackQuery, intents: UserIntentsStorage
 ) -> None:
     """Переключает в режми удаления намерений."""
     await query.message.edit_text(
@@ -424,7 +435,10 @@ async def intents_remove_mode_callback(
 
 @router.callback_query(IntentCallback.filter(F.action=="remove_many"))
 async def remove_many_intent_callback(
-    query: CallbackQuery, intents: UserIntents, callback_data: IntentCallback
+    query: CallbackQuery,
+    intents: UserIntentsStorage,
+    callback_data:
+    IntentCallback
 ) -> None:
     """Удаляет намерение и возвращает в меню удаления."""
     intents.remove(callback_data.name)
@@ -435,7 +449,7 @@ async def remove_many_intent_callback(
 
 @router.callback_query(F.data=="intents:remove_all")
 async def intents_set_remove_mode_callback(
-    query: CallbackQuery, intents: UserIntents
+    query: CallbackQuery, intents: UserIntentsStorage
 ) -> None:
     """Удаляет всен амерения пользвоателя."""
     intents.remove_all()

@@ -24,7 +24,9 @@ from sp_tg.utils.days import get_relative_day
 router = Router(name=__name__)
 
 
-def process_request(user: User, sp: SPMessages, request_text: str) -> Optional[str]:
+def process_request(
+    user: User, sp: SPMessages, request_text: str
+) -> Optional[str]:
     """Обрабатывает текстовый запрос к расписанию.
 
     Преобразует входящий текст в набор намерений или запрос.
@@ -75,7 +77,7 @@ async def sc_handler(
     Отправляет предупреждение, если у пользователя не укзаан класс.
     """
     if command.args is not None:
-        answer = process_request(sp, command.args)
+        answer = process_request(sp, command.args, user)
         if answer is not None:
             await message.answer(text=answer)
         else:
@@ -83,7 +85,7 @@ async def sc_handler(
 
     elif user.data.set_class:
         await message.answer(
-            text=sp.send_today_lessons(sp.sc.construct_intent()),
+            text=sp.send_today_lessons(sp.sc.construct_intent(), user),
             reply_markup=get_week_keyboard(user.data.cl),
         )
     else:
