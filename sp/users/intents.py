@@ -73,8 +73,8 @@ class UserIntentsStorage:
         :trype: list[IntentObject]
         """
         # Получаем имя и намерение из списка намерений для пользователя.
-        db = self._db.cursor()
-        self._db.execute(
+        cur = self._db.cursor()
+        cur.execute(
             "SELECT name,intent FROM intent WHERE user_id=?",
             (self.uid,)
         )
@@ -108,7 +108,7 @@ class UserIntentsStorage:
 
     def remove_all(self):
         """Удаляет все намерение пользователя из базы данных."""
-        self._db.execute("DELETE FROM intent WHERE user_id=?", (self._uid,))
+        self._db.execute("DELETE FROM intent WHERE user_id=?", (self.uid,))
         self._db.commit()
 
     # Работа с одним намерением ------------------------------------------------
@@ -130,12 +130,12 @@ class UserIntentsStorage:
         if self.get_intent(name) is not None:
             cur.execute(
                 "UPDATE intent SET intent=? WHERE user_id=? AND name=?",
-                (int_s, self._uid, name)
+                (int_s, self.uid, name)
             )
         else:
             cur.execute(
                 "INSERT INTO intent(user_id,name,intent) VALUES(?,?,?);",
-                (self._uid, name, int_s)
+                (self.uid, name, int_s)
             )
         self._db.commit()
 
@@ -155,7 +155,7 @@ class UserIntentsStorage:
         """
         self._db.execute(
             "UPDATE intent SET name=? WHERE user_id=? AND name=?",
-            (new_name, self._uid, old_name)
+            (new_name, self.uid, old_name)
         )
         self._db.commit()
 
@@ -171,6 +171,6 @@ class UserIntentsStorage:
         """
         self._db.execute(
             "DELETE FROM intent WHERE user_id=? AND name=?",
-            (self._uid, name)
+            (self.uid, name)
         )
         self._db.commit()
