@@ -18,8 +18,12 @@ Version: 2.2
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 router = Router(name=__name__)
 

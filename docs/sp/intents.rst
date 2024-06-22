@@ -5,6 +5,14 @@ intents
 
 .. autoclass:: Intent
 
+    .. hint:: Альтернатива
+
+        Помимо встренных методов для создания намерения есть также
+        и их синонимы в :py:class:`sp.parser.Schedule`.
+
+        - Для comstruct - :py:func:`sp.parser.Schedule.construct_intent`
+        - Для parse - :py:func:`sp.parser.Schedule.parse_intent`
+
     .. autoattribute:: cl
     .. autoattribute:: days
     .. autoattribute:: lessons
@@ -15,7 +23,8 @@ intents
     Сборка намерения
     ----------------
 
-    Методы, используемые для сборки новоего намерения.
+    Методы, используемые для сборки новоего намерения из некоторых
+    сторонних данных.
 
     .. automethod:: from_str
 

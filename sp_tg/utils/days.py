@@ -9,7 +9,7 @@ def get_relative_day(today: int, tomorrow: int) -> str:
     Мспользуется для более точного отображения текста кнопки
     получения расписания на сегодня.
 
-    :param today: Текущмй день недели
+    :param today: Текущий день недели
     :type today: int
     :param tomorrow: Следующий день недели
     :type tomorrow: int

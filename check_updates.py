@@ -9,7 +9,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.10.2 (sp v5.7+2b, telegram v2.2)
+Ver: 0.11 (sp v6, telegram v2.4)
 """
 
 from datetime import datetime
@@ -24,9 +24,16 @@ from loguru import logger
 from dotenv import load_dotenv
 
 from sp.intents import Intent
-from sp.messages import SPMessages, send_update, users_path
+from sp.messages import SPMessages, send_update
 from sp.utils import load_file, save_file
 
+from sp.users.storage import User
+from sp.platform import Platform
+from sp.exceptions import ViewNotCompatible
+from sys import exit
+
+# Запуск плфтформы и TG бота
+# ==========================
 
 load_dotenv()
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN")
@@ -35,9 +42,10 @@ logger.add("sp_data/updates.log")
 _TIMETAG_PATH = Path("sp_data/last_update")
 
 # Если данные мигрировали вследствии
-CHAT_MIGRATE_MESSAGE = """⚠️ У вашего чата сменился ID.
-Настройки чата были перемещены."""
-
+CHAT_MIGRATE_MESSAGE = (
+    "⚠️ У вашего чата сменился ID.\n"
+    "Настройки чата были перемещены."
+)
 
 # Функкии для сбора клавиатур
 # ===========================
@@ -62,52 +70,37 @@ def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
 # Функции для обработки списка пользователей
 # ==========================================
 
-async def process_update(bot, hour: int, sp: SPMessages) -> None:
+async def process_update(bot: Bot, hour: int, platform: Platform, user: User) -> None:
     """Проверяет обновления для одного пользователя (или чата).
 
     Отправляет расписани на сегодня/завтра в указанный час или
     список измнений в расписании, при наличии.
 
-    Args:
-        bot (bot): Экземпляр aiogram бота.
-        hour (int): Текущий час.
-        uid (str): ID чата для проверки.
-        sp (SPMessages): Данные пользователя.
+    :param bot: Экземпляр бота для отправки сообщений.
+    :type bot: Bot
+    :param hour: Какой сейчас час.
+    :type hour: int
+    :param platform: Экземпляр запущенной платформы.
+    :type platform: Platform
+    :param user: Какой пользователь запрашивает обновления.
+    :type user: User
     """
     # Рассылка расписания в указанные часы
-    if str(hour) in sp.user["hours"]:
-        await bot.send_message(sp.uid,
-            text=sp.send_today_lessons(Intent()),
-            reply_markup=get_week_keyboard(sp.user["class_let"])
+    if hour in user.data.hours:
+        await bot.send_message(user.uid,
+            text=platform.view.send_today_lessons(Intent(), user),
+            reply_markup=get_week_keyboard(user.data.cl)
         )
 
     # Отправляем уведомления об обновлениях
-    updates = sp.get_lessons_updates()
+    updates = user.get_updates(platform.view.sc)
     if updates is not None:
-        message = "🎉 У вас изменилось расписание!"
-        message += f"\n{send_update(updates, cl=sp.user['class_let'])}"
-
-        await bot.send_message(sp.uid, text=message,
+        await bot.send_message(sp.uid, text=(
+            "🎉 У вас изменилось расписание!\n"
+            f"{send_update(updates, cl=user.data.cl)}"
+        ),
             reply_markup=get_updates_keyboard(sp.user["class_let"]
         ))
-
-async def remove_users(remove_ids: list[str]):
-    """Удаляет недействительные ID пользователей (чата).
-
-    Если пользователь заблокировал бота.
-    Если бота исключили из чата.
-    Если пользователь удалил аккаунт.
-
-    Args:
-        remove_ids (list[str]) Список ID для удаления.
-    """
-    logger.info("Start remove users...")
-    users = load_file(Path(users_path), {})
-    for x in remove_ids:
-        logger.info("Remove {}", x)
-        del users[x]
-    save_file(Path(users_path), users)
-
 
 def set_timetag(path: Path, timestamp: int) -> None:
     """Оставляет временную метку последней проверки обнолвения.
@@ -132,24 +125,28 @@ def set_timetag(path: Path, timestamp: int) -> None:
 # =======================
 
 async def main() -> None:
+    platform = Platform(
+        pid=1, name="Telegram updater",
+        version="0.11", api_version=0
+    )
+    platform.view = SPMessages()
     now = datetime.now()
-    users = load_file(Path(users_path), {})
     remove_ids = []
 
     logger.info("Start of the update process...")
-    for k, v in list(users.items()):
+    for k, v in platform.users.get_users().items():
         # Если у пользователя отключены уведомления или не указан
         # класс по умолчанию -> пропускаем.
-        if not v.get("notifications") or not v.get("class_let"):
+        if not v.notifications or not v.cl:
             continue
 
         # Получаем экземпляр генератора сообщения пользователя
         # TODO: данные пользователя вновь загружаются из файла на
         # каждой итерации
-        sp = SPMessages(k, v)
+        user = platform.get_user(k)
         try:
-            logger.debug("{} {}", k, v)
-            await process_update(bot, now.hour, sp)
+            logger.debug("Process {}: {}", k, v)
+            await process_update(bot, now.hour, platform, user)
 
         # Если что-то произошло с пользователем:
         # Заблокировал бота, исключил из чата, исчез сам ->
@@ -163,7 +160,7 @@ async def main() -> None:
 
     # Если данные изменились - записываем изменения в файл
     if remove_ids:
-        await remove_users(remove_ids)
+        platform.users.remove_users(remove_ids)
 
     # Осталяем временную метку успешного обновления
     set_timetag(_TIMETAG_PATH, int(now.timestamp()))
@@ -173,4 +170,7 @@ async def main() -> None:
 # =========================
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        logger.exception(e)

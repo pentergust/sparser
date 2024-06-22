@@ -9,16 +9,21 @@ from typing import Optional
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from sp.counters import CounterTarget
 from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.parser import Schedule
 from sp.text_counter import TextCounter
+from sp.users.intents import UserIntentsStorage
+from sp.users.storage import User
 from sp_tg.messages import get_intent_status
-from sp_tg.utils.intents import UserIntents
 
 router = Router(name=__name__)
 
@@ -80,7 +85,7 @@ class CounterCallback(CallbackData, prefix="count"):
 # =======================
 
 def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
-    intents: UserIntents, intent_name: Optional[str]=""
+    intents: UserIntentsStorage, intent_name: Optional[str]=""
 ) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра счётчиков расписания.
 
@@ -115,7 +120,7 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
     :param target: Текущий тип просмотра счётчика.
     :type target: Optional[CounterTarget]
     :param intents: Экземпляр хранилища намерений пользователя.
-    :type intent: UserIntents
+    :type intent: UserIntentsStorage
     :param intent_name: Текущее выбранное имя намерения пользователя.
     :type intent_name: Optional[str]
     :return: Клавиатура для просмотра счётчиков расписания.
@@ -193,6 +198,7 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 def get_counter_message(
+    user: User,
     sc: Schedule,
     counter: str,
     target: Optional[CounterTarget]=None,
@@ -247,7 +253,7 @@ def get_counter_message(
         # Дополнительно передаём намерение, если подгруппа по урокамъ
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
-            intent = intent.reconstruct(sc, cl=sc.cl)
+            intent = intent.reconstruct(sc, cl=user.data.cl)
         message += text_counter.cl(intent, target)
 
     # Счётчик по дням
@@ -256,7 +262,9 @@ def get_counter_message(
 
     # Счётчики по индексам
     elif counter == "lessons":
-        message += text_counter.index(intent, cabinets_mode=False, target=target)
+        message += text_counter.index(
+            intent, cabinets_mode=False, target=target
+        )
     else:
         message += text_counter.index(intent, cabinets_mode=True, target=target)
 
@@ -268,13 +276,13 @@ def get_counter_message(
 
 @router.message(Command("counter"))
 async def counter_handler(message: Message, sp: SPMessages,
-    intents: UserIntents
+    intents: UserIntentsStorage, user: User
 ) -> None:
     """Переводит в меню просмора счётчиков расписания."""
     await message.answer(
-        text=get_counter_message(sp.sc, "lessons", CounterTarget.MAIN),
+        text=get_counter_message(user, sp.sc, "lessons", CounterTarget.MAIN),
         reply_markup=get_counter_keyboard(
-            cl=(sp.user["class_let"]),
+            cl=user.data.cl,
             counter="lessons",
             target=CounterTarget.MAIN,
             intents=intents
@@ -285,7 +293,7 @@ async def counter_handler(message: Message, sp: SPMessages,
 @router.callback_query(CounterCallback.filter())
 async def counter_callback(
     query: CallbackQuery, sp: SPMessages, callback_data: CounterCallback,
-    intents: UserIntents
+    intents: UserIntentsStorage, user: User
 ) -> None:
     """Клавитура для переключения счётчиков расписания."""
     counter = callback_data.counter
@@ -300,7 +308,7 @@ async def counter_callback(
 
         # Если установлен счётчик по классам, а подгруппа по урокам
         # Сбрасыфваем подгруппу, если класс не указан
-        if counter == "cl" and target == "lessons" and not sp.user["class_let"]:
+        if counter == "cl" and target == "lessons" and not user.data.set_class:
             target = None
 
     # Загружаем намерения из хранилища пользователей
@@ -308,9 +316,9 @@ async def counter_callback(
 
     # Отправляем сообщение пользователю
     await query.message.edit_text(
-        text=get_counter_message(sp.sc, counter, target, intent),
+        text=get_counter_message(user, sp.sc, counter, target, intent),
         reply_markup=get_counter_keyboard(
-            cl=sp.user["class_let"],
+            cl=user.data.cl,
             counter=counter,
             target=target,
             intents=intents,

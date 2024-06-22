@@ -11,13 +11,18 @@ from typing import Optional, Union
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message)
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from sp.intents import Intent
 from sp.messages import SPMessages, send_update
+from sp.users.intents import UserIntentsStorage
+from sp.users.storage import User
 from sp_tg.messages import get_intent_status
-from sp_tg.utils.intents import UserIntents
 
 router = Router(name=__name__)
 
@@ -53,7 +58,7 @@ def get_updates_keyboard(
     page: int,
     updates: list[dict],
     cl: Optional[str],
-    intents: UserIntents,
+    intents: UserIntentsStorage,
     intent_name: str = ""
 ) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра списка изменений.
@@ -77,7 +82,7 @@ def get_updates_keyboard(
     :param cl: Какой класс подставлять в клавиатуру.
     :type cl: str
     :param intents: Экземпляр хранилища намерений пользователя.
-    :type intents: UserIntents
+    :type intents: UserIntentsStorage
     :param intent_name: Имя текущего выбранного намерения.
     :type intent_name: Optional[intent]
     :return: Клавиатура просмотра списка изменений в расписании.
@@ -164,7 +169,7 @@ def get_updates_message(
 
 @router.message(Command("updates"))
 async def updates_handler(message: Message, sp: SPMessages,
-    intents: UserIntents
+    intents: UserIntentsStorage
 ) -> None:
     """Отправляет последную страницу списка изменений в расписании.
 
@@ -186,7 +191,7 @@ async def updates_handler(message: Message, sp: SPMessages,
 @router.callback_query(UpdatesCallback.filter())
 async def updates_callback(
     query: CallbackQuery, sp: SPMessages, callback_data: UpdatesCallback,
-    intents: UserIntents
+    intents: UserIntentsStorage, user: User
 ) -> None:
     """Обрабатывает нажатия на клавиатуру просмтра списка изменений.
 
@@ -196,7 +201,7 @@ async def updates_callback(
     """
     # Смена режима просмотра: только для класса/всего расписния
     if callback_data.action == "switch":
-        cl = sp.user["class_let"] if callback_data.cl == "None" else None
+        cl = user.data.cl if callback_data.cl == "None" else None
     else:
         cl = None if callback_data.cl == "None" else callback_data.cl
 
@@ -205,7 +210,7 @@ async def updates_callback(
 
     # Если указан класс и выбран класс по умолчанию
     # Заменяем намерения на просмотр для класса по умолчанию
-    if cl is not None and sp.user["class_let"]:
+    if cl is not None and user.data.cl:
         if intent is not None:
             intent = intent.reconstruct(sp.sc, cl=cl)
         else:

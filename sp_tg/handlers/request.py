@@ -7,6 +7,7 @@
 в расписании.
 """
 
+from datetime import datetime
 from typing import Optional
 
 from aiogram import Router
@@ -15,19 +16,25 @@ from aiogram.types import Message
 from loguru import logger
 
 from sp.messages import SPMessages, send_search_res
+from sp.users.storage import User
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
+from sp_tg.utils.days import get_relative_day
 
 router = Router(name=__name__)
 
 
-def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
+def process_request(
+    user: User, sp: SPMessages, request_text: str
+) -> Optional[str]:
     """Обрабатывает текстовый запрос к расписанию.
 
     Преобразует входящий текст в набор намерений или запрос.
     Производит поиск по урокам/кабинетам
     или получает расписание, в зависимости от намерений.
 
+    :param user: Кто захотел получить расписание.
+    :type user: User
     :param sp: Экземпляр генератора сообщений.
     :type sp: SPMessages
     :param request_text: Текст запроса к расписнаию.
@@ -49,9 +56,9 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 
     elif intent.cl or intent.days:
         if intent.days:
-            text = sp.send_lessons(intent)
+            text = sp.send_lessons(intent, user)
         else:
-            text =sp.send_today_lessons(intent)
+            text =sp.send_today_lessons(intent, user)
     else:
         text = None
 
@@ -63,23 +70,23 @@ def process_request(sp: SPMessages, request_text: str) -> Optional[str]:
 
 @router.message(Command("sc"))
 async def sc_handler(
-    message: Message, sp: SPMessages, command: CommandObject
+    message: Message, sp: SPMessages, command: CommandObject, user: User
 ):
     """Отправляет расписание уроков пользовтелю.
 
     Отправляет предупреждение, если у пользователя не укзаан класс.
     """
     if command.args is not None:
-        answer = process_request(sp, command.args)
+        answer = process_request(sp, command.args, user)
         if answer is not None:
             await message.answer(text=answer)
         else:
             await message.answer(text="👀 Кажется это пустой запрос...")
 
-    elif sp.user["class_let"]:
+    elif user.data.set_class:
         await message.answer(
-            text=sp.send_today_lessons(sp.sc.construct_intent()),
-            reply_markup=get_week_keyboard(sp.user["class_let"]),
+            text=sp.send_today_lessons(sp.sc.construct_intent(), user),
+            reply_markup=get_week_keyboard(user.data.cl),
         )
     else:
         await message.answer(
@@ -87,7 +94,7 @@ async def sc_handler(
         )
 
 @router.message()
-async def main_handler(message: Message, sp: SPMessages) -> None:
+async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
     """Главный обработчик сообщений бота.
 
     Перенаправляет входящий текст в запросы к расписанию.
@@ -100,8 +107,8 @@ async def main_handler(message: Message, sp: SPMessages) -> None:
     text = message.text.strip().lower()
 
     # Если у пользователя установлек класс -> создаём запрос
-    if sp.user["set_class"]:
-        answer = process_request(sp, text)
+    if user.data.set_class:
+        answer = process_request(user, sp, text)
 
         if answer is not None:
             await message.answer(text=answer)
@@ -111,10 +118,17 @@ async def main_handler(message: Message, sp: SPMessages) -> None:
     # Устанавливаем класс пользователя, если он ввёл класс
     elif text in sp.sc.lessons:
         logger.info("Set class {}", text)
-        sp.set_class(text)
+        user.set_class(text, sp.sc)
+        today = datetime.today().weekday()
+        tomorrow = sp.get_current_day(
+            sp.sc.construct_intent(days=today),
+            user,
+        )
+        relative_day = get_relative_day(today, tomorrow)
+
         await message.answer(
-            text=get_home_message(sp.user["class_let"]),
-            reply_markup=get_main_keyboard(sp.user["class_let"])
+            text=get_home_message(user.data.cl),
+            reply_markup=get_main_keyboard(user.data.cl, relative_day)
         )
 
     # Отправляем список классов, в личные сообщения.
