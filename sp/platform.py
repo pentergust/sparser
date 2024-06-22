@@ -50,7 +50,7 @@ class Platform():
         self.api_version = api_version
 
         #: Экземпляр хранилища пользователей платформы
-        self.users = FileUserStorage(f"sp_data/users/{name}.json")
+        self.users = FileUserStorage(f"sp_data/users/{pid}.json")
         self._view = None
 
 
@@ -104,7 +104,7 @@ class Platform():
     @view.setter
     def view(self, view: SPMessages) -> None:
         if not isinstance(view, SPMessages):
-            return
+            raise ViewNotCompatible("View must be instance of SPMessages")
         self._check_api_version(view.API_VERSION)
         self._view = view
 
