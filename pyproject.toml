@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sp"
-version = "5.8.2"
+version = "6.0"
 description = "School timetable parser."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
@@ -37,7 +37,7 @@ target-version = "py38"
 [tool.ruff.lint]
 select = ["E", "F", "I", "D", "N", "PL"]
 ignore = ["D407", "D107", "D213", "D203"]
-unfixable = ["I"]
+# unfixable = []
 
 [build-system]
 requires = ["poetry-core"]
