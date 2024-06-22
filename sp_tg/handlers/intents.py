@@ -24,6 +24,7 @@ from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.users.intents import IntentObject, UserIntentsStorage
 from sp_tg.messages import get_intent_status
+from sp_tg.filters import IsAdmin
 
 router = Router(name=__name__)
 
@@ -249,7 +250,7 @@ def get_intents_message(intents: list[IntentObject]) -> str:
 
 
 
-@router.message(Command("cancel"))
+@router.message(Command("cancel"), IsAdmin())
 async def cancel_handler(message: Message, state: FSMContext) -> None:
     """Cбрасывает состояние контекста машины состояний."""
     current_state = await state.get_state()
@@ -311,13 +312,13 @@ async def intents_callback(query: CallbackQuery, intents: UserIntentsStorage):
 
 # Добавление нового намерения --------------------------------------------------
 
-@router.callback_query(IntentCallback.filter(F.action=="add"))
+@router.callback_query(IntentCallback.filter(F.action=="add"), IsAdmin())
 async def add_intent_callback(query: CallbackQuery, state: FSMContext) -> None:
     """Начать добавление нового намерения по кнопке."""
     await state.set_state(EditIntentStates.name)
     await query.message.edit_text(SET_INTENT_NAME_MESSAGE)
 
-@router.message(Command("add_intent"))
+@router.message(Command("add_intent"), IsAdmin())
 async def add_intent_handler(
     message: Message, state: FSMContext, intents: UserIntentsStorage
 ) -> None:
@@ -336,7 +337,7 @@ async def add_intent_handler(
         await state.set_state(EditIntentStates.name)
         await message.answer(SET_INTENT_NAME_MESSAGE)
 
-@router.message(EditIntentStates.name)
+@router.message(EditIntentStates.name, IsAdmin())
 async def intent_name_handler(message: Message, state: FSMContext) -> None:
     """Устанавливает имя намерения."""
     name = message.text.lower().strip()
@@ -352,7 +353,7 @@ async def intent_name_handler(message: Message, state: FSMContext) -> None:
         await state.set_state(EditIntentStates.parse)
         await message.answer(text=PARSE_INTENT_MESSAGE)
 
-@router.message(EditIntentStates.parse)
+@router.message(EditIntentStates.parse, IsAdmin())
 async def parse_intent_handler(
     message: Message, state: FSMContext,
     intents: UserIntentsStorage, sp: SPMessages
@@ -385,7 +386,7 @@ async def show_intent_callback(
             reply_markup=get_edit_intent_keyboard(callback_data.name)
         )
 
-@router.callback_query(IntentCallback.filter(F.action=="remove"))
+@router.callback_query(IntentCallback.filter(F.action=="remove"), IsAdmin())
 async def remove_intent_callback(
     query: CallbackQuery,
     intents: UserIntentsStorage,
@@ -398,7 +399,7 @@ async def remove_intent_callback(
         reply_markup=get_intents_keyboard(intents.get())
     )
 
-@router.callback_query(IntentCallback.filter(F.action=="reparse"))
+@router.callback_query(IntentCallback.filter(F.action=="reparse"), IsAdmin())
 async def reparse_intent_callback(
     query: CallbackQuery,
     intents: UserIntentsStorage,
@@ -413,7 +414,7 @@ async def reparse_intent_callback(
 
 # Режим удаления намерений -----------------------------------------------------
 
-@router.message(Command("remove_intents"))
+@router.message(Command("remove_intents"), IsAdmin())
 async def intents_remove_mode_handler(
     message: Message, intents: UserIntentsStorage
 ) -> None:
@@ -423,7 +424,7 @@ async def intents_remove_mode_handler(
         reply_markup=get_remove_intents_keyboard(intents.get())
     )
 
-@router.callback_query(F.data=="intents:remove_mode")
+@router.callback_query(F.data=="intents:remove_mode", IsAdmin())
 async def intents_remove_mode_callback(
     query: CallbackQuery, intents: UserIntentsStorage
 ) -> None:
@@ -433,7 +434,10 @@ async def intents_remove_mode_callback(
         reply_markup=get_remove_intents_keyboard(intents.get())
     )
 
-@router.callback_query(IntentCallback.filter(F.action=="remove_many"))
+@router.callback_query(
+    IntentCallback.filter(F.action=="remove_many"),
+    IsAdmin()
+)
 async def remove_many_intent_callback(
     query: CallbackQuery,
     intents: UserIntentsStorage,
@@ -447,7 +451,7 @@ async def remove_many_intent_callback(
         reply_markup=get_remove_intents_keyboard(intents.get())
     )
 
-@router.callback_query(F.data=="intents:remove_all")
+@router.callback_query(F.data=="intents:remove_all", IsAdmin())
 async def intents_set_remove_mode_callback(
     query: CallbackQuery, intents: UserIntentsStorage
 ) -> None:

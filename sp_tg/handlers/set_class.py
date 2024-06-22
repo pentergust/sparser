@@ -24,6 +24,8 @@ from sp.users.storage import User
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 from sp_tg.utils.days import get_relative_day
+from sp_tg.filters import IsAdmin
+
 
 router = Router(name=__name__)
 
@@ -61,7 +63,7 @@ async def restrictions_handler(message: Message):
     """Отправляет список примуществ при указанном классе."""
     await message.answer(text=CL_FEATURES_MESSAGE)
 
-@router.message(Command("set_class"))
+@router.message(Command("set_class"), IsAdmin())
 async def set_class_command(message: Message, sp: SPMessages, user: User,
     command: CommandObject
 ):
@@ -100,7 +102,7 @@ async def set_class_command(message: Message, sp: SPMessages, user: User,
             reply_markup=PASS_SET_CL_MARKUP
         )
 
-@router.message(Command("pass"))
+@router.message(Command("pass"), IsAdmin())
 async def pass_handler(message: Message, sp: SPMessages, user: User):
     """Отвязаывает пользователя от класса по умолчанию.
 
@@ -128,7 +130,7 @@ async def cl_features_callback(query: CallbackData, sp: SPMessages):
         reply_markup=BACK_SET_CL_MARKUP
     )
 
-@router.callback_query(F.data == "set_class")
+@router.callback_query(F.data == "set_class", IsAdmin())
 async def set_class_callback(query: CallbackQuery, user: User):
     """Сбрасывает класс пользователя.
 
@@ -140,7 +142,7 @@ async def set_class_callback(query: CallbackQuery, user: User):
         text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
     )
 
-@router.callback_query(F.data == "pass")
+@router.callback_query(F.data == "pass", IsAdmin())
 async def pass_class_callback(query: CallbackData, sp: SPMessages, user: User):
     """Отвязывает пользователя от класса.
 

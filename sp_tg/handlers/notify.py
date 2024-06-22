@@ -18,6 +18,8 @@ from aiogram.types import (
 
 from sp.messages import SPMessages
 from sp.users.storage import User
+from sp_tg.filters import IsAdmin
+
 
 router = Router(name=__name__)
 
@@ -164,7 +166,7 @@ async def notify_callback(query: CallbackQuery, user: User) -> None:
         reply_markup=get_notify_keyboard(enabled, hours),
     )
 
-@router.callback_query(NotifyCallback.filter())
+@router.callback_query(NotifyCallback.filter(), IsAdmin())
 async def notify_mod_callback(
     query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback,
     user: User
