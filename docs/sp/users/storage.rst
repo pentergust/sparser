@@ -20,6 +20,7 @@ Users storage
     ~~~~~~~~~~~~~~
 
     .. automethod:: get_users
+    .. automethod:: remove_users
     .. automethod:: save_users
     .. automethod:: count_users
 

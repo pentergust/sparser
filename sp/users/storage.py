@@ -152,6 +152,26 @@ class FileUserStorage:
             }
         return self._users
 
+    def remove_users(self, user_ids: list[str]) -> None:
+        """Удаляет сразу несколько пользователй из базы.
+
+        Используется для прочистки списка пользователей.
+        Напрмиер в сприпте проверки обновлений.
+        Когда можно пользователей могут заблокировать бота или исключить
+        его из чатов.
+        Данный метод исключает всех пользователей, а после один раз
+        сохраняет файл базы пользователй.
+
+        :param user_ids: Список ID пользователей для удаления из базы.
+        :type user_ids: list[str]
+        """
+        for uid in user_ids:
+            try:
+                self._users.pop(uid)
+            except KeyError:
+                logger.error("{} is not user", uid)
+        self.save_users()
+
     def save_users(self) -> None:
         """Сохраняет данные пользователй в храналище.
 
@@ -414,7 +434,7 @@ class User:
         self.data = self._storage.get_user(self.uid)
 
     def get_updates(self, sc: Schedule, save_users: Optional[bool]=True
-    ) -> list[dict[str, Union[str, dict]]]:
+    ) -> Optional[dict[str, Union[str, dict]]]:
         """Возаращает все не просмотренные записи об изменениях.
 
         Полчает все новые записи об изменниях в расписании, начиная
@@ -434,7 +454,7 @@ class User:
         :param save_users: Обноявлять ли временную метку обновления.
         :type save_users: Optional[bool]
         :return: Сжайтый список изменений расписания пользователя.
-        :rtype: list[dict[str, Union[str, dict]]]
+        :rtype: Optional[dict[str, Union[str, dict]]]
         """
         if self.data.cl is None:
             return
