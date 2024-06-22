@@ -15,9 +15,8 @@ from typing import NamedTuple, Optional, Union
 from .counters import CounterTarget, reverse_counter
 from .intents import Intent
 from .parser import Schedule
-from .utils import (get_str_timedelta, plural_form)
 from .users.storage import User
-
+from .utils import get_str_timedelta, plural_form
 
 # Некоторые настройки генератора сообщений
 # ========================================
@@ -520,7 +519,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0 (160)"
+        res = "🌟 Версия sp: 6.0.1 (161)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"

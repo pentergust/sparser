@@ -14,5 +14,5 @@ View
     способный представить расписание в одном из удобных форматов.
     Среди них у нас будет :py:class:`sp.messages.SPMessages`.
 
-.. autoexception:: ViewNotCompatible
-.. autoexception:: ViewNotSelected
+.. autoexception:: ViewCompatibleError
+.. autoexception:: ViewSelectedError

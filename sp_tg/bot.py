@@ -25,7 +25,7 @@ from aiogram.types import CallbackQuery, ErrorEvent, Message, Update
 from dotenv import load_dotenv
 from loguru import logger
 
-from sp.exceptions import ViewNotCompatible
+from sp.exceptions import ViewCompatibleError
 from sp.messages import SPMessages
 from sp.platform import Platform
 from sp.users.storage import FileUserStorage, User
@@ -65,7 +65,7 @@ platform = Platform(
 
 try:
     platform.view = SPMessages()
-except ViewNotCompatible as e:
+except ViewCompatibleError as e:
     logger.exception(e)
     exit()
 

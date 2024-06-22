@@ -8,7 +8,7 @@
 # View
 # ====
 
-class ViewNotCompatible(Exception):
+class ViewCompatibleError(Exception):
     """Если версии API не совпадают.
 
     Может возникнуть при подключении класса представления к платформе.
@@ -18,9 +18,10 @@ class ViewNotCompatible(Exception):
     Предполагается что API платформы будет или ниже или равен
     API представления.
     """
+
     pass
 
-class ViewNotSelected(Exception):
+class ViewSelectedError(Exception):
     """Если вы захотели использовать view, но она не была настроена.
 
     При работе с платформой вы будете не раз обращаться к классу
@@ -30,4 +31,5 @@ class ViewNotSelected(Exception):
     Но если класс представления не был установлен и ыв захотели его
     использовать, то получите данное исключение.
     """
+
     pass

@@ -29,7 +29,7 @@ from sp.utils import load_file, save_file
 
 from sp.users.storage import User
 from sp.platform import Platform
-from sp.exceptions import ViewNotCompatible
+from sp.exceptions import ViewCompatibleError
 from sys import exit
 
 # Запуск плфтформы и TG бота
