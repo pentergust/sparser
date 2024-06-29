@@ -31,15 +31,20 @@ from sp.intents import Intent
 from sp.parser import Schedule
 from sp.utils import compact_updates
 
-
 # Вспомогательные контейнеры
 # ==========================
 
 class UserData(NamedTuple):
     """Данные пользователя внутри храналища.
 
-    Сами даныне предствлениы в формате Read only.
-    Для изменения данных воспользуйтесь методами храниилща.
+    Данные пользователя привзываются к конкрутной платформе, а такке
+    к своему поставщеку расписания.
+    При смене платформы или поставщика расписания, хранилище
+    пользователей также буедт изменено.
+
+    Сами даныне предствлениы в формате только для чтения.
+    Для изменения данных воспользуйтесь методами пользовательского
+    хранилиша.
 
     :param create_time: Когда была создана учётная запись.
     :type create_time: Optional[int]
@@ -145,7 +150,7 @@ class FileUserStorage:
             try:
                 with open(self._path) as f:
                     users = ujson.loads(f.read())
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 users = {}
             self._users = {
                 k: self._dict_to_userdata(v) for k, v in users.items()
@@ -398,7 +403,8 @@ class User:
         :param cl: Какой класс необходимо устновить.
         :type cl: str
         :param sc: Относительно какого расписнаия изменять класс.
-        :return: Стутс смены класса. True - класс изменён."""
+        :return: Стутс смены класса. True - класс изменён.
+        """
         res = self._storage.set_class(self.uid, cl, sc)
         if res:
             self._storage.save_users()
