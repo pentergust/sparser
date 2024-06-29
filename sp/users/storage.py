@@ -235,7 +235,7 @@ class FileUserStorage:
         self._users[uid] = UserData()
 
     def get_user(self, uid: str) -> UserData:
-        """Получает данные пользователя по его UID
+        """Получает данные пользователя по его UID.
 
         Получшеныне данные используются только для чтения.
         Для зменения данныех нужно использовать или методы хранилиша,
@@ -481,7 +481,7 @@ class User:
                 notifications=self.data.notifications,
                 hours=self.data.hours
         )
-        self,save(new_user, save_users)
+        self.save(new_user, save_users)
 
         if save_users:
             self._storage.save_users()
