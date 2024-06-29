@@ -227,47 +227,6 @@ def get_update_header(
 
     return message
 
-def send_update(
-    update: dict[str, Union[int, list[dict]]],
-    cl: Optional[str]=None) -> str:
-    """Собирает сообщение со списком изменений в расписании.
-
-    СОбирает полноценное сообщение со всеми изменениями.
-    Также добавляет заголосвок записи об зименении.
-    Вы также можете передать класс, чотбы он не отображался в
-    заголовке классов.
-
-    Пример сообщения со списком изменений:
-
-    .. code-block:: text
-
-        📀 21.05 16:00 ➜ 05.06 18:47
-        🔷 На четверг
-        🔸 Для 5б:
-        2: --физкульт:330
-
-    :param update: Необработанная запись об изменении в расписании.
-    :type update: dict[str, Union[int, list[dict]]]
-    :param cl: Упоминание какого класса опускать в заголовке.
-    :type cl: Optional[str]
-    :return: Сообщение со списком изменений в расписании.
-    :rtype: str
-    """
-    message = get_update_header(update)
-    for day, day_updates in enumerate(update["updates"]):
-        if not day_updates:
-            continue
-
-        message += f"\n🔷 На {DAYS_NAMES[day]}"
-        for u_cl, cl_updates in day_updates.items():
-            if cl is None or cl is not None and cl != u_cl:
-                message += f"\n🔸 Для {u_cl}:"
-
-            message += "\n" if len(cl_updates) > 1 else " "
-            message += send_cl_updates(cl_updates)
-
-    return message
-
 
 # Вспомогательные функции отображения
 # ===================================
@@ -570,7 +529,7 @@ class SPMessages:
         update = user.get_updates(self.sc)
         if update is not None:
             message += "\nУ вас изменилось расписание! 🎉"
-            message += f"\n{send_update(update, cl)}"
+            message += f"\n{self.send_update(update, cl)}"
         return message
 
     def get_current_day(self, intent: Intent, user: User) -> int:
@@ -674,3 +633,57 @@ class SPMessages:
         return send_search_res(
             intent, self.sc.search(target, intent, cabinets)
         )
+
+    def send_update(
+        self,
+        update: dict[str, Union[int, list[dict]]],
+        hide_cl: Optional[str]=None
+    ) -> str:
+        """Собирает сообщение со списком изменений в расписании.
+
+        Собирает полноценное сообщение со всеми изменениями.
+        Также добавляет заголосвок записи об изменениях.
+
+        Переданный класс в ``hide_cl`` не будет отображаться в
+        заголовке классов.
+        Это полезно если вы получаете изменения только для одного
+        класса.
+
+        Пример сообщения со списком изменений:
+
+        .. code-block:: text
+
+            📀 21.05 16:00 ➜ 05.06 18:47
+            🔷 На четверг
+            🔸 Для 5б:
+            2: --физкульт:330
+
+        Если ``hide_cl="5б"``:
+
+        .. code-block:: text
+
+            📀 21.05 16:00 ➜ 05.06 18:47
+            🔷 На четверг
+            2: --физкульт:330
+
+        :param update: Необработанная запись об изменении в расписании.
+        :type update: dict[str, Union[int, list[dict]]]
+        :param hide_cl: Упоминание какого класса опускать в заголовке.
+        :type hide_cl: Optional[str]
+        :return: Сообщение со списком изменений в расписании.
+        :rtype: str
+        """
+        message = get_update_header(update)
+        for day, day_updates in enumerate(update["updates"]):
+            if not day_updates:
+                continue
+
+            message += f"\n🔷 На {DAYS_NAMES[day]}"
+            for u_cl, cl_updates in day_updates.items():
+                if hide_cl is None or hide_cl is not None and hide_cl != u_cl:
+                    message += f"\n🔸 Для {u_cl}:"
+
+                message += "\n" if len(cl_updates) > 1 else " "
+                message += send_cl_updates(cl_updates)
+
+        return message

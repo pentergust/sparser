@@ -9,7 +9,7 @@ from time import time
 
 from sp.counters import CounterTarget
 from sp.intents import Intent
-from sp.messages import SPMessages, send_search_res, send_update
+from sp.messages import SPMessages, send_search_res
 from sp.platform import Platform
 from sp.text_counter import TextCounter
 from sp.utils import get_str_timedelta
@@ -191,7 +191,7 @@ def main() -> None:
     # Просмотреть обновления в расписании
     elif args.cmd == "updates":
         for u in platform.view.sc.get_updates(intent):
-            print(send_update(u))
+            print(platform.view.send_update(u))
 
     # Поиск в расписании
     elif args.cmd == "search":

@@ -21,11 +21,10 @@ from aiogram.types import (
 
 from sp.messages import SPMessages
 from sp.users.storage import User
+from sp_tg.filters import IsAdmin
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 from sp_tg.utils.days import get_relative_day
-from sp_tg.filters import IsAdmin
-
 
 router = Router(name=__name__)
 

@@ -24,7 +24,7 @@ from loguru import logger
 from dotenv import load_dotenv
 
 from sp.intents import Intent
-from sp.messages import SPMessages, send_update
+from sp.messages import SPMessages
 from sp.utils import load_file, save_file
 
 from sp.users.storage import User
@@ -97,7 +97,7 @@ async def process_update(bot: Bot, hour: int, platform: Platform, user: User) ->
     if updates is not None:
         await bot.send_message(sp.uid, text=(
             "🎉 У вас изменилось расписание!\n"
-            f"{send_update(updates, cl=user.data.cl)}"
+            f"{platform.view.send_update(updates, cl=user.data.cl)}"
         ),
             reply_markup=get_updates_keyboard(sp.user["class_let"]
         ))

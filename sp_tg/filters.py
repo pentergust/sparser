@@ -5,9 +5,9 @@
 или прочее действие.
 """
 
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import BaseFilter
 from aiogram.enums import ChatMemberStatus
+from aiogram.filters import BaseFilter
+from aiogram.types import Message
 
 
 class IsAdmin(BaseFilter):
@@ -23,7 +23,9 @@ class IsAdmin(BaseFilter):
     По крайней мере мы надеемся что администраторы будут более
     ответственными, чем общая масса участников.
     """
+
     async def __call__(self, message: Message) -> bool:
+        """Проверяет что пользователь администратор чата."""
         if message.chat.type == "private":
             return True
 

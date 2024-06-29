@@ -20,7 +20,6 @@ from sp.messages import SPMessages
 from sp.users.storage import User
 from sp_tg.filters import IsAdmin
 
-
 router = Router(name=__name__)
 
 

@@ -46,7 +46,6 @@ messages
 
 .. autofunction:: send_cl_updates
 .. autofunction:: get_update_header
-.. autofunction:: send_update
 
 
 Функции отображения
@@ -74,3 +73,4 @@ messages
     .. automethod:: get_current_day
 
     .. automethod:: search
+    .. automethod:: send_update

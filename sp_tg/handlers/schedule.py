@@ -55,6 +55,7 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 
 @router.message(Command("week"))
 async def week_sc_command(message: Message, sp: SPMessages, user: User):
+    """Получате расписание уроков на неделю."""
     today = datetime.today().weekday()
     tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today). user)
     relative_day = get_relative_day(today, tomorrow)

@@ -19,7 +19,7 @@ from aiogram.types import (
 )
 
 from sp.intents import Intent
-from sp.messages import SPMessages, send_update
+from sp.platform import Platform
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import User
 from sp_tg.messages import get_intent_status
@@ -126,6 +126,7 @@ def get_updates_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 def get_updates_message(
+    platform: Platform,
     update: Optional[dict[str, Union[int, list[dict]]]]=None,
     cl: Optional[str]=None,
     intent: Optional[Intent]=None
@@ -152,7 +153,7 @@ def get_updates_message(
         message += f"⚙️ {get_intent_status(intent)}\n"
 
     if update is not None:
-        update_text = send_update(update, cl=cl)
+        update_text = platform.view.send_update(update, cl=cl)
 
         if len(update_text) > _MAX_UPDATE_MESSAGE_LENGTHT:
             message += "\n📚 Слишком много изменений."
@@ -168,7 +169,7 @@ def get_updates_message(
 # ===============
 
 @router.message(Command("updates"))
-async def updates_handler(message: Message, sp: SPMessages,
+async def updates_handler(message: Message, sp: Platform,
     intents: UserIntentsStorage
 ) -> None:
     """Отправляет последную страницу списка изменений в расписании.
@@ -178,7 +179,7 @@ async def updates_handler(message: Message, sp: SPMessages,
     """
     updates = sp.sc.updates
     await message.answer(
-        text=get_updates_message(updates[-1] if len(updates) else None),
+        text=get_updates_message(sp, updates[-1] if len(updates) else None),
         reply_markup=get_updates_keyboard(max(len(updates) - 1, 0),
             updates, None, intents
         )
@@ -190,7 +191,7 @@ async def updates_handler(message: Message, sp: SPMessages,
 
 @router.callback_query(UpdatesCallback.filter())
 async def updates_callback(
-    query: CallbackQuery, sp: SPMessages, callback_data: UpdatesCallback,
+    query: CallbackQuery, sp: Platform, callback_data: UpdatesCallback,
     intents: UserIntentsStorage, user: User
 ) -> None:
     """Обрабатывает нажатия на клавиатуру просмтра списка изменений.
@@ -244,7 +245,7 @@ async def updates_callback(
 
     # Отправляем результат пользователю
     await query.message.edit_text(
-        text=get_updates_message(update, cl, intent),
+        text=get_updates_message(sp, update, cl, intent),
         reply_markup=get_updates_keyboard(
             i, updates, cl, intents, callback_data.intent
         )
