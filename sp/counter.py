@@ -143,7 +143,7 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
 # Функции счётчиков
 # =================
 
-class Counter:
+class CurrentCounter:
 
     def __init__(self, sc: Schedule, intent: Intent) -> None:
         self.sc = sc
