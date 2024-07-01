@@ -53,7 +53,7 @@ class Platform():
 
         #: Экземпляр хранилища пользователей платформы
         self.users = FileUserStorage(f"sp_data/users/{pid}.json")
-        self._view = None
+        self._view: SPMessages | None = None
 
 
     # Работа с классом просмотра
@@ -70,7 +70,7 @@ class Platform():
             return False
 
     @property
-    def view(self) -> SPMessages | None:
+    def view(self) -> SPMessages:
         """Получает уттановленынй класс представления.
 
         Предполагается что перед тем как использовать класс предсталвния

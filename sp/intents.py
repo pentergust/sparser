@@ -20,7 +20,7 @@ _short_days_names = ["пн", "вт", "ср", "чт", "пт", "сб"]
 # =======================
 
 _T = TypeVar("_T")
-def _ensure_list(a: _T) -> tuple[_T]:
+def _ensure_list(a: _T) -> Union[_T, tuple[Union[str, int]]]:
     if a is not None:
         return (a,) if isinstance(a, (str, int)) else a
 
@@ -82,7 +82,9 @@ class Intent(NamedTuple):
         :return: Упакованное намерение.
         :rtype: str
         """
-        return ":".join([",".join(map(str, x)) for x in self])
+        return ":".join(
+            [",".join(map(str, x)) for x in self._fields]
+        )
 
 
     # Создание нового экземлпряа намерений

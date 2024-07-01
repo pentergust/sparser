@@ -17,7 +17,7 @@
 """
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 # Как более быстрый, чем стандартный json
 import ujson
@@ -87,7 +87,7 @@ def load_file(
 # Прочие утилиты
 # ==============
 
-def plural_form(n: int, v: tuple[str]) -> str:
+def plural_form(n: int, v: tuple[str, str, str]) -> str:
     """Возвращает просклонённое значение в зивисимости от числа.
 
     Возвращает просклонённое слово: "для одного", "для двух",
@@ -131,7 +131,9 @@ def get_str_timedelta(s: int, hours: Optional[bool]=True) -> str:
         return f"{m:02}:{s:02}"
 
 
-def compact_updates(updates: list[dict[str, Any]]) -> dict[str, Any]:
+def compact_updates(
+    updates: list[dict[str, Union[int, list[dict]]]]
+) -> dict[str, Union[int, list[dict]]]:
     """Упаковывает несколько записей об обновлениях в одну.
 
     Используется чтобы совместить несколько записей об изменениях.
@@ -146,9 +148,9 @@ def compact_updates(updates: list[dict[str, Any]]) -> dict[str, Any]:
     - Иначе добавить запись.
 
     :param updates: Список записей об обновлениях расписания.
-    :type updates: list[dict[str, Any]]
+    :type updates: list[dict[str, Union[int, list[dict]]]]
     :return: Новая упакованная запись об обновлённом расписании.
-    :rtype: dict[str, Any]
+    :rtype: dict[str, Union[int, list[dict]]]
     """
     res = updates[0]["updates"].copy()
 

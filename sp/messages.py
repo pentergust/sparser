@@ -8,9 +8,8 @@
 Вы можете использовать их в чат-ботах, например Telegram.
 """
 
-from collections import Counter, defaultdict
 from datetime import datetime, time
-from typing import NamedTuple, Optional, Union
+from typing import Iterable, NamedTuple, Optional, Union
 
 from .counters import CounterTarget, reverse_counter
 from .intents import Intent
@@ -105,6 +104,7 @@ def get_current_lesson(now: time) -> Optional[LessonTime]:
             return LessonTime(start_time, end_time, i)
 
         l_end_time = end_time
+    return None
 
 
 # Функции отображения списка изменений
@@ -169,7 +169,7 @@ def send_cl_updates(
     return message
 
 def get_update_header(
-    update: dict[str, Union[int, dict]],
+    update: dict[str, Union[int, list[dict]]],
     exstend_info: Optional[bool]=True
 ) -> str:
     """Возвращает заголовок списка изменений.
@@ -202,8 +202,8 @@ def get_update_header(
     :rtype: str
     """
     # Получаем timestamp обновления
-    end_timestamp = update.get("end_time", 0)
-    start_timespamp = update.get("start_time", end_timestamp)
+    end_timestamp: int = update.get("end_time", 0)
+    start_timespamp: int = update.get("start_time", end_timestamp)
     etime = datetime.fromtimestamp(end_timestamp)
     stime = datetime.fromtimestamp(start_timespamp)
     message = f"📀 {stime.strftime('%d.%m %H:%M')} "
@@ -231,7 +231,7 @@ def get_update_header(
 # Вспомогательные функции отображения
 # ===================================
 
-def send_day_lessons(lessons: list[Union[list[str], str]]) -> str:
+def send_day_lessons(lessons: Iterable[Union[list[str], str]]) -> str:
     """Собирает сообщение с расписанием уроков на день.
 
     Возвращает сообещние списка уроков на день.
@@ -244,7 +244,7 @@ def send_day_lessons(lessons: list[Union[list[str], str]]) -> str:
     расписании.
 
     :param lessons: Список уроков.
-    :type lessons: list[Union[list[str], str]]
+    :type lessons: Iterable[Union[list[str], str]]
     :return: Сообщение с расписанием на день.
     :rtype: str
     """
@@ -347,11 +347,11 @@ def send_counter( # noqa: PLR0912
     message = ""
 
     for group, res in sorted(groups.items(), key=lambda x: x[0], reverse=True):
-        group_plural_form = plural_form(group, ["раз", "раза", "раз"])
+        group_plural_form = plural_form(group, ("раз", "раза", "раз"))
         message += f"\n🔘 {group} {group_plural_form}:"
 
         # Доабвляем подгруппу
-        if target is not None or target.value != "none":
+        if target is not None or target is CounterTarget.NONE:
             for obj, cnt in res.items():
                 if len(res) > 1:
                     message += "\n--"
@@ -407,30 +407,30 @@ def _get_next_update_str(time: datetime, now: Optional[datetime]=None) -> str:
 
     return res
 
-def _get_cl_counter_str(cl_counter: Counter) -> str:
-    groups = defaultdict(list)
-    for k, v in cl_counter.items():
-        groups[v].append(k)
+# def _get_cl_counter_str(cl_counter: Counter) -> str:
+#     groups = defaultdict(list)
+#     for k, v in cl_counter.items():
+#         groups[v].append(k)
 
-    res = ""
-    for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
-        res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+#     res = ""
+#     for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
+#         res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
 
-    return res
+#     return res
 
-def _get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
-    groups = defaultdict(list)
-    for k, v in hour_counter.items():
-        groups[v].append(k)
+# def _get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
+#     groups = defaultdict(list)
+#     for k, v in hour_counter.items():
+#         groups[v].append(k)
 
-    res = ""
-    for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
-        if k == 1:
-            res += f" 🔸{', '.join(sorted(map(str, v)))}"
-        else:
-            res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+#     res = ""
+#     for k, v in sorted(groups.items(), key=lambda x: x[0]):
+#         if k == 1:
+#             res += f" 🔸{', '.join(sorted(v))}"
+#         else:
+#             res += f" 🔹{k} ({', '.join(sorted(v))})"
 
-    return res
+#     return res
 
 
 
@@ -478,7 +478,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +3 (165)"
+        res = "🌟 Версия sp: 6.0.1 +4 (170)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -515,7 +515,7 @@ class SPMessages:
         :return: Сообщение с расписанием уроков.
         :rtype: str
         """
-        cl = intent.cl or (user.data.cl,)
+        cl: str = intent.cl or (user.data.cl,)
         lessons = {x: self.sc.get_lessons(x) for x in cl}
         message = ""
         for day in intent.days:

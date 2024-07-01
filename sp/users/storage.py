@@ -440,7 +440,7 @@ class User:
         self.data = self._storage.get_user(self.uid)
 
     def get_updates(self, sc: Schedule, save_users: Optional[bool]=True
-    ) -> Optional[dict[str, Union[str, dict]]]:
+    ) -> Optional[dict[str, Union[int, list[dict]]]]:
         """Возаращает все не просмотренные записи об изменениях.
 
         Полчает все новые записи об изменниях в расписании, начиная
@@ -460,7 +460,7 @@ class User:
         :param save_users: Обноявлять ли временную метку обновления.
         :type save_users: Optional[bool]
         :return: Сжайтый список изменений расписания пользователя.
-        :rtype: Optional[dict[str, Union[str, dict]]]
+        :rtype: Optional[dict[str, Union[int, list[dict]]]]
         """
         if self.data.cl is None:
             return

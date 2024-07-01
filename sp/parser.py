@@ -296,7 +296,7 @@ class Schedule:
         self.lessons: dict[str, list[str]] = self.schedule["lessons"]
 
     @property
-    def l_index(self) -> Optional[dict[str, list[dict]]]:
+    def l_index(self) -> dict[str, list[dict]]:
         """Индекс уроков.
 
         Загружает индекс урокво из файла.
@@ -336,7 +336,7 @@ class Schedule:
         return self._l_index
 
     @property
-    def c_index(self) -> Optional[dict[str, list[dict]]]:
+    def c_index(self) -> dict[str, list[dict]]:
         """Индекс кабинетов.
 
         Загружает индекс кабинетов из файла.
