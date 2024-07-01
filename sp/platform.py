@@ -8,10 +8,12 @@
 доступ к расписанию.
 """
 
+from typing import Any
 
 from loguru import logger
 
 from sp.exceptions import ViewCompatibleError, ViewSelectedError
+from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
@@ -144,3 +146,83 @@ class Platform():
         :rtype: UserIntentsStorage
         """
         return UserIntentsStorage(f"sp_data/users/{self.pid}.db", uid)
+
+    # Сокращения для методов класса представления
+    # ===========================================
+
+    def lessons(self, user: User, intent: Intent) -> Any:
+        """Отправляет расписание уроков.
+
+        Является сокращение для метода ``Platform.view.send_lessons()``.
+
+        Для уточнения формата расписания принимает экземпляр намерения.
+        А также пользователя, которые собирается получить расписание.
+
+        :param intent: Намерения для уточнения параметров расписания.
+        :type intent: Intent
+        :param user: Кто хочет получить расписание уроков.
+        :type user: User
+        :return: Рузельтат работы метода в звисимости от платформы.
+        :rtype: Any
+        """
+        return self.view.send_lessons(intent, user)
+
+    def today_lessons(self, user: User, intent: Intent) -> Any:
+        """Расписание уроков на сегодня/завтра.
+
+        Сокращение для метода ``Platform.view.send_today_lessons()``.
+
+        Работает как send_lessons.
+        Отправляет расписание для классов на сегодня, если уроки
+        ешё идут.
+        Отпрвялет расписание на завтра, если уроки на сегодня уже
+        кончились.
+
+        Использует намерения для уточнения расписания.
+        Однако будет игнорировать указанные дни в намерении.
+        Иначе используйте метод send_lessons.
+
+        :param intent: Намерения для уточнения расписания.
+        :type intent: Intent
+        :param user: Кто хочет получить расписание уроков.
+        :type user: User
+        :return: Результат в зависимости от класса предсталвения.
+        :rtype: Any
+        """
+        return self.view.send_today_lessons(intent, user)
+
+    def search(
+        self,
+        target: str,
+        intent: Intent,
+        cabinets: bool = False
+    ) -> Any:
+        """Поиск в расписании по уроку/кабинету.
+
+        Является сокращением для ``Platform.view.search()``.
+
+        Производит поиск в расписании.
+        А после собирает сообщение с результатами поиска.
+
+        Поиск немного изменяется в зависимости от режима.
+
+        .. table::
+
+            +----------+---------+---------+
+            | cabinets | obj     | another |
+            +==========+=========+=========+
+            | false    | lesson  | cabinet |
+            +----------+---------+---------+
+            | true     | cabinet | lesson  |
+            +----------+---------+---------+
+
+        :param target: Цель для поиска, название урока или кабинета.
+        :type target: str
+        :param intent: Намерение для уточнения результатов поиска.
+        :type intent: Intent
+        :param cabinets: Что ищём, урок или кабинет. Обычно урок.
+        :type cabinets: bool
+        :return: Результаты поиска в зависимости от платформы.
+        :rtype: Any
+        """
+        return self.view.search(target, intent, cabinets)

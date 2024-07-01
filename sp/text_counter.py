@@ -37,12 +37,16 @@
 
 from typing import Optional
 
-from sp.parser import Schedule
-from sp.messages import send_counter
-from sp.intents import Intent
 from sp.counters import (
-    group_counter_res, cl_counter, days_counter, index_counter, CounterTarget
+    CounterTarget,
+    cl_counter,
+    days_counter,
+    group_counter_res,
+    index_counter,
 )
+from sp.intents import Intent
+from sp.messages import send_counter
+from sp.parser import Schedule
 
 
 class TextCounter:
