@@ -27,7 +27,7 @@
 
     sc = Schedule()
     res = days_counter(sc, sc.construct_intent())
-    groups = group_counter_res(res)
+    groups = _group_counter_res(res)
     message = send_counter(groups, target="cl")
 
 Новый вариант:
@@ -84,7 +84,7 @@ class CounterTarget(Enum):
 # Вспомогательные функции
 # =======================
 
-def group_counter_res(counter_res: dict[str, dict[str, Union[int, Counter]]]
+def _group_counter_res(counter_res: dict[str, dict[str, Union[int, Counter]]]
 ) -> dict[int, dict[str, dict]]:
     """Группирует результат работы счётчиков по total ключу.
 
@@ -152,7 +152,7 @@ class Counter:
     def cl(
         self,
         intent: Optional[Intent]=None
-    ) -> dict[str, dict[str, Union[int, Counter]]]:
+    ) -> dict[int, dict[str, dict]]:
         """Счётчик по классам с использованием sp.lessons.
 
         Считает элементы расписнаия, пробегаясь по sp.lessons.
@@ -174,7 +174,7 @@ class Counter:
         :param intent: Намерения для уточнения результатов подсчёта.
         :type intent: Optional[Intent]
         :return: Подсчитанные элементы расписания по классам.
-        :rtype: dict[str, dict[str, Union[int, Counter]]]
+        :rtype: dict[int, dict[str, dict]]
         """
         res: dict[str, Union[int, Counter]] = {}
         if intent is None:
@@ -206,12 +206,12 @@ class Counter:
                     "days": day_counter,
                     "lessons": lessons_counter,
                     "cabinets": cabinets_counter}
-        return res
+        return _group_counter_res(res)
 
     def days(
         self,
         intent: Optional[Intent]
-    ) -> dict[str, dict[str, Union[int, Counter]]]:
+    ) -> dict[int, dict[str, dict]]:
         """Счётчик по дням с использованием sc.lessons.
 
         Производит подсчёт элементов относительно дней недели в расписании.
@@ -233,7 +233,7 @@ class Counter:
         :param intent: Намерения для уточнения результатов подсчёта.
         :type intent: Optional[Intent]
         :return: Подсчитанные элементы расписнаия по дням.
-        :rtype: dict[str, dict[str, Union[int, Counter]]]
+        :rtype: dict[int, dict[str, dict]]
         """
         res: dict[int, dict[str, Union[int, Counter]]] = {
             str(x): {"cl": Counter(),
@@ -261,13 +261,13 @@ class Counter:
                     for x in lesson[1].split("/"):
                         res[str(day)]["cabinets"][x] += 1
 
-        return res
+        return _group_counter_res(res)
 
     def index(
         self,
         intent: Optional[Intent],
         cabinets_mode: Optional[bool]=False
-    ) -> dict[str, dict[str, Union[int, Counter]]]:
+    ) -> dict[int, dict[str, dict]]:
         """Счётчик уроков/кабинетов с использованием индексов.
 
         Производит подсчёт элементов расписания в счётиках.
@@ -308,7 +308,7 @@ class Counter:
         :param cabinets_mode: Делать ли подсчёты по кабинетам (c_index).
         :type cabinets_mode: Optional[bool]
         :return: Подсчитанные элементы расписнаия по урокам/кабинетам.
-        :rtype: dict[str, dict[str, Union[int, Counter]]]
+        :rtype: dict[int, dict[str, dict]]
         """
         res: dict[str, dict[str, Union[int, Counter]]] = defaultdict(
             lambda: {
@@ -347,4 +347,4 @@ class Counter:
                         res[k]["cl"][cl] += len(i)
                         res[k]["days"][str(day)] += len(i)
                         res[k]["main"][another] += len(i)
-        return res
+        return _group_counter_res(res)
