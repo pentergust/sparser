@@ -321,77 +321,6 @@ def send_search_res(intent: Intent, res: list) -> str:
 
     return message
 
-# TODO: AAAAAAAAAAAAAAAAAAAA
-def send_counter( # noqa: PLR0912
-    groups: dict[int, dict[str, dict]],
-    target: Optional[CounterTarget]=None,
-    days_counter: Optional[bool]=False
-) -> str:
-    """Возвращает сообщение с результами работы счётчика.
-
-    Собирает сообщение сгруппированного результата работы счётчика.
-    Отображает результаты счётчика, отсортированные от большего
-    к меньшему.
-    Если указана подгруппу (target), то она также буде включена в
-    результаты счётчика.
-
-    :param groups: Сгруппированные результаты работы счётчика.
-    :type groups: dict[int, dict[str, dict]]
-    :param target: Режим просмотра расписания.
-    :type target: Optional[CounterTarget]
-    :param days_counter: Заменять имена групп на названия дней недели.
-    :type days_counter: Optional[bool]
-    :return: Сообщение с результатами работы счётчиков.
-    :rtype: str
-    """
-    message = ""
-
-    for group, res in sorted(groups.items(), key=lambda x: x[0], reverse=True):
-        group_plural_form = plural_form(group, ("раз", "раза", "раз"))
-        message += f"\n🔘 {group} {group_plural_form}:"
-
-        # Доабвляем подгруппу
-        if target is not None or target is CounterTarget.NONE:
-            for obj, cnt in res.items():
-                if len(res) > 1:
-                    message += "\n--"
-
-                # Заменям числа на название дней недели для счётчка по дням
-                # Подумайте сами, что лучше, 1 или вт.
-                if days_counter:
-                    message += f" {_SHORT_DAYS_NAMES[int(obj)]}:"
-                else:
-                    message += f" {obj}:"
-
-                cnt_groups = reverse_counter(cnt.get(target.value, {}))
-
-                for cnt_group, k in sorted(cnt_groups.items(),
-                                    key=lambda x: x[0], reverse=True):
-                    # Заменяем числа на дни недели в подгруппу счётчика
-                    if target == CounterTarget.DAYS:
-                        count_items = " ".join((
-                            _SHORT_DAYS_NAMES[int(x)] for x in k
-                        ))
-                    else:
-                        count_items = " ".join(k)
-
-                    if cnt_group == 1:
-                        message += f" 🔸{count_items}"
-                    elif cnt_group == group:
-                        message += f" 🔹{count_items}"
-                    else:
-                        message += f" 🔹{cnt_group}:{count_items}"
-
-            message += "\n"
-
-        # Заменям числа на название дней недели для счётчка по дням
-        elif days_counter:
-            message += f" {', '.join([_SHORT_DAYS_NAMES[int(x)] for x in res])}"
-        else:
-            message += f" {', '.join(res)}"
-
-    return message
-
 
 # Вспомогательные функции для сообщения статуса парсера
 # =====================================================
@@ -478,7 +407,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +5 (171)"
+        res = "🌟 Версия sp: 6.0.1 +6 (172)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -685,5 +614,76 @@ class SPMessages:
 
                 message += "\n" if len(cl_updates) > 1 else " "
                 message += send_cl_updates(cl_updates)
+
+        return message
+
+    def send_counter( # noqa: PLR0912
+        self,
+        groups: dict[int, dict[str, dict]],
+        target: Optional[CounterTarget]=None,
+        days_counter: Optional[bool]=False
+    ) -> str:
+        """Возвращает сообщение с результами работы счётчика.
+
+        Собирает сообщение сгруппированного результата работы счётчика.
+        Отображает результаты счётчика, отсортированные от большего
+        к меньшему.
+        Если указана подгруппу (target), то она также буде включена в
+        результаты счётчика.
+
+        :param groups: Сгруппированные результаты работы счётчика.
+        :type groups: dict[int, dict[str, dict]]
+        :param target: Режим просмотра расписания.
+        :type target: Optional[CounterTarget]
+        :param days_counter: Заменять имена групп на названия дней недели.
+        :type days_counter: Optional[bool]
+        :return: Сообщение с результатами работы счётчиков.
+        :rtype: str
+        """
+        message = ""
+
+        for group, res in sorted(groups.items(), key=lambda x: x[0], reverse=True):
+            group_plural_form = plural_form(group, ("раз", "раза", "раз"))
+            message += f"\n🔘 {group} {group_plural_form}:"
+
+            # Доабвляем подгруппу
+            if target is not None or target is CounterTarget.NONE:
+                for obj, cnt in res.items():
+                    if len(res) > 1:
+                        message += "\n--"
+
+                    # Заменям числа на название дней недели для счётчка по дням
+                    # Подумайте сами, что лучше, 1 или вт.
+                    if days_counter:
+                        message += f" {_SHORT_DAYS_NAMES[int(obj)]}:"
+                    else:
+                        message += f" {obj}:"
+
+                    cnt_groups = reverse_counter(cnt.get(target.value, {}))
+
+                    for cnt_group, k in sorted(cnt_groups.items(),
+                                        key=lambda x: x[0], reverse=True):
+                        # Заменяем числа на дни недели в подгруппу счётчика
+                        if target == CounterTarget.DAYS:
+                            count_items = " ".join((
+                                _SHORT_DAYS_NAMES[int(x)] for x in k
+                            ))
+                        else:
+                            count_items = " ".join(k)
+
+                        if cnt_group == 1:
+                            message += f" 🔸{count_items}"
+                        elif cnt_group == group:
+                            message += f" 🔹{count_items}"
+                        else:
+                            message += f" 🔹{cnt_group}:{count_items}"
+
+                message += "\n"
+
+            # Заменям числа на название дней недели для счётчка по дням
+            elif days_counter:
+                message += f" {', '.join([_SHORT_DAYS_NAMES[int(x)] for x in res])}"
+            else:
+                message += f" {', '.join(res)}"
 
         return message
