@@ -271,3 +271,6 @@ class Platform(Generic[_V]):
 
     def check_updates(self, user: User) -> Optional[_V]:
         return self.view.check_updates(user)
+
+    def send_status(self, user: User) -> _V:
+        return self.view.send_status(user)
