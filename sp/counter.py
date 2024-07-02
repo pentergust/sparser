@@ -144,6 +144,7 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
 # =================
 
 class CurrentCounter:
+    """Счтётчих элементов текущего расписания."""
 
     def __init__(self, sc: Schedule, intent: Intent) -> None:
         self.sc = sc
@@ -181,7 +182,7 @@ class CurrentCounter:
             intent = self.intent
 
         # Пробегаемся по урокам и дням в расписании
-        for cl, days in sc.lessons.items():
+        for cl, days in self.sc.lessons.items():
             if intent.cl and cl not in intent.cl:
                 continue
 
@@ -244,7 +245,7 @@ class CurrentCounter:
         if Intent is None:
             intent = self.intent
 
-        for cl, days in sc.lessons.items():
+        for cl, days in self.sc.lessons.items():
             if intent.cl and cl not in intent.cl:
                 continue
 
@@ -312,18 +313,21 @@ class CurrentCounter:
         """
         res: dict[str, dict[str, Union[int, Counter]]] = defaultdict(
             lambda: {
-                "total": 0, "days": Counter(), "cl": Counter(), "main": Counter()
+                "total": 0,
+                "days": Counter(),
+                "cl": Counter(),
+                "main": Counter()
             }
         )
         if intent is None:
             intent = self.intent
 
         if cabinets_mode:
-            index = sc.c_index
+            index = self.sc.c_index
             obj_filter = intent.cabinets
             another_filter = intent.lessons
         else:
-            index = sc.l_index
+            index = self.sc.l_index
             obj_filter = intent.lessons
             another_filter = intent.cabinets
 
