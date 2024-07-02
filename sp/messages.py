@@ -9,7 +9,7 @@
 """
 
 from datetime import datetime, time
-from typing import Iterable, NamedTuple, Optional, Union
+from typing import Generic, Iterable, NamedTuple, Optional, TypeVar, Union
 
 from .counter import CounterTarget, reverse_counter
 from .intents import Intent
@@ -31,7 +31,6 @@ _UPDATE_DELTA = 172800
 # Массимальное отображамое прошедшее время обновления (24 часа)
 _MAX_UPDATE_SINCE = 86400
 
-
 # Расписание уроков: начало (час, минуты), конец (час, минуты)
 # Расписание звонков с понедельника (22.01) и  до конца уч. года.
 # 1. 8.00-8.45
@@ -47,7 +46,6 @@ timetable = [
     [8, 0, 8, 45], [8, 50, 9, 35], [9, 50, 10, 35], [10, 50, 11, 35],
     [11, 50, 12, 35], [12, 45, 13, 30], [13, 40, 14, 25], [14, 35, 15, 20],
 ]
-
 
 # Вспомогательныек функции отображения
 # ====================================
@@ -362,8 +360,9 @@ def _get_next_update_str(time: datetime, now: Optional[datetime]=None) -> str:
 #     return res
 
 
+_V = TypeVar("_V")
 
-class SPMessages:
+class SPMessages(Generic[_V]):
     """Предоставляет методы для более удобной работы с расписанием.
 
     В отличие от необработанных результатов работы Schedule, данный
@@ -407,7 +406,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +9 (176)"
+        res = "🌟 Версия sp: 6.0.1 +11 (178)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -642,7 +641,11 @@ class SPMessages:
         """
         message = ""
 
-        for group, res in sorted(groups.items(), key=lambda x: x[0], reverse=True):
+        for group, res in sorted(
+            groups.items(),
+            key=lambda x: x[0],
+            reverse=True
+        ):
             group_plural_form = plural_form(group, ("раз", "раза", "раз"))
             message += f"\n🔘 {group} {group_plural_form}:"
 
@@ -682,7 +685,7 @@ class SPMessages:
 
             # Заменям числа на название дней недели для счётчка по дням
             elif days_counter:
-                message += f" {', '.join([_SHORT_DAYS_NAMES[int(x)] for x in res])}"
+                message += f" {', '.join([_SHORT_DAYS_NAMES[int(x)] for x in res])}" # noqa: E501
             else:
                 message += f" {', '.join(res)}"
 

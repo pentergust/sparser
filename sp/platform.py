@@ -8,18 +8,25 @@
 доступ к расписанию.
 """
 
-from typing import Any
+from typing import Generic, Optional, TypeVar
 
 from loguru import logger
 
+from sp.counter import CounterTarget
 from sp.exceptions import ViewCompatibleError, ViewSelectedError
 from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
-from sp.counter import CounterTarget, CurrentCounter
 
-class Platform():
+# Исползуется как результат работы платформы
+_V = TypeVar('_V')
+
+
+# Главный класс платформы
+# =======================
+
+class Platform(Generic[_V]):
     """Описание платформфы, на котороы було запущено расписание.
 
     более высокоуровневый класс абстракции.
@@ -53,7 +60,7 @@ class Platform():
 
         #: Экземпляр хранилища пользователей платформы
         self.users = FileUserStorage(f"sp_data/users/{pid}.json")
-        self._view: SPMessages | None = None
+        self._view: SPMessages[_V] | None = None
 
 
     # Работа с классом просмотра
@@ -70,7 +77,7 @@ class Platform():
             return False
 
     @property
-    def view(self) -> SPMessages:
+    def view(self) -> SPMessages[_V]:
         """Получает уттановленынй класс представления.
 
         Предполагается что перед тем как использовать класс предсталвния
@@ -104,7 +111,7 @@ class Platform():
             raise ViewSelectedError("Yot must set View before use it")
 
     @view.setter
-    def view(self, view: SPMessages) -> None:
+    def view(self, view: SPMessages[_V]) -> None:
         if not isinstance(view, SPMessages):
             raise ViewCompatibleError("View must be instance of SPMessages")
         self._check_api_version(view.API_VERSION)
@@ -150,7 +157,7 @@ class Platform():
     # Сокращения для методов класса представления
     # ===========================================
 
-    def lessons(self, user: User, intent: Intent) -> Any:
+    def lessons(self, user: User, intent: Intent) -> _V:
         """Отправляет расписание уроков.
 
         Является сокращение для метода ``Platform.view.send_lessons()``.
@@ -163,11 +170,11 @@ class Platform():
         :param user: Кто хочет получить расписание уроков.
         :type user: User
         :return: Рузельтат работы метода в звисимости от платформы.
-        :rtype: Any
+        :rtype: _V
         """
         return self.view.send_lessons(intent, user)
 
-    def today_lessons(self, user: User, intent: Intent) -> Any:
+    def today_lessons(self, user: User, intent: Intent) -> _V:
         """Расписание уроков на сегодня/завтра.
 
         Сокращение для метода ``Platform.view.send_today_lessons()``.
@@ -187,7 +194,7 @@ class Platform():
         :param user: Кто хочет получить расписание уроков.
         :type user: User
         :return: Результат в зависимости от класса предсталвения.
-        :rtype: Any
+        :rtype: _V
         """
         return self.view.send_today_lessons(intent, user)
 
@@ -196,7 +203,7 @@ class Platform():
         target: str,
         intent: Intent,
         cabinets: bool = False
-    ) -> Any:
+    ) -> _V:
         """Поиск в расписании по уроку/кабинету.
 
         Является сокращением для ``Platform.view.search()``.
@@ -223,7 +230,7 @@ class Platform():
         :param cabinets: Что ищём, урок или кабинет. Обычно урок.
         :type cabinets: bool
         :return: Результаты поиска в зависимости от платформы.
-        :rtype: Any
+        :rtype: _V
         """
         return self.view.search(target, intent, cabinets)
 
@@ -232,7 +239,7 @@ class Platform():
         groups: dict[int, dict[str, dict]],
         target: Optional[CounterTarget]=None,
         days_counter: Optional[bool]=False
-    ) -> Any:
+    ) -> _V:
         """Получает результаты работы счётчика.
 
         Используется чтобы преобразовать результаты счётчика к кдобному
