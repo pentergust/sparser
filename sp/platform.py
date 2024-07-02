@@ -17,7 +17,7 @@ from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
-
+from sp.counter import CounterTarget, CurrentCounter
 
 class Platform():
     """Описание платформфы, на котороы було запущено расписание.
@@ -226,3 +226,27 @@ class Platform():
         :rtype: Any
         """
         return self.view.search(target, intent, cabinets)
+
+    def send_counter(
+        self,
+        groups: dict[int, dict[str, dict]],
+        target: Optional[CounterTarget]=None,
+        days_counter: Optional[bool]=False
+    ) -> Any:
+        """Получает результаты работы счётчика.
+
+        Используется чтобы преобразовать результаты счётчика к кдобному
+        формату.
+
+        .. code-block:: python
+            from sp.parser import Schedule
+            from sp.counter import CurrentCounter, CounterTarget
+
+            sc = Schedule()
+            cc = CurrentCounter(sc, sc.construct_intent())
+            message = platform.send_counter(
+                cc.cl(),
+                CounterTarget.DAYS
+            )
+        """
+        return self.view.send_counter(groups, target, days_counter)
