@@ -157,7 +157,7 @@ class Platform(Generic[_V]):
     # Сокращения для методов класса представления
     # ===========================================
 
-    def lessons(self, user: User, intent: Intent) -> _V:
+    def lessons(self, user: User, intent: Optional[Intent]=None) -> _V:
         """Отправляет расписание уроков.
 
         Является сокращение для метода ``Platform.view.send_lessons()``.
@@ -166,15 +166,17 @@ class Platform(Generic[_V]):
         А также пользователя, которые собирается получить расписание.
 
         :param intent: Намерения для уточнения параметров расписания.
-        :type intent: Intent
+        :type intent: Optional[Intent]
         :param user: Кто хочет получить расписание уроков.
         :type user: User
         :return: Рузельтат работы метода в звисимости от платформы.
         :rtype: _V
         """
-        return self.view.send_lessons(intent, user)
+        if intent is None:
+            intent = self.view.sc.construct_intent(cl=user.data.cl)
+        return self.view.send_lessons(intent)
 
-    def today_lessons(self, user: User, intent: Intent) -> _V:
+    def today_lessons(self, user: User, intent: Optional[Intent]=None) -> _V:
         """Расписание уроков на сегодня/завтра.
 
         Сокращение для метода ``Platform.view.send_today_lessons()``.
@@ -196,7 +198,9 @@ class Platform(Generic[_V]):
         :return: Результат в зависимости от класса предсталвения.
         :rtype: _V
         """
-        return self.view.send_today_lessons(intent, user)
+        if intent is None:
+            intent = self.view.sc.construct_intent(cl=user.data.cl)
+        return self.view.send_today_lessons(intent)
 
     def search(
         self,

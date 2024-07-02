@@ -406,7 +406,7 @@ class SPMessages(Generic[_V]):
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +11 (178)"
+        res = "🌟 Версия sp: 6.0.1 +12 (180)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -429,7 +429,7 @@ class SPMessages(Generic[_V]):
     # Отображение расписания
     # ======================
 
-    def send_lessons(self, intent: Intent, user: User) -> str:
+    def send_lessons(self, intent: Intent) -> str:
         """Собирает сообщение с расписанием уроков.
 
         Обрётка над методом класса Schedule для получения расписания.
@@ -438,13 +438,10 @@ class SPMessages(Generic[_V]):
 
         :param intent: Намерения для уточнения параметров расписания.
         :type intent: Intent
-        :param user: Кто хочет получить расписание уроков.
-        :type user: User
         :return: Сообщение с расписанием уроков.
         :rtype: str
         """
-        cl: str = intent.cl or (user.data.cl,)
-        lessons = {x: self.sc.get_lessons(x) for x in cl}
+        lessons = {x: self.sc.get_lessons(x) for x in intent.cl}
         message = ""
         for day in intent.days:
             message += f"\n📅 На {DAYS_NAMES[day]}:"
@@ -454,13 +451,13 @@ class SPMessages(Generic[_V]):
             message += "\n"
 
         # Проверяем обновления в расписаниии
-        update = user.get_updates(self.sc)
-        if update is not None:
-            message += "\nУ вас изменилось расписание! 🎉"
-            message += f"\n{self.send_update(update, cl)}"
+        # update = user.get_updates(self.sc)
+        # if update is not None:
+        #     message += "\nУ вас изменилось расписание! 🎉"
+        #     message += f"\n{self.send_update(update, intent.cl[0])}"
         return message
 
-    def get_current_day(self, intent: Intent, user: User) -> int:
+    def get_current_day(self, intent: Intent) -> int:
         """Получате текщий или следующий день если уроки кончились.
 
         Работает это так, если уроки ещё не кончились,
@@ -472,8 +469,6 @@ class SPMessages(Generic[_V]):
 
         :param intent: Намерение для получения расписания
         :type intent: Intent
-        :param user: Кто хочет получить расписание.
-        :type user: Uaer
         :return: Номер дня недели, для которого получать расписание
         :rtype: int
         """
@@ -485,8 +480,7 @@ class SPMessages(Generic[_V]):
         if today == 6: # noqa: PLR2004
             return 0
 
-        cl = intent.cl or (user.data.cl,)
-        max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), cl))
+        max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), intent.cl))
         hour = timetable[max_lessons-1][2]
 
         if now.hour >= hour:
@@ -498,7 +492,7 @@ class SPMessages(Generic[_V]):
         # Всё, не надо мне тут начинать.
         return 0 if today > 5 else today # noqa: PLR2004
 
-    def send_today_lessons(self, intent: Intent, user: User) -> str:
+    def send_today_lessons(self, intent: Intent) -> str:
         """Расписание уроков на сегодня/завтра.
 
         Работает как send_lessons.
@@ -513,16 +507,12 @@ class SPMessages(Generic[_V]):
 
         :param intent: Намерения для уточнения расписания.
         :type intent: Intent
-        :param user: Кто хочет получить расписание уроков.
-        :type user: User
         :return: Расписание уроков на сегодня/завтра.
         :rtype: str
         """
         return self.send_lessons(intent.reconstruct(
-            self.sc, days=self.get_current_day(intent, user)
-        ),
-            user
-        )
+            self.sc, days=self.get_current_day(intent)
+        ))
 
 
     # Методы для работы с расписанием
