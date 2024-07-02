@@ -406,7 +406,7 @@ class SPMessages(Generic[_V]):
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +12 (180)"
+        res = "🌟 Версия sp: 6.0.1 +13 (181)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -449,12 +449,6 @@ class SPMessages(Generic[_V]):
                 message += f"\n🔶 Для {cl}:"
                 message += f"{send_day_lessons(cl_lessons[day])}"
             message += "\n"
-
-        # Проверяем обновления в расписаниии
-        # update = user.get_updates(self.sc)
-        # if update is not None:
-        #     message += "\nУ вас изменилось расписание! 🎉"
-        #     message += f"\n{self.send_update(update, intent.cl[0])}"
         return message
 
     def get_current_day(self, intent: Intent) -> int:
@@ -605,6 +599,18 @@ class SPMessages(Generic[_V]):
                 message += send_cl_updates(cl_updates)
 
         return message
+
+    def check_updates(self, user: User) -> str | None:
+        # Проверяем обновления в расписаниии
+        update = user.get_updates(self.sc)
+        if update is None:
+            return
+
+        return (
+            "🎉 У вас изменилось расписание!\n"
+            f"{self.send_update(update, user.data.cl)}"
+        )
+
 
     def send_counter( # noqa: PLR0912
         self,

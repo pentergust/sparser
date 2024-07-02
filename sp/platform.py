@@ -174,7 +174,8 @@ class Platform(Generic[_V]):
         """
         if intent is None:
             intent = self.view.sc.construct_intent(cl=user.data.cl)
-        return self.view.send_lessons(intent)
+        res = self.view.send_lessons(intent)
+        return res
 
     def today_lessons(self, user: User, intent: Optional[Intent]=None) -> _V:
         """Расписание уроков на сегодня/завтра.
@@ -261,3 +262,12 @@ class Platform(Generic[_V]):
             )
         """
         return self.view.send_counter(groups, target, days_counter)
+
+    def send_updates(self,
+        update: dict[str, Union[int, list[dict]]],
+        hide_cl: Optional[str]=None
+    ) -> _V:
+        return self.view.send_update(update, hide_cl)
+
+    def check_updates(self, user: User) -> Optional[_V]:
+        return self.view.check_updates(user)
