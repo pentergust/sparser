@@ -17,7 +17,7 @@ import hashlib
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Union, NamedTuple
+from typing import Iterable, NamedTuple, Optional, Union
 
 import requests
 from loguru import logger
