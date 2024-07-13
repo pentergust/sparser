@@ -21,6 +21,10 @@
 - utils: Общие вспомогательные функции.
 """
 
+<<<<<<< HEAD
 from sp.version import PROJECT_VERSION
 
 __version__ = PROJECT_VERSION.full
+=======
+__version__ = "6.0.2"
+>>>>>>> 5f74203 (Sp: Fix save user while check updates)
