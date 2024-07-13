@@ -1,7 +1,7 @@
 """Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.6 (sp v6)
+Ver: 1.6.1 (sp v6)
 """
 
 import argparse
@@ -87,7 +87,7 @@ def main() -> None:
 
     # Статус генератора сообщений
     if args.version:
-        print(platform.view.send_status())
+        print(platform.view.send_status(user))
 
     # Получение намерений для расписания
     if args.intents is not None:
@@ -222,6 +222,7 @@ def main() -> None:
 
     else:
         print(platform.view.send_today_lessons(intent, user))
+
 
 # Запуск скрипта
 # ==============
