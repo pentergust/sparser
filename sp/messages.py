@@ -348,7 +348,7 @@ def send_counter(
 
 
         # Доабвляем подгруппу
-        if target is not None:
+        if target is not None or target.value != "none":
             for obj, cnt in res.items():
                 # Заменям числа на название дней недели для счётчка по дням
                 if days_counter:
@@ -501,7 +501,7 @@ class SPMessages:
 
         active_pr = round(active_users/len(users)*100, 2)
 
-        res = "🌟 Версия sp: 5.8.5 (139)"
+        res = "🌟 Версия sp: 5.8.6 (140)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
