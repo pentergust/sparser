@@ -2,17 +2,12 @@
 
 > Самостоятельный парсер, генератор сообщений и чат-боты для школьного расписания уроков.
 
-![](docs/_images/telegram.png)
+![](docs/_images/lts_badge.png)
 
- <!-- some shields -->
-<p align="center">
-  <a href='https://sparser.readthedocs.io/ru/latest/?badge=latest'>
-    <img alt="Documentation", src='https://readthedocs.org/projects/sparser/badge/?version=latest'>
-  </a>
-  <img alt="Version" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.version&prefix=v&label=SParser&color=green">
-  <img alt="License" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.license&label=License&color=red">
-  <img alt="Python verion" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.dependencies.python&label=Python">
-</p>
+проект перешёл в состояние **долгосрочной поддержки**.
+Будут поставляться только исправления, без добавления новых функций.
+
+***
 
 
 Приветствую в проекте.
