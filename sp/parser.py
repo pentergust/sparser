@@ -293,7 +293,7 @@ class Schedule:
         #: Полное расписание, включая метаданные, прим. время полчения
         self.schedule: dict[str, Union[int, dict, str]] = self.get()
         #: Расписание уроков, он же индекс классов (часто используется)
-        self.lessons: dict[str, list[str]] = self.schedule["lessons"]
+        self.lessons: dict[str, list[str]] = self.schedule.get("lessons", {})
 
     @property
     def l_index(self) -> dict[str, list[dict]]:
