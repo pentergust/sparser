@@ -1,7 +1,7 @@
 """Командный интерфейc для доступа к генератору сообщений.
 
 Author: Milinuri Nirvalen
-Ver: 1.6.1 (sp v6)
+Ver: 1.6.1 +1 (sp v6)
 """
 
 import argparse
@@ -12,8 +12,11 @@ from sp.intents import Intent
 from sp.messages import SPMessages, send_search_res
 from sp.platform import Platform
 from sp.text_counter import TextCounter
+from sp.users.storage import User
 from sp.utils import get_str_timedelta
 
+# Вспомогательные фцнкции для работы
+# ==================================
 
 def _get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -72,6 +75,100 @@ def _get_parser() -> argparse.ArgumentParser:
 
     return parser
 
+def _get_main_intent(platform: Platform, args: argparse.Namespace) -> Intent:
+    # получает глобальное намерение из аргументов
+    if args.intents is not None:
+        return platform.view.sc.parse_intent(args.intent.split())
+    else:
+        return Intent()
+
+
+# Рукава обработки аргументов
+# ===========================
+
+def _process_user(
+    args: argparse.Namespace,
+    platform: Platform,
+    user: User
+) -> None:
+    # Получает данные пользователя
+    if args.action == "get":
+        create_delta = get_str_timedelta(
+            int(time()) - user.data.create_time
+        )
+        if user.data.last_parse != 0:
+            parse_delta = get_str_timedelta(
+                int(time()) - user.data.last_parse
+            )
+        else:
+            parse_delta = 0
+
+        print(f"Создан: {user.data.create_time} ({create_delta})")
+        print(f"Класс: {user.data.cl} (Установлен: {user.data.set_class})")
+        print(f"Последняя проверка {user.data.last_parse} ({parse_delta})")
+        print(f"Уведомления: {user.data.notifications}")
+        print(f"Уведомлять: {','.join([str(x) for x in user.data.hours])}")
+
+    # Счаитет пользователей в базе данных
+    elif args.action == "count":
+        counted_users = platform.users.count_users(platform.view.sc)
+        print(f"Active: {counted_users.active}")
+        print(f"Class counter ({len(counted_users.cl)}):")
+        for k, v in counted_users.cl.items():
+            print(f"-- {k}: {v}")
+
+    # Создать пользователя
+    elif args.action == "create":
+        user.create()
+        print(f"Create user: {user.uid}")
+
+    # Удалить пользователя
+    elif args.action == "remove":
+        user.remove()
+        print(f"Remove user: {user.uid}")
+
+    # Установить класс пользователю
+    elif args.action == "class":
+        status = user.set_class(args.value, platform.view.sc)
+        if status:
+            print(f"User {user.uid} set class {args.value}")
+        else:
+            print(f"User {user.uid} error set {args.value} class")
+
+    # Настройка отправки уведомлений
+    elif args.action == "notify":
+        if args.value in ("on", "enable"):
+            user.set_notify_on()
+        elif args.value in ("off", "disable"):
+            user.set_notify_off()
+        print(f"User {user.uid} set notify {args.value}!")
+
+    # Добавить рассылку в указанный час
+    elif args.action == "houradd":
+        if args.value.isdigit():
+            hour = max(min(int(args.value), 20), 6)
+            user.add_notify_hour(hour)
+            print(f"{user.uid}: add notify at {hour}:00.")
+
+    # Удаляет рассылку в указанный час
+    elif args.action == "hourremove":
+        if args.value.isdigit():
+            hour = max(min(int(args.value), 20), 6)
+            user.remove_notify_hour(hour)
+            print(f"{user.uid}: remove notify at {hour}:00.")
+
+    # Сбрасывает рассылку уведомлений
+    elif args.action == "hourreset":
+        user.reset_notify()
+
+    else: # artion == "users"
+        for k, v in platform.users.get_users().items():
+            print(f"-- {k} / {v.cl} - {v.set_class}")
+
+
+# Главная функция обработки аргументов
+# ====================================
+
 def main() -> None:
     """Запускает обработку аргументов командной строки."""
     parser = _get_parser()
@@ -80,106 +177,18 @@ def main() -> None:
     platform = Platform(0, "Console", "v1.6", 1)
     platform.view = SPMessages()
     user = platform.get_user(args.uid)
-
-
-    # Обработка генератора сообщений
-    # ==============================
+    intent = _get_main_intent(platform, args)
 
     # Статус генератора сообщений
     if args.version:
         print(platform.view.send_status(user))
 
-    # Получение намерений для расписания
-    if args.intents is not None:
-        intent = platform.view.sc.parse_intent(args.intent.split())
-    else:
-        intent = Intent()
 
     # Обработка пользователей
     # =======================
 
     if args.cmd == "user":
-        # Получает данные пользователя
-        if args.action == "get":
-            create_delta = get_str_timedelta(
-                int(time()) - user.data.create_time
-            )
-            if user.data.last_parse != 0:
-                parse_delta = get_str_timedelta(
-                    int(time()) - user.data.last_parse
-                )
-            else:
-                parse_delta = 0
-
-            print(f"Создан: {user.data.create_time} ({create_delta})")
-            print(f"Класс: {user.data.cl} (Установлен: {user.data.set_class})")
-            print(f"Последняя проверка {user.data.last_parse} ({parse_delta})")
-            print(f"Уведомления: {user.data.notifications}")
-            print(f"Уведомлять: {','.join([str(x) for x in user.data.hours])}")
-
-        # Счаитет пользователей в базе данных
-        elif args.action == "count":
-            counted_users = platform.users.count_users(platform.view.sc)
-            print(f"Active: {counted_users.active}")
-            print(f"Class counter ({len(counted_users.cl)}):")
-            for k, v in counted_users.cl.items():
-                print(f"-- {k}: {v}")
-
-        # Создать пользователя
-        elif args.action == "create":
-            user.create()
-            print(f"Create user: {user.uid}")
-
-        # Удалить пользователя
-        elif args.action == "remove":
-            user.remove()
-            print(f"Remove user: {user.uid}")
-
-        # Установить класс пользователю
-        elif args.action == "class":
-            status = user.set_class(args.value, platform.view.sc)
-            if status:
-                print(f"User {user.uid} set class {args.value}")
-            else:
-                print(f"User {user.uid} error set {args.value} class")
-
-        # Настройка отправки уведомлений
-        elif args.action == "notify":
-            if args.value == "on":
-                user.set_notify_on()
-                print(f"User {user.uid} set notify on!")
-            elif args.value == "off":
-                user.set_notify_off()
-                print(f"User {user.uid} set notify off!")
-            else:
-                print("Choice value between on and off.")
-
-        # Добавить рассылку в указанный час
-        elif args.action == "houradd":
-            if args.value.isdigit():
-                hour = max(min(int(args.value), 20), 6)
-                user.add_notify_hour(hour)
-                print(f"{user.uid}: add notify at {hour}:00.")
-            else:
-                print("Please enter a hour (6-20) in value.")
-
-        # Удаляет рассылку в указанный час
-        elif args.action == "hourremove":
-            if args.value.isdigit():
-                hour = max(min(int(args.value), 20), 6)
-                user.remove_notify_hour(hour)
-                print(f"{user.uid}: remove notify at {hour}:00.")
-            else:
-                print("Please enter a hour (6-20) in value.")
-
-        # Сбрасывает рассылку уведомлений
-        elif args.action == "hourreset":
-            user.reset_notify()
-            print(f"Reset notify hours for {user.uid}")
-
-        else: # artion == "users"
-            for k, v in platform.users.get_users().items():
-                print(f"-- {k} / {v.cl} - {v.set_class}")
+        _process_user(args, platform. users)
 
     # # Получить расписание уроков
     elif args.cmd == "sc":
