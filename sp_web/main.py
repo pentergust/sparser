@@ -4,6 +4,7 @@
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from sp.parser import Schedule
 
@@ -11,12 +12,25 @@ from sp.parser import Schedule
 _SERVER_VERSION = "v0.1"
 app = FastAPI()
 
-# Вместо плдключения платформы мы напрямую будем использовать расписние
-# Поискольку класс расписания отдаёт нам "сырой" результат
-# Который мы будем получать уже на строне фронтенда
+# Вместо плдключения платформы мы напрямую будем использовать расписание
+# Поскольку класс расписания отдаёт нам "сырой" результат
+# Который мы будем получать уже на стороне фронтенда
 # Успех!
 sc = Schedule()
 
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def get_root() -> dict[str, str | bool]:
