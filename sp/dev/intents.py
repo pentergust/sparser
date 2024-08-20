@@ -1,7 +1,5 @@
-from enum import IntEnum, StrEnum
-
+from enum import IntEnum
 from typing import NamedTuple, Self
-
 
 # вспомогательный класс
 # =====================
@@ -64,7 +62,7 @@ class Intent(NamedTuple):
                 ScheduleObject(intent_key),
                 value
             )
-        except ValueError as e:
+        except ValueError:
             raise ParseIntentError(f"Unable to parse intent from {intent_str}")
 
     def pack(self) -> str:
@@ -120,11 +118,25 @@ class IntentChain:
         )
         return self
 
+    def include(self, intent: Intent) -> Self:
+        if intent in self._intents:
+            return ValueError("Intent is alredy in chain")
+        self._intents.append(intent)
+        return self
+
+    def extend(self, chain: Self) -> Self:
+        for intent in chain.intents:
+            self.include(intent)
+        return self
+
 
     # Фильтрация намерений
     # ====================
 
     def filter(self, lesson: Lesson) -> bool:
+        if not isinstance(lesson, Lesson):
+            return False
+
         for chain in self._intents:
             res = chain.filter(lesson)
             if res:
@@ -132,3 +144,44 @@ class IntentChain:
             elif chain.type == IntentType.AND:
                 return False
         return False
+
+
+    # Магические методы представления
+    # ===============================
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._intents.__repr__()})"
+
+    def __str__(self) -> str:
+        return self.pack()
+
+
+    # Магические методы сравнения
+    # ===========================
+
+    def __eq__(self, another: Self):
+        return self._intents == another.intents
+
+    def __ne__(self, another: Self):
+        return self._intents != another.intents
+
+    # прочие магические методы
+    # ========================
+
+    def __contains__(self, item: Lesson) -> bool:
+        return self.filter(item)
+
+    def __len__(self) -> int:
+        return len(self._intents)
+
+
+    # Магическое сложение цепочек
+    # ===========================
+
+    def __add__(self, other: Intent | Self) -> Self:
+        if isinstance(other, Intent):
+            return self.include(other)
+        elif isinstance(other, IntentChain):
+            return self.extend(other)
+        else:
+            raise TypeError(f"Cannot add {type(other)} tp IntentChain")
