@@ -15,7 +15,7 @@ documentation = "https://sparser.readthedocs.io/ru/latest/"
 # Main depencies -------------------------------------------------------
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 requests = "^2.31.0"
 loguru = "^0.7.0"
 ujson = "^5.7.0"
@@ -29,7 +29,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 icecream = "^2.1.3"
 isort = "^5.13.2"
-ruff = "^0.1.8"
+ruff = "^0.6"
 mypy = "^1.8.0"
 
 
