@@ -13,6 +13,8 @@
 from enum import IntEnum
 from typing import NamedTuple, Self
 
+from icecream import ic
+
 # вспомогательный класс
 # =====================
 
@@ -331,6 +333,36 @@ class IntentChain:
         for intent in chain.intents:
             self.include(intent)
         return self
+
+    def get_by_key(self, key: ScheduleObject) -> Self:
+        """Позволяет получить звенья цепи определённого типа.
+
+        Напрмиер получить все переданные зыенья уроков.
+
+        :param key: Ключ, по которому стоит искать звенья цепи.
+        :type key: ScheduleObject
+        :returns: Новая цепочка намерений с заданным ключом.
+        :rtype: IntentsChain
+        """
+        return IntentChain(chain=[
+            chain for chain in self._intents if chain.key == key
+        ])
+
+    def remove_key(self, key: ScheduleObject) -> Self:
+        """Собирает новую цепочку ключей, исключая определённые звенья.
+
+        Удаляет из цепочки звенья с заданным ключом.
+        К примеру если вы хотите очистить фильтры сразу для всех
+        уроков.
+
+        :param key: По какому ключу произвести удаление звеньев.
+        :type key: ScheduleObject
+        :returns: Новая цепочка намерений.
+        :rtype: IntentChain
+        """
+        return IntentChain(chain=[
+            chain for chain in self._intents if chain.key != key
+        ])
 
 
     # Фильтрация намерений
