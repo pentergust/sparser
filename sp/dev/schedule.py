@@ -206,6 +206,14 @@ class DayLessons:
     # Магические методы
     # =================
 
+    def __repr__(self) -> str:
+        """Что из себя представляет класс."""
+        return f"{self.__class__.__name__}({self._lessons.__repr__()})"
+
+    def __len__(self) -> int:
+        """Возаращет количество урокрв на сегодня."""
+        return len(self._lessons)
+
     def __iter__(self) -> Lesson:
         """Поочерёдно получает каждый элемент расписания.
 
@@ -214,3 +222,46 @@ class DayLessons:
         """
         for i, mini_lesson in enumerate(self._lessons):
             yield self._get_lesson(i, mini_lesson)
+
+    def __contains__(self, lesson: Lesson | LessonMini) -> bool:
+        """Проверяет что некоторый урок есть в расписании на сегодня.
+
+        Обратите внимаени что проверка происходит только по тем ключам,
+        которые находятся в класс LessonMini.
+
+        :returns: Находится ли переданный урок в расписании.
+        :rtype: bool
+        """
+        return self._get_mini_lesson(lesson) in self._lessons
+
+
+    # Магическая индексация
+    # =====================
+
+    def __getitem__(self, index: int) -> Lesson:
+        """Получает элемент по индексу.
+
+        Синтаксический сахар для метода ``get()``.
+
+        :param index: Порядковый номер урока для получения.
+        :type index: int
+        :returns: Полная информация об уроке.
+        :rtype: Lesson
+        """
+        return self.get(index)
+
+    def __setitem__(self, index: int, lesson: Lesson | LessonMini) -> None:
+        """Устанавливает урок по индексу в расписании.
+
+        Также автоматически добавить все недостающие уроки до.
+        Обратите внимаени, все ключи не входящие в LessonMini будут
+        отброшены.
+
+        :param index: Порядковый номер урока для добавления.
+        :type index: int
+        :param lesson: Информация об уроке для добавления в расписание.
+        :type lesson: Lesson | LessonMini
+        """
+        if not isinstance(lesson, (Lesson, LessonMini)):
+            raise ValueError("Can only add Lesson or LessonMini instance")
+        self.set(index, lesson)
