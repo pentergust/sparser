@@ -1,5 +1,4 @@
-"""
-Скрипт для автоматической проверки расписания.
+"""Скрипт для автоматической проверки расписания.
 Работает в паре с Teleram ботом.
 
 - Проверяет пользователей.
@@ -12,25 +11,28 @@ Author: Milinuri Nirvalen
 Ver: 0.11 (sp v6, telegram v2.4)
 """
 
-from datetime import datetime
-from pathlib import Path
-from os import getenv
 import asyncio
+from datetime import datetime
+from os import getenv
+from pathlib import Path
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from loguru import logger
 from dotenv import load_dotenv
+from loguru import logger
 
 from sp.intents import Intent
+<<<<<<< HEAD
 from sp.messages import SPMessages
 from sp.utils import load_file, save_file
 
 from sp.users.storage import User
+=======
+from sp.messages import SPMessages, send_update
+>>>>>>> 087d056 (Ruff: Linter Autofix)
 from sp.platform import Platform
-from sp.exceptions import ViewCompatibleError
-from sys import exit
+from sp.users.storage import User
 
 # Запуск плфтформы и TG бота
 # ==========================
@@ -112,8 +114,8 @@ def set_timetag(path: Path, timestamp: int) -> None:
     Args:
         path (Path): Путь к файлу временной метки.
         timestamp (int): Временная UNIXtime метка.
-    """
 
+    """
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
 
