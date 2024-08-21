@@ -14,69 +14,10 @@ from abc import ABC, abstractclassmethod, abstractmethod
 from enum import IntEnum
 from typing import NamedTuple, Self
 
-# вспомогательный класс
-# =====================
-
-class Lesson(NamedTuple):
-    """Описывает один конкретный урок в расписании.
-
-    Урок - наименьшая еденица расписания, имеющая ценность.
-    Данный кортеж наиболее полно представляет каждый урок.
-    Поскольку урок явялется универсаьн для нескольких расписаний,
-    некоторые его поля могут быть не заполнены.
-
-    :param name: Название урока.
-    :type name: str | None
-    :param cl: Для какого класа проводится урок.
-    :type cl: str | None
-    :param location: В каком кабинете проводится урок.
-    :type location: str | None
-    :param teacher: Какое преподаватель проводит урок.
-    :type teacher: str | None
-    :param weekday: В какой день недели проводится урок.
-    :type weekday: int | None
-    :param metadata: Дополнительная информация об уроке.
-    :type metadata: str | None
-    :param index: Положение урока относительно дня.
-    :type index: int | None
-    """
-
-    name: str | None = None
-    cl: str | None = None
-    location: str | None = None
-    teacher: str | None = None
-    weekday: int | None = None
-    metadata: str | None = None
-    index: int | None = None
-
+from sp.dev.schedule import Lesson, ScheduleObject
 
 # Вспомогатльные классы для описания намерения
 # ============================================
-
-class ScheduleObject(IntEnum):
-    """Описывает все доступные элементы расписания.
-
-    - ``LESSON``: Название урока в расписании.
-    - ``CLASS``: Для какого класса проводится урок.
-    - ``LOCATION``: В каком кабинете проводится урок.
-    - ``TEACHER``: Какое преподаватель проводит урок.
-    - ``WEEKDAY``: В какой день недели проводится урок.
-    - ``METADATA``: Дополнительная информация о занятии.
-    - ``INDEX``: Положение урока относительно дня.
-
-    Значение перечисления расставлены в соостветсвии с индексами
-    урока.
-    При упаковке намерения вторая цифра означает ключ.
-    """
-
-    LESSON = 0   # name
-    CLASS = 1    # cl
-    LOCATION = 2 # location
-    TEACHER = 3  # teacher
-    WEEKDAY = 4  # weekday
-    METADATA = 5 # metadata
-    INDEX = 6 # index
-
 
 class IntentType(IntEnum):
     """Описывает типы намерений.
