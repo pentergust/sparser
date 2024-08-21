@@ -23,14 +23,10 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from sp.intents import Intent
-<<<<<<< HEAD
 from sp.messages import SPMessages
 from sp.utils import load_file, save_file
 
 from sp.users.storage import User
-=======
-from sp.messages import SPMessages, send_update
->>>>>>> 087d056 (Ruff: Linter Autofix)
 from sp.platform import Platform
 from sp.users.storage import User
 
