@@ -132,7 +132,7 @@ class DayLessons:
             metadata=lesson.metadata
         )
 
-    def _get_message(
+    def _get_lesson(
         self,
         index: int,
         lesson: Lesson | LessonMini | None = None
@@ -144,7 +144,7 @@ class DayLessons:
                 index=index
             )
         return Lesson(
-            nema=lesson.name,
+            name=lesson.name,
             cl=self.cl,
             location=lesson.location,
             teacher=lesson.teacher,
@@ -169,8 +169,8 @@ class DayLessons:
         :rtype: Lesosn
         """
         if index > len(self._lessons):
-            return self._get_message(index)
-        return self._get_message(index, self._lessons[index])
+            return self._get_lesson(index)
+        return self._get_lesson(index, self._lessons[index])
 
     def add(self, lesson: Lesson | LessonMini) -> None:
         """Добавляет урок в конец списка.
@@ -201,3 +201,16 @@ class DayLessons:
                 for i in range(index_dist):
                     self._lessons.append(None)
                 self.add(lesson)
+
+
+    # Магические методы
+    # =================
+
+    def __iter__(self) -> Lesson:
+        """Поочерёдно получает каждый элемент расписания.
+
+        :returns: Полная информаци об уроке.
+        :rtype: Lesson
+        """
+        for i, mini_lesson in enumerate(self._lessons):
+            yield self._get_lesson(i, mini_lesson)
