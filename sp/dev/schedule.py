@@ -126,7 +126,7 @@ class DayLessons:
         weekday: int,
         lessons: list[LessonMini] | None = None
     ):
-        self._lessons: list[LessonMini] = lessons or []
+        self._lessons: list[LessonMini | None] = lessons or []
         self.cl = cl
         self.weekday = weekday
 
@@ -291,3 +291,79 @@ class DayLessons:
         if not isinstance(lesson, (Lesson, LessonMini)):
             raise ValueError("Can only add Lesson or LessonMini instance")
         self.set(index, lesson)
+
+
+# Расипсние уроков на неделю
+# ==========================
+
+class WeekLessons:
+    """Расписанеи уроков на неделю для конкретного класса.
+
+    Позвоялет просматривать и управлять расписаним уроков на неделю
+    для укзаанного класса.
+    """
+
+    def __init__(self, cl: str, days: list[DayLessons] | None = None):
+        self.cl = cl
+        self._days = self._to_days(days)
+
+
+    def _to_days(
+        self,
+        days: list[DayLessons] | None
+    ) -> list[list[LessonMini] | None]:
+        if days is None:
+            return [None, None, None, None, None, None]
+        day_lessons = []
+        for day in days:
+            if day is None:
+                day_lessons.append(None)
+            else:
+                day_lessons.append(day._lessons)
+        if len(day_lessons) < 6:
+            for _ in range(6-len(day_lessons)):
+                day_lessons.append(None)
+        return day_lessons
+
+
+    # Упрвление уроками на день
+    # =========================
+
+    def get(self, day: int) -> DayLessons:
+        if day > 5 or day < 0:
+            raise IndexError("Day must be in range from 0 to 5")
+        return DayLessons(cl=self.cl, weekday=day, lessons=self._days[day])
+
+    def set(self, day: int, lessons: DayLessons) -> None:
+        self._days[day] = lessons._lessons
+
+
+    # Магические методы
+    # =================
+
+     # Магические методы
+    # =================
+
+    def __repr__(self) -> str:
+        """Что из себя представляет класс."""
+        return f"{self.__class__.__name__}({self._days.__repr__()})"
+
+    def __len__(self) -> int:
+        """Возвращет количество дней недели."""
+        return len(self._days)
+
+    def __iter__(self) -> DayLessons:
+        for i, day_lessons in enumerate(self._days):
+            yield DayLessons(cl=self.cl, weekday=i, lessons=day_lessons)
+
+
+    # Магическая индексация
+    # =====================
+
+    def __getitem__(self, index: int) -> Lesson:
+        return self.get(index)
+
+    def __setitem__(self, index: int, lessons: DayLessons) -> None:
+        if not isinstance(lessons, DayLessons):
+            raise ValueError("Can only set DayLessons")
+        self.set(index, lessons)
