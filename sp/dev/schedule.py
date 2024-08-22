@@ -12,7 +12,7 @@
 """
 
 from enum import IntEnum
-from typing import Iterable, NamedTuple
+from typing import Iterable, Iterator, NamedTuple
 
 # Базовые хранилища данных
 # ========================
@@ -240,7 +240,7 @@ class DayLessons:
         """Возаращет количество урокрв на сегодня."""
         return len(self._lessons)
 
-    def __iter__(self) -> Lesson:
+    def __iter__(self) -> Iterator[Lesson]:
         """Поочерёдно получает каждый элемент расписания.
 
         :returns: Полная информаци об уроке.
@@ -376,7 +376,7 @@ class WeekLessons:
         """Возвращет количество дней недели."""
         return len(self._days)
 
-    def __iter__(self) -> DayLessons:
+    def __iter__(self) -> Iterator[DayLessons]:
         """Поочерёдно возвращет расписание уроков для каждого дня.
 
         :yield: Расписание уроков на определённый день.
