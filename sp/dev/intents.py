@@ -141,7 +141,7 @@ class Intent(BaseIntent):
         """
         weekday = date.today().weekday()
         # Решаем проблему переполнения рабочих дней недели
-        if weekday == 6:
+        if weekday == 6: # noqa: PLR2004
             weekday = 0
 
         return Intent(type=itype, key=ScheduleObject.WEEKDAY, value=weekday)
@@ -160,7 +160,7 @@ class Intent(BaseIntent):
         """
         weekday = date.today().weekday() + 1
         # Решаем проблему переполнения рабочих дней недели
-        if weekday >= 6:
+        if weekday >= 6: # noqa: PLR2004
             weekday = 0
 
         return Intent(type=itype, key=ScheduleObject.WEEKDAY, value=weekday)
