@@ -11,10 +11,12 @@
 """
 
 from abc import ABC, abstractclassmethod, abstractmethod
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import NamedTuple, Self
+from typing import Self
 
 from sp.dev.schedule import Lesson, ScheduleObject
+from sp.exceptions import ParseIntentError
 
 # Вспомогатльные классы для описания намерения
 # ============================================
@@ -99,7 +101,8 @@ class BaseIntent(ABC):
 # Класс намерения
 # ===============
 
-class Intent(BaseIntent, NamedTuple):
+@dataclass(frozen=True, slots=True)
+class Intent(BaseIntent):
     """Намерение что-либо получить из расписания.
 
     Данный класс используется как одиночный фильтр для урока.
