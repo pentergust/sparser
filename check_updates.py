@@ -1,5 +1,7 @@
 """Скрипт для автоматической проверки расписания.
+
 Работает в паре с Teleram ботом.
+Данные для авторизации будут взяты из env файла.
 
 - Проверяет пользователей.
 - Обновляет расписание.
@@ -8,7 +10,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.11 (sp v6, telegram v2.4)
+Ver: 0.12 (sp v6, telegram v2.4)
 """
 
 import asyncio
@@ -23,14 +25,7 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from sp.intents import Intent
-<<<<<<< HEAD
 from sp.messages import SPMessages
-from sp.utils import load_file, save_file
-
-from sp.users.storage import User
-=======
-from sp.messages import SPMessages, send_update
->>>>>>> 087d056 (Ruff: Linter Autofix)
 from sp.platform import Platform
 from sp.users.storage import User
 
@@ -53,6 +48,10 @@ CHAT_MIGRATE_MESSAGE = (
 # ===========================
 
 def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
+    """Получает клавиатуру для расписание на неделю.
+
+    За подробностями обращайтесь к модулю ``sptg``.
+    """
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="🏠Домой", callback_data="home"),
         InlineKeyboardButton(text="На неделю", callback_data=f"sc:{cl}:week"),
@@ -60,6 +59,17 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     ]])
 
 def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
+    """Клавиатура сообщения с обновлением.
+
+    Данная клавиатура будет отправляться в месте с сообщением об
+    изменениях в расписании.
+    Она содержет в себе ссылки на все основные разделы, которые нужны
+    при просмотре сообщения с изменением:
+
+    - Вернуться домой.
+    - Перейти к списку измененйи.
+    - Получить расписание на сегодня/завтра.
+    """
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="◁", callback_data="home"),
         InlineKeyboardButton(
@@ -72,7 +82,12 @@ def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
 # Функции для обработки списка пользователей
 # ==========================================
 
-async def process_update(bot: Bot, hour: int, platform: Platform, user: User) -> None:
+async def process_update(
+    bot: Bot,
+    hour: int,
+    platform: Platform,
+    user: User
+) -> None:
     """Проверяет обновления для одного пользователя (или чата).
 
     Отправляет расписани на сегодня/завтра в указанный час или
