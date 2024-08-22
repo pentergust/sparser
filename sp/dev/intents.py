@@ -14,7 +14,7 @@ from abc import ABC, abstractclassmethod, abstractmethod
 from dataclasses import dataclass
 from datetime import date
 from enum import IntEnum
-from typing import Self
+from typing import Iterator, Self
 
 from sp.dev.schedule import Lesson, ScheduleObject
 from sp.exceptions import ParseIntentError
@@ -509,3 +509,8 @@ class IntentChain(BaseIntent):
             return self.extend(other)
         else:
             raise TypeError(f"Cannot add {type(other)} tp IntentChain")
+
+    def __iter__(self) -> Iterator[Intent]:
+        """Поочерёдно возвращает каждое намерение из цепочки."""
+        for intent in self._intents:
+            yield Intent
