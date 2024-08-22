@@ -10,6 +10,7 @@
 которая объединяет в себе сразу несколько намерений.
 """
 
+from datetime import date
 from abc import ABC, abstractclassmethod, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
@@ -121,6 +122,49 @@ class Intent(BaseIntent):
     type: IntentType
     key: ScheduleObject
     value: str | int
+
+
+    # Получение специальных намерений
+    # ===============================
+
+    @classmethod
+    def today(cls, itype: IntentType = IntentType.AND) -> Self:
+        """Намерение получить уроки на сегодня.
+
+        Шорткат для более быстрого получения намерения.
+        Используется при получении расписания на сегодня/завтра.
+
+        :param itype: Тип намерение, И или НЕ.
+        :type itype: IntentType
+        :returns: Экземпляр намерения.
+        :rtype: Intent
+        """
+        weekday = date.today().weekday()
+        # Решаем проблему переполнения рабочих дней недели
+        if weekday == 6:
+            weekday = 0
+
+        return Intent(type=itype, key=ScheduleObject.WEEKDAY, value=weekday)
+
+    @classmethod
+    def tomorrow(cls, itype: IntentType = IntentType.AND) -> Self:
+        """Намерение получить уроки на завтра.
+
+        Шорткат для более быстрого получения намерения.
+        Используется при получении расписания на сегодня/завтра.
+
+        :param itype: Тип намерение, И или НЕ.
+        :type itype: IntentType
+        :returns: Экземпляр намерения.
+        :rtype: Intent
+        """
+        weekday = date.today().weekday() + 1
+        # Решаем проблему переполнения рабочих дней недели
+        if weekday >= 6:
+            weekday = 0
+
+        return Intent(type=itype, key=ScheduleObject.WEEKDAY, value=weekday)
+
 
     # Сериализация и десериализация намерений
     # =======================================
