@@ -10,9 +10,9 @@
 которая объединяет в себе сразу несколько намерений.
 """
 
-from datetime import date
 from abc import ABC, abstractclassmethod, abstractmethod
 from dataclasses import dataclass
+from datetime import date
 from enum import IntEnum
 from typing import Self
 

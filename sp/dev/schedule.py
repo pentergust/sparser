@@ -301,6 +301,13 @@ class WeekLessons:
 
     Позвоялет просматривать и управлять расписаним уроков на неделю
     для укзаанного класса.
+    Данные будет сохраняться в сжатом формате и когда нужно будут
+    разжиматься до полноценного расписания уроков на день.
+
+    :param cl: Для какого класса составлено расписание на неделю.
+    :type cl: str
+    :param days: Напрямую заданное расписание уроков.
+    :type days: list[DayLessons] | None
     """
 
     def __init__(self, cl: str, days: list[DayLessons] | None = None):
@@ -320,7 +327,8 @@ class WeekLessons:
                 day_lessons.append(None)
             else:
                 day_lessons.append(day._lessons)
-        if len(day_lessons) < 6:
+        # Это константы дней недели, они никогда не будут меняться
+        if len(day_lessons) < 6: # noqa: PLR2004
             for _ in range(6-len(day_lessons)):
                 day_lessons.append(None)
         return day_lessons
@@ -330,11 +338,27 @@ class WeekLessons:
     # =========================
 
     def get(self, day: int) -> DayLessons:
-        if day > 5 or day < 0:
+        """Получает расписание уроков в определённыый день недели.
+
+        :param day: Для какого дня получить расписания (0-5).
+        :type day: int
+        :raises IndexError: Если укажете индекс вне дня недели.
+        :return: Расписание уроков на день.
+        :rtype: DayLessons
+        """
+        # Это константы дней недели, они никогда не будут меняться
+        if day > 5 or day < 0: # noqa: PLR2004
             raise IndexError("Day must be in range from 0 to 5")
         return DayLessons(cl=self.cl, weekday=day, lessons=self._days[day])
 
     def set(self, day: int, lessons: DayLessons) -> None:
+        """Устанавливает уроки на день для конкреьного дня.
+
+        :param day: Для какого дня установить расписания (0-5).
+        :type day: int
+        :param lessons: Расписание уроков на день.
+        :type lessons: DayLessons
+        """
         self._days[day] = lessons._lessons
 
 
@@ -353,6 +377,11 @@ class WeekLessons:
         return len(self._days)
 
     def __iter__(self) -> DayLessons:
+        """Поочерёдно возвращет расписание уроков для каждого дня.
+
+        :yield: Расписание уроков на определённый день.
+        :rtype: Iterator[DayLessons]
+        """
         for i, day_lessons in enumerate(self._days):
             yield DayLessons(cl=self.cl, weekday=i, lessons=day_lessons)
 
@@ -360,10 +389,27 @@ class WeekLessons:
     # Магическая индексация
     # =====================
 
-    def __getitem__(self, index: int) -> Lesson:
+    def __getitem__(self, index: int) -> DayLessons:
+        """Получает расписание уроков на день.
+
+        :param index: Для какого дня недели (0-5).
+        :type index: int
+        :return: Расписание уроков на день.
+        :rtype: DayLessons
+        """
         return self.get(index)
 
     def __setitem__(self, index: int, lessons: DayLessons) -> None:
+        """Устанавливает расипсание в определённый день.
+
+        Обратите внимаение, что класс в DayLessons будет проигнорирован.
+
+        :param index: В какой день недели установить расписание. (0-5)
+        :type index: int
+        :param lessons: Расписание уроков на день.
+        :type lessons: DayLessons
+        :raises ValueError: Если вместо расписания передали нечто иное.
+        """
         if not isinstance(lessons, DayLessons):
             raise ValueError("Can only set DayLessons")
         self.set(index, lessons)
