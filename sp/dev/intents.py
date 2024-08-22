@@ -13,33 +13,11 @@
 from abc import ABC, abstractclassmethod, abstractmethod
 from dataclasses import dataclass
 from datetime import date
-from enum import IntEnum
 from typing import Iterator, Self
 
-from sp.dev.schedule import Lesson, ScheduleObject
+from sp.dev.enums import IntentType, ScheduleObject
+from sp.dev.schedule import Lesson
 from sp.exceptions import ParseIntentError
-
-# Вспомогатльные классы для описания намерения
-# ============================================
-
-class IntentType(IntEnum):
-    """Описывает типы намерений.
-
-    Тип намерения определяет как намерение будет взаимодействовать
-    с уроком и другими намерениями.
-
-    - ``AND`` (по умолчанию): Не пропускает. если хотя бы одно умловие
-        в цепочке не соответствует.
-    - ``NOT``: Обратное действие. Пропускает все условия значения,
-        которые отличаются от данного.
-
-    При упаковке тип намерения указывается первым числом.
-    """
-
-    AND = 0 # ""
-    OR = 1
-    NOT = 2 # !
-
 
 # Абстрактный класс намерения
 # ===========================
