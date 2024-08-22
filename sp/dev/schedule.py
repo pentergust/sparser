@@ -12,7 +12,7 @@
 """
 
 from enum import IntEnum
-from typing import NamedTuple
+from typing import Iterable, NamedTuple
 
 # Базовые хранилища данных
 # ========================
@@ -111,6 +111,13 @@ class DayLessons:
 
     Реализованы методы для добавления добалвения уроков, итерации
     и получение/установка уроков по индексу.
+
+    :param cl: Для какого класса представлено расписание.
+    :type cl: str
+    :param weekday: Для какого дня неедли предсталвено расписание (0-5).
+    :type weekday: int
+    :param lessons: Представленный список уроков.
+    :type lessons: list[LessonMini] | None
     """
 
     def __init__(
@@ -188,6 +195,19 @@ class DayLessons:
         :type lesson: Lesson | LessonMini
         """
         self._lessons.append(self._get_mini_lesson(lesson))
+
+    def insert(self, lessons: Iterable[Lesson | LessonMini]) -> None:
+        """Добавляет сразу несколько уроков в расписание.
+
+        По очереди будет добавлять все уроки в конец списка.
+        Все уроки автоматически будут ужаты до LessonsMini при помощи
+        метода ``add()``.
+
+        :param lessons: Итератор уроков для добавления в список.
+        :type lessons: Iterable[Lesson | LessonMini]
+        """
+        for lesson in lessons:
+            self.add(lesson)
 
     def set(self, index: int, lesson: Lesson | LessonMini) -> None:
         """Устанавливает необходимый урок по индексу.
