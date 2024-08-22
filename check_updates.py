@@ -10,7 +10,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.12 (sp v6, telegram v2.4)
+Ver: 0.11.2 (sp v6, telegram v2.4)
 """
 
 import asyncio
@@ -112,12 +112,12 @@ async def process_update(
     # Отправляем уведомления об обновлениях
     updates = user.get_updates(platform.view.sc)
     if updates is not None:
-        await bot.send_message(sp.uid, text=(
+        await bot.send_message(user.uid, text=(
             "🎉 У вас изменилось расписание!\n"
             f"{platform.view.send_update(updates, cl=user.data.cl)}"
         ),
-            reply_markup=get_updates_keyboard(sp.user["class_let"]
-        ))
+            reply_markup=get_updates_keyboard(user.data.cl)
+        )
 
 def set_timetag(path: Path, timestamp: int) -> None:
     """Оставляет временную метку последней проверки обнолвения.
