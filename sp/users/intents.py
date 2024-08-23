@@ -13,6 +13,8 @@
 import sqlite3
 from typing import NamedTuple, Optional
 
+from loguru import logger
+
 from sp.intents import Intent
 
 # Имя намерения по умолчанию
@@ -29,11 +31,11 @@ class IntentObject(NamedTuple):
     :param name: Имя намерения, используется как ключ.
     :type name: str
     :param intent: Экземпляр пользовательского намерения.
-    :type intent: Intent
+    :type intent: Intent | None
     """
 
     name: str
-    intent: Intent
+    intent: Intent | None
 
 
 # Основной класс хранилища
@@ -68,6 +70,18 @@ class UserIntentsStorage:
 
     # Работа со списком намерений ----------------------------------------------
 
+    def _get_intent_object(self, name: str, intent_str: str) -> IntentObject:
+        try:
+            intent = Intent.from_str(intent_str)
+        except Exception as e:
+            logger.error(
+                "Error while unpack intent {} ({}): {}",
+                name, intent_str, e
+            )
+            intent = Intent()
+
+        return IntentObject(name, intent)
+
     def get(self) -> list[IntentObject]:
         """Получает список всех намерений пользователя.
 
@@ -82,9 +96,8 @@ class UserIntentsStorage:
             "SELECT name,intent FROM intent WHERE user_id=?",
             (self.uid,)
         )
-        return [IntentObject(n, Intent.from_str(i))
-            for n, i in cur.fetchall()
-        ]
+
+        return [self._get_intent_object(n, i) for n, i in cur.fetchall()]
 
     def get_intent(self, name: str) -> Optional[Intent]:
         """Возвращает первое намерение пользователя по имени.
@@ -107,7 +120,11 @@ class UserIntentsStorage:
         )
         res = cur.fetchone()
         if res is not None:
-            return Intent.from_str(res[0])
+            try:
+                return Intent.from_str(res[0])
+            except Exception as e:
+                logger.error("Error load intent {} ({}): {}", name, res[0], e)
+                return Intent()
         return
 
     def remove_all(self):

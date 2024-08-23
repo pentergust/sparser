@@ -83,7 +83,7 @@ class Intent(NamedTuple):
         :rtype: str
         """
         return ":".join(
-            [",".join(map(str, x)) for x in self._fields]
+            [",".join(map(str, x)) for x in self]
         )
 
 
