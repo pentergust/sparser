@@ -414,7 +414,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +16 (190)"
+        res = "🌟 Версия sp: 6.0.1 +17 (191)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -482,6 +482,8 @@ class SPMessages:
         if today == 6: # noqa: PLR2004
             return 0
 
+        if len(intent.cl) == 0:
+            raise ValueError("Intent must contain at least one class let")
         max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), intent.cl))
         hour = timetable[max_lessons-1][2]
 
