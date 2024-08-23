@@ -59,13 +59,12 @@ async def week_sc_command(
     """Получате расписание уроков на неделю."""
     relative_day = platform.relative_day(user)
     await message.answer(
-        text=sp.send_lessons(
-            Intent.construct(
-                sp.sc, days=[0, 1, 2, 3, 4, 5], cl=user.data.cl
-            ),
-            user
+        text=platform.lessons(
+            user,
+            platform.view.sc.construct_intent(
+                days=[0, 1, 2, 3, 4, 5], cl=user.data.cl
+            )
         ),
-
         reply_markup=get_sc_keyboard(user.data.cl, relative_day)
     )
 
@@ -81,12 +80,12 @@ async def sc_callback(
     """Отправляет расписание уроков для класса в указанный день."""
     # Расписание на неделю
     if callback_data.day == "week":
-        text = sp.send_lessons(
-            Intent.construct(
-                sp.sc, days=[0, 1, 2, 3, 4, 5], cl=callback_data.cl
-            ),
-            user
-        )
+        text=platform.lessons(
+            user,
+            platform.view.sc.construct_intent(
+                days=[0, 1, 2, 3, 4, 5], cl=user.data.cl
+            )
+        ),
         relative_day = platform.relative_day(user)
         reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
