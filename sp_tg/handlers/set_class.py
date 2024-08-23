@@ -146,9 +146,8 @@ async def pass_class_callback(
     Просто устанавливает класс пользвотеля в None и отправляет
     главное сообщение с основной клавиатурой бота.
     """
-    relative_day = platform.relative_day(user)
     user.set_class(None, sp.sc)
     await query.message.edit_text(
         text=get_home_message(user.data.cl),
-        reply_markup=get_main_keyboard(user.data.cl, relative_day)
+        reply_markup=get_main_keyboard(user.data.cl, None)
     )
