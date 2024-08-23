@@ -9,7 +9,7 @@
 """
 
 from datetime import datetime, time
-from typing import Generic, Iterable, NamedTuple, Optional, TypeVar, Union
+from typing import Iterable, NamedTuple, Optional, Union, cast
 
 from .counter import CounterTarget, reverse_counter
 from .intents import Intent
@@ -200,8 +200,14 @@ def get_update_header(
     :rtype: str
     """
     # Получаем timestamp обновления
-    end_timestamp: int = update.get("end_time", 0)
-    start_timespamp: int = update.get("start_time", end_timestamp)
+    end_timestamp = update.get("end_time", 0)
+    if not isinstance(end_timestamp, int):
+        raise ValueError("End update timestanp value must be integer")
+
+    start_timespamp = update.get("start_time", end_timestamp)
+    if not isinstance(start_timestamp, int):
+        raise ValueError("Start update timestanp value must be integer")
+
     etime = datetime.fromtimestamp(end_timestamp)
     stime = datetime.fromtimestamp(start_timespamp)
     message = f"📀 {stime.strftime('%d.%m %H:%M')} "
@@ -360,9 +366,7 @@ def _get_next_update_str(time: datetime, now: Optional[datetime]=None) -> str:
 #     return res
 
 
-_V = TypeVar("_V")
-
-class SPMessages(Generic[_V]):
+class SPMessages:
     """Предоставляет методы для более удобной работы с расписанием.
 
     В отличие от необработанных результатов работы Schedule, данный
@@ -394,8 +398,12 @@ class SPMessages(Generic[_V]):
         :rtype: str
         """
         now = datetime.now()
-        next_update = datetime.fromtimestamp(self.sc.schedule["next_parse"])
-        last_parse = datetime.fromtimestamp(self.sc.schedule["last_parse"])
+        next_update = datetime.fromtimestamp(
+            float(self.sc.schedule["next_parse"])
+        )
+        last_parse = datetime.fromtimestamp(
+            float(self.sc.schedule["last_parse"])
+        )
 
         nu_str = _get_next_update_str(next_update, now)
         lp_str = _get_next_update_str(last_parse, now)
@@ -406,7 +414,7 @@ class SPMessages(Generic[_V]):
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +14 (182)"
+        res = "🌟 Версия sp: 6.0.1 +15 (189)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
@@ -586,7 +594,10 @@ class SPMessages(Generic[_V]):
         :rtype: str
         """
         message = get_update_header(update)
-        for day, day_updates in enumerate(update["updates"]):
+        updates = update.get("updates", [])
+        if not isinstance(updates, (list)):
+            raise ValueError("Updates must be a list of lessons")
+        for day, day_updates in enumerate(updates):
             if not day_updates:
                 continue
 
@@ -604,7 +615,7 @@ class SPMessages(Generic[_V]):
         # Проверяем обновления в расписаниии
         update = user.get_updates(self.sc)
         if update is None:
-            return
+            return None
 
         return (
             "🎉 У вас изменилось расписание!\n"

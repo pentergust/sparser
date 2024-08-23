@@ -129,7 +129,7 @@ class Intent(NamedTuple):
         :return: Новое распакованное намерение.
         :rtype: Intent
         """
-        res = []
+        res: list[set[str | int]] = []
         for i, part in enumerate(s.split(":")):
             # Если это пустая строка, добавляем пустое множество
             if part == "":

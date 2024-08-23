@@ -152,7 +152,7 @@ def compact_updates(
     :return: Новая упакованная запись об обновлённом расписании.
     :rtype: dict[str, Union[int, list[dict]]]
     """
-    res = updates[0]["updates"].copy()
+    res: dict[str, list[dict]] = updates[0]["updates"].copy()
 
     # Просматриваем все последующии записи об обновленях
     for update_data in updates[1:]:

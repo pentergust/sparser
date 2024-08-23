@@ -8,7 +8,7 @@
 доступ к расписанию.
 """
 
-from typing import Generic, Optional, TypeVar
+from typing import Optional
 
 from loguru import logger
 
@@ -19,14 +19,10 @@ from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
 
-# Исползуется как результат работы платформы
-_V = TypeVar('_V')
-
-
 # Главный класс платформы
 # =======================
 
-class Platform(Generic[_V]):
+class Platform:
     """Описание платформфы, на котороы було запущено расписание.
 
     более высокоуровневый класс абстракции.
@@ -60,7 +56,7 @@ class Platform(Generic[_V]):
 
         #: Экземпляр хранилища пользователей платформы
         self.users = FileUserStorage(f"sp_data/users/{pid}.json")
-        self._view: SPMessages[_V] | None = None
+        self._view: SPMessages | None = None
 
 
     # Работа с классом просмотра
@@ -77,7 +73,7 @@ class Platform(Generic[_V]):
             return False
 
     @property
-    def view(self) -> SPMessages[_V]:
+    def view(self) -> SPMessages:
         """Получает уттановленынй класс представления.
 
         Предполагается что перед тем как использовать класс предсталвния
@@ -111,7 +107,7 @@ class Platform(Generic[_V]):
             raise ViewSelectedError("Yot must set View before use it")
 
     @view.setter
-    def view(self, view: SPMessages[_V]) -> None:
+    def view(self, view: SPMessages) -> None:
         if not isinstance(view, SPMessages):
             raise ViewCompatibleError("View must be instance of SPMessages")
         self._check_api_version(view.API_VERSION)
@@ -157,7 +153,7 @@ class Platform(Generic[_V]):
     # Сокращения для методов класса представления
     # ===========================================
 
-    def lessons(self, user: User, intent: Optional[Intent]=None) -> _V:
+    def lessons(self, user: User, intent: Optional[Intent]=None) -> str:
         """Отправляет расписание уроков.
 
         Является сокращение для метода ``Platform.view.send_lessons()``.
@@ -170,14 +166,16 @@ class Platform(Generic[_V]):
         :param user: Кто хочет получить расписание уроков.
         :type user: User
         :return: Рузельтат работы метода в звисимости от платформы.
-        :rtype: _V
+        :rtype: str
         """
         if intent is None:
+            if user.data.cl is None:
+                raise ValueError("User class is None")
             intent = self.view.sc.construct_intent(cl=user.data.cl)
         res = self.view.send_lessons(intent)
         return res
 
-    def today_lessons(self, user: User, intent: Optional[Intent]=None) -> _V:
+    def today_lessons(self, user: User, intent: Optional[Intent]=None) -> str:
         """Расписание уроков на сегодня/завтра.
 
         Сокращение для метода ``Platform.view.send_today_lessons()``.
@@ -197,9 +195,11 @@ class Platform(Generic[_V]):
         :param user: Кто хочет получить расписание уроков.
         :type user: User
         :return: Результат в зависимости от класса предсталвения.
-        :rtype: _V
+        :rtype: str
         """
         if intent is None:
+            if user.data.cl is None:
+                raise ValueError("User class is None")
             intent = self.view.sc.construct_intent(cl=user.data.cl)
         return self.view.send_today_lessons(intent)
 
@@ -208,7 +208,7 @@ class Platform(Generic[_V]):
         target: str,
         intent: Intent,
         cabinets: bool = False
-    ) -> _V:
+    ) -> str:
         """Поиск в расписании по уроку/кабинету.
 
         Является сокращением для ``Platform.view.search()``.
@@ -235,7 +235,7 @@ class Platform(Generic[_V]):
         :param cabinets: Что ищём, урок или кабинет. Обычно урок.
         :type cabinets: bool
         :return: Результаты поиска в зависимости от платформы.
-        :rtype: _V
+        :rtype: str
         """
         return self.view.search(target, intent, cabinets)
 
@@ -244,7 +244,7 @@ class Platform(Generic[_V]):
         groups: dict[int, dict[str, dict]],
         target: Optional[CounterTarget]=None,
         days_counter: Optional[bool]=False
-    ) -> _V:
+    ) -> str:
         """Получает результаты работы счётчика.
 
         Используется чтобы преобразовать результаты счётчика к кдобному
@@ -264,13 +264,13 @@ class Platform(Generic[_V]):
         return self.view.send_counter(groups, target, days_counter)
 
     def send_updates(self,
-        update: dict[str, Union[int, list[dict]]],
+        update: dict[str, int | list[dict]],
         hide_cl: Optional[str]=None
-    ) -> _V:
+    ) -> str:
         return self.view.send_update(update, hide_cl)
 
-    def check_updates(self, user: User) -> Optional[_V]:
+    def check_updates(self, user: User) -> Optional[str]:
         return self.view.check_updates(user)
 
-    def send_status(self, user: User) -> _V:
+    def send_status(self, user: User) -> str:
         return self.view.send_status(user)

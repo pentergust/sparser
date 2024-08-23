@@ -286,8 +286,8 @@ class Schedule:
         self.index_path = Path(index_path)
 
         # Определнеи индексов расписания.
-        self._l_index = None
-        self._c_index = None
+        self._l_index: dict[str, list[dict]] = None
+        self._c_index: dict[str, list[dict]] = None
         self._updates = None
 
         #: Полное расписание, включая метаданные, прим. время полчения
@@ -621,6 +621,8 @@ class Schedule:
         """
         if cl is None:
             cl = self.cl
+        if cl is None:
+            raise ValueError("User class let is None")
 
         return self.lessons.get(cl, [[], [], [], [], [], []])
 
