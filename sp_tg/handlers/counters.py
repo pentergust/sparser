@@ -200,7 +200,6 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
 def get_counter_message(
     platform: Platform,
     user: User,
-    sc: Schedule,
     counter: str,
     target: Optional[CounterTarget]=None,
     intent: Optional[Intent]=None
@@ -247,27 +246,28 @@ def get_counter_message(
     else:
         intent = Intent()
 
-    cur_counter = CurrentCounter(sc)
+    cur_counter = CurrentCounter(platform.view.sc, intent)
 
     # Счётчик по классам
     if counter == "cl":
         # Дополнительно передаём намерение, если подгруппа по урокамъ
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
-            intent = intent.reconstruct(sc, cl=user.data.cl)
-        groups = cur_counter.cl(intent)
+            cur_counter.intent = intent.reconstruct(
+                platform.view.sc,
+                cl=user.data.cl
+            )
+        groups = cur_counter.cl()
 
     # Счётчик по дням
     elif counter == "days":
-        groups = cur_counter.days(intent)
+        groups = cur_counter.days()
 
     # Счётчики по индексам
     elif counter == "lessons":
-        groups = cur_counter.index(
-            intent, cabinets_mode=False
-        )
+        groups = cur_counter.index(cabinets_mode=False)
     else:
-        groups = cur_counter.index(intent, cabinets_mode=True)
+        groups = cur_counter.index(cabinets_mode=True)
 
     message += platform.send_counter(groups=groups, target=target)
     return message
@@ -283,7 +283,7 @@ async def counter_handler(message: Message, sp: SPMessages,
     """Переводит в меню просмора счётчиков расписания."""
     await message.answer(
         text=get_counter_message(
-            platform, user, sp.sc, "lessons", CounterTarget.MAIN
+            platform, user, "lessons", CounterTarget.MAIN
         ),
         reply_markup=get_counter_keyboard(
             cl=user.data.cl,
@@ -320,9 +320,8 @@ async def counter_callback(
 
     # Отправляем сообщение пользователю
     await query.message.edit_text(
-        text=get_counter_message(user, sp.sc, counter, target, intent),
+        text=get_counter_message(platform, user, counter, target, intent),
         reply_markup=get_counter_keyboard(
-            platform=platform,
             cl=user.data.cl,
             counter=counter,
             target=target,
