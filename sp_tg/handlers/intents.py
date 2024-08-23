@@ -211,12 +211,15 @@ def get_intent_info(name: str, i: Intent) -> str:
     str: Подробная информация о намерении.
     
     """
-    return (f"💼 Намерение \"{name}\":"
+    info = (f"💼 Намерение \"{name}\":"
         f"\n\n🔸 Классы: {', '.join(i.cl)}"
         f"\n🔸 Дни: {', '.join([days_names[x] for x in i.days])}"
         f"\n🔸 Уроки: {', '.join(i.lessons)}"
         f"\n🔸 Кабинеты: {', '.join(i.cabinets)}"
     )
+    if i.cl == () and i.cabinets == () and i.lessons == () and i.days == ():
+        info += "\n\n⚠️ Вероятно ошибка при чтении намерения, пересоздайте его."
+    return info
 
 def get_intents_message(intents: list[IntentObject]) -> str:
     """Отправляет главное сообщение редактора намерений.
@@ -379,7 +382,7 @@ async def show_intent_callback(
     """Просматривать информацию о намерении."""
     intent = intents.get_intent(callback_data.name)
     if intent is None:
-        await query.message.edit_text(text="⚠️ Непраивльное имя намерения")
+        await query.message.edit_text(text="⚠️ Неправильное имя намерения")
     else:
         await query.message.edit_text(
             text=get_intent_info(callback_data.name, intent),

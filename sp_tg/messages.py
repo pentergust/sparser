@@ -55,6 +55,8 @@ def get_intent_status(i: Intent) -> str:
     :return: Краткое строковое описание содержимого намерения.
     :rtype: str
     """
+    if i.cl == () and i.cabinets == () and i.lessons == () and i.days == ():
+        return "\n⚠️ Ошибка при чтении намерения."
     return (
         f"< {', '.join(i.cl)} /"
         f" {', '.join((days_names[x] for x in i.days))} /"
