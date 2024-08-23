@@ -19,7 +19,6 @@ from aiogram.types import (
 from sp.counter import CounterTarget, CurrentCounter
 from sp.intents import Intent
 from sp.messages import SPMessages
-from sp.parser import Schedule
 from sp.platform import Platform
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import User

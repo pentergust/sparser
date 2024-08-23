@@ -7,7 +7,7 @@
 
 from aiogram.enums import ChatMemberStatus
 from aiogram.filters import BaseFilter
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message
 
 
 class IsAdmin(BaseFilter):

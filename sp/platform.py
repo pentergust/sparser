@@ -21,8 +21,6 @@ from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
 
-from icecream import ic
-
 # Главный класс платформы
 # =======================
 

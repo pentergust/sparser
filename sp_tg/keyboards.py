@@ -10,7 +10,6 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from sp.enums import SHORT_DAY_NAMES
 
-
 # Статическая клавиатура для выбора класса.
 # Она появляется, когда пользователь переходит в состояние выбра класса.
 # Позволяет быстро отвязатель пользователя от класса.
