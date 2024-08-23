@@ -21,6 +21,8 @@ from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
 
+from icecream import ic
+
 # Главный класс платформы
 # =======================
 
@@ -205,7 +207,7 @@ class Platform:
             intent = self.view.sc.construct_intent(cl=user.data.cl)
         return self.view.send_today_lessons(intent)
 
-    def currne_day(self, user: User, intent: Intent | None = None) -> int:
+    def current_day(self, user: User, intent: Intent | None = None) -> int:
         if Intent is None:
             if user.data.cl is None:
                 raise ValueError("User class is None")
@@ -227,7 +229,7 @@ class Platform:
             intent=self.view.sc.construct_intent(cl=user.data.cl, days=today)
         )
 
-        if current_day == tomorrow:
+        if current_day == today:
             relatove_day = "Сегодня"
         elif current_day+1 == tomorrow:
             relatove_day = "Завтра"
