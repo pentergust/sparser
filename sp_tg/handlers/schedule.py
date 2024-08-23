@@ -13,6 +13,7 @@ from aiogram.types import CallbackQuery, Message
 
 from sp.intents import Intent
 from sp.messages import SPMessages
+from sp.platform import Platform
 from sp.users.storage import User
 from sp_tg.keyboards import (
     get_sc_keyboard,
@@ -77,7 +78,7 @@ async def week_sc_command(message: Message, sp: SPMessages, user: User):
 @router.callback_query(ScCallback.filter())
 async def sc_callback(
     query: CallbackQuery, callback_data: ScCallback, sp: SPMessages,
-    user: User
+    user: User, platform: Platform
 ):
     """Отправляет расписание уроков для класса в указанный день."""
     # Расписание на неделю
@@ -95,21 +96,18 @@ async def sc_callback(
 
     # Расипсание на сегодня/завтра
     elif callback_data.day == "today":
-        text = sp.send_today_lessons(
-            Intent.construct(sp.sc,
-                cl=callback_data.cl
-            ),
-            user
+        text = platform.today_lessons(
+            user, Intent.construct(sp.sc,cl=callback_data.cl)
         )
         reply_markup = get_week_keyboard(callback_data.cl)
 
     # Расписание на другой день недели
     else:
-        text = sp.send_lessons(
-            Intent.construct(
-                sp.sc, cl=callback_data.cl, days=int(callback_data.day)
+        text = platform.lessons(
+            user,
+            sp.sc.construct_intent(
+                cl=callback_data.cl, days=int(callback_data.day)
             ),
-            user
         )
         reply_markup = get_week_keyboard(callback_data.cl)
 

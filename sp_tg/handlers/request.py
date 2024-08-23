@@ -15,7 +15,8 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from loguru import logger
 
-from sp.messages import SPMessages, send_search_res
+from sp.messages import SPMessages
+from sp.platform import Platform
 from sp.users.storage import User
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
@@ -25,7 +26,7 @@ router = Router(name=__name__)
 
 
 def process_request(
-    user: User, sp: SPMessages, request_text: str
+    user: User, platform: Platform, request_text: str
 ) -> Optional[str]:
     """Обрабатывает текстовый запрос к расписанию.
 
@@ -42,23 +43,21 @@ def process_request(
     :return: Ответ от генератора сообщений.
     :rtype: Optional[str]
     """
-    intent = sp.sc.parse_intent(request_text.split())
+    intent = platform.view.sc.parse_intent(request_text.split())
 
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
     if len(intent.cabinets):
-        res = sp.sc.search(list(intent.cabinets)[-1], intent, True)
-        text = send_search_res(intent, res)
+        text = platform.search(list(intent.cabinets)[-1], intent, True)
 
     elif len(intent.lessons):
-        res = sp.sc.search(list(intent.lessons)[-1], intent, False)
-        text = send_search_res(intent, res)
+        text = platform.search(list(intent.lessons)[-1], intent, False)
 
     elif intent.cl or intent.days:
         if intent.days:
-            text = sp.send_lessons(intent, user)
+            text = platform.lessons(user, intent)
         else:
-            text =sp.send_today_lessons(intent, user)
+            text = platform.today_lessons(user, intent)
     else:
         text = None
 
@@ -70,14 +69,15 @@ def process_request(
 
 @router.message(Command("sc"))
 async def sc_handler(
-    message: Message, sp: SPMessages, command: CommandObject, user: User
+    message: Message, sp: SPMessages, command: CommandObject, user: User,
+    platform: Platform
 ):
     """Отправляет расписание уроков пользовтелю.
 
     Отправляет предупреждение, если у пользователя не укзаан класс.
     """
     if command.args is not None:
-        answer = process_request(sp, command.args, user)
+        answer = process_request(user, platform, command.args)
         if answer is not None:
             await message.answer(text=answer)
         else:
@@ -85,7 +85,7 @@ async def sc_handler(
 
     elif user.data.set_class:
         await message.answer(
-            text=sp.send_today_lessons(sp.sc.construct_intent(), user),
+            text=platform.today_lessons(user),
             reply_markup=get_week_keyboard(user.data.cl),
         )
     else:
@@ -94,7 +94,9 @@ async def sc_handler(
         )
 
 @router.message()
-async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
+async def main_handler(
+    message: Message, sp: SPMessages, user: User, platform: Platform
+) -> None:
     """Главный обработчик сообщений бота.
 
     Перенаправляет входящий текст в запросы к расписанию.
@@ -108,7 +110,7 @@ async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
 
     # Если у пользователя установлек класс -> создаём запрос
     if user.data.set_class:
-        answer = process_request(user, sp, text)
+        answer = process_request(user, platform, text)
 
         if answer is not None:
             await message.answer(text=answer)

@@ -16,11 +16,11 @@ from aiogram.types import (
     Message,
 )
 
-from sp.counters import CounterTarget
+from sp.counter import CounterTarget, CurrentCounter
 from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.parser import Schedule
-from sp.text_counter import TextCounter
+from sp.platform import Platform
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import User
 from sp_tg.messages import get_intent_status
@@ -198,6 +198,7 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 def get_counter_message(
+    platform: Platform,
     user: User,
     sc: Schedule,
     counter: str,
@@ -246,7 +247,7 @@ def get_counter_message(
     else:
         intent = Intent()
 
-    text_counter = TextCounter(sc)
+    cur_counter = CurrentCounter(sc)
 
     # Счётчик по классам
     if counter == "cl":
@@ -254,20 +255,21 @@ def get_counter_message(
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
             intent = intent.reconstruct(sc, cl=user.data.cl)
-        message += text_counter.cl(intent, target)
+        groups = cur_counter.cl(intent)
 
     # Счётчик по дням
     elif counter == "days":
-        message += text_counter.days(intent, target)
+        groups = cur_counter.days(intent)
 
     # Счётчики по индексам
     elif counter == "lessons":
-        message += text_counter.index(
-            intent, cabinets_mode=False, target=target
+        groups = cur_counter.index(
+            intent, cabinets_mode=False
         )
     else:
-        message += text_counter.index(intent, cabinets_mode=True, target=target)
+        groups = cur_counter.index(intent, cabinets_mode=True)
 
+    message += platform.send_counter(groups=groups, target=target)
     return message
 
 
@@ -276,11 +278,13 @@ def get_counter_message(
 
 @router.message(Command("counter"))
 async def counter_handler(message: Message, sp: SPMessages,
-    intents: UserIntentsStorage, user: User
+    intents: UserIntentsStorage, user: User, platform: Platform
 ) -> None:
     """Переводит в меню просмора счётчиков расписания."""
     await message.answer(
-        text=get_counter_message(user, sp.sc, "lessons", CounterTarget.MAIN),
+        text=get_counter_message(
+            platform, user, sp.sc, "lessons", CounterTarget.MAIN
+        ),
         reply_markup=get_counter_keyboard(
             cl=user.data.cl,
             counter="lessons",
@@ -293,7 +297,7 @@ async def counter_handler(message: Message, sp: SPMessages,
 @router.callback_query(CounterCallback.filter())
 async def counter_callback(
     query: CallbackQuery, sp: SPMessages, callback_data: CounterCallback,
-    intents: UserIntentsStorage, user: User
+    intents: UserIntentsStorage, user: User, platform: Platform
 ) -> None:
     """Клавитура для переключения счётчиков расписания."""
     counter = callback_data.counter
@@ -318,6 +322,7 @@ async def counter_callback(
     await query.message.edit_text(
         text=get_counter_message(user, sp.sc, counter, target, intent),
         reply_markup=get_counter_keyboard(
+            platform=platform,
             cl=user.data.cl,
             counter=counter,
             target=target,
