@@ -19,7 +19,7 @@ from sys import exit
 from typing import Any, Awaitable, Callable, Dict, Union
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, ErrorEvent, Message, Update
 from dotenv import load_dotenv
@@ -291,18 +291,21 @@ def send_error_messsage(exception: ErrorEvent, user: User) -> str:
 
     user_name = message.from_user.first_name
     chat_id = message.chat.id
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # 2024-08-23 21:12:40.383
+    set_class_flag = "да" if user.data.set_class else "нет"
 
     return ("⚠️ Произошла ошибка в работе бота."
         f"\n-- Версия: {_BOT_VERSION}"
+        f"\n-- Время: {now}"
         "\n\n👤 Пользователь"
         f"\n-- Имя: {user_name}"
-        f"\n-- Класс: {user.data.cl}"
+        f"\n-- Класс: {user.data.cl} (установлен: {set_class_flag})"
         f"\n-- ID: {chat_id}"
-        "\n\n🚫 Описание ошибки:"
+        f"\n-- Action: {action}"
+        f"\n\n🚫 Возникло исключение  {exception.exception.__class__.__name__}:"
         f"\n-- {exception.exception}"
-        "\n\n🔍 Дополнительная информация:"
-        f"\n{action}"
-        "\n\nПожалуйста, свяжитесь с @milinuri для решения проблемы."
+        "\n\nПожалуйста, отправьте @milinuri данное сообщение."
+        "\nЭто очень поможет сделать бота стабильнее."
     )
 
 @dp.errors()
@@ -311,7 +314,9 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
 
     Отправляет сообщение об ошибке пользователям.
     """
-    if isinstance(exception.exception, (TelegramBadRequest,)):
+    if isinstance(exception.exception,
+        (TelegramBadRequest, TelegramNetworkError)
+    ):
         logger.error(exception)
         return
 
