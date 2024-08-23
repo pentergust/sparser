@@ -363,6 +363,12 @@ async def parse_intent_handler(
 ):
     """Устанавливает парамеры намерения."""
     i = Intent.parse(sp.sc, message.text.lower().strip().split())
+    if i.lessons == () and i.cl == () and i.days == () and i.cabinets == ():
+        return await message.answer((
+            "⚠️ Переданная строка не сожержит ни одного ключа, который может "
+            "быть использован в намерении.\n"
+        ))
+
     name = (await state.get_data())["name"]
     intents.add(name, i)
     await state.clear()
