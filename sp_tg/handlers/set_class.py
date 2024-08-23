@@ -79,8 +79,7 @@ async def set_class_command(message: Message, sp: SPMessages, user: User,
         if user.set_class(command.args, sp.sc):
             today = datetime.today().weekday()
             tomorrow = sp.get_current_day(
-                sp.sc.construct_intent(days=today),
-                user
+                sp.sc.construct_intent(days=today)
             )
             relative_day = get_relative_day(today, tomorrow)
             await message.answer(
@@ -109,7 +108,7 @@ async def pass_handler(message: Message, sp: SPMessages, user: User):
     None и отправляет главное сообщение и клавиатуру.
     """
     today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today), user)
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
     relative_day = get_relative_day(today, tomorrow)
     user.set_class(None, sp.sc)
     await message.answer(
@@ -150,7 +149,7 @@ async def pass_class_callback(query: CallbackData, sp: SPMessages, user: User):
     главное сообщение с основной клавиатурой бота.
     """
     today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today), user)
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
     relative_day = get_relative_day(today, tomorrow)
     user.set_class(None, sp.sc)
     await query.message.edit_text(

@@ -122,7 +122,6 @@ async def main_handler(message: Message, sp: SPMessages, user: User) -> None:
         today = datetime.today().weekday()
         tomorrow = sp.get_current_day(
             sp.sc.construct_intent(days=today),
-            user,
         )
         relative_day = get_relative_day(today, tomorrow)
 

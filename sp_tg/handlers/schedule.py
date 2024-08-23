@@ -57,7 +57,7 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 async def week_sc_command(message: Message, sp: SPMessages, user: User):
     """Получате расписание уроков на неделю."""
     today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today). user)
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
     relative_day = get_relative_day(today, tomorrow)
     await message.answer(
         text=sp.send_lessons(
@@ -89,7 +89,7 @@ async def sc_callback(
             user
         )
         today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today), user)
+        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
         relative_day = get_relative_day(today, tomorrow)
         reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
@@ -122,7 +122,7 @@ async def select_day_callback(
 ):
     """Отобржает клавиатуру для выбора дня расписания уроков."""
     today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today), user)
+    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
     relative_day = get_relative_day(today, tomorrow)
     await query.message.edit_text(
         text=f"📅 на ...\n🔶 Для {callback_data.cl}:",

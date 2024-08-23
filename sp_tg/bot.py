@@ -204,7 +204,6 @@ async def start_handler(
         today = datetime.today().weekday()
         tomorrow = sp.get_current_day(
             sp.sc.construct_intent(days=today),
-            user
         )
         relative_day = get_relative_day(today, tomorrow)
         await message.answer(
@@ -234,7 +233,6 @@ async def delete_msg_callback(
         today = datetime.today().weekday()
         tomorrow = sp.get_current_day(
             sp.sc.construct_intent(days=today),
-            user
         )
         relative_day = get_relative_day(today, tomorrow)
         await query.message.edit_text(
