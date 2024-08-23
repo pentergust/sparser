@@ -211,7 +211,7 @@ class CurrentCounter:
 
     def days(
         self,
-        intent: Optional[Intent]
+        intent: Optional[Intent] = None,
     ) -> dict[int, dict[str, dict]]:
         """Счётчик по дням с использованием sc.lessons.
 
@@ -242,7 +242,7 @@ class CurrentCounter:
                     "lessons": Counter(),
                     "cabinets": Counter()
         } for x in range(6)}
-        if Intent is None:
+        if intent is None:
             intent = self.intent
 
         for cl, days in self.sc.lessons.items():
@@ -266,7 +266,7 @@ class CurrentCounter:
 
     def index(
         self,
-        intent: Optional[Intent],
+        intent: Optional[Intent] = None,
         cabinets_mode: Optional[bool]=False
     ) -> dict[int, dict[str, dict]]:
         """Счётчик уроков/кабинетов с использованием индексов.
