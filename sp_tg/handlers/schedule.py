@@ -85,7 +85,7 @@ async def sc_callback(
             platform.view.sc.construct_intent(
                 days=[0, 1, 2, 3, 4, 5], cl=user.data.cl
             )
-        ),
+        )
         relative_day = platform.relative_day(user)
         reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
