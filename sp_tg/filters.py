@@ -7,7 +7,7 @@
 
 from aiogram.enums import ChatMemberStatus
 from aiogram.filters import BaseFilter
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 
 
 class IsAdmin(BaseFilter):
@@ -24,12 +24,20 @@ class IsAdmin(BaseFilter):
     ответственными, чем общая масса участников.
     """
 
-    async def __call__(self, message: Message) -> bool:
+    async def __call__(self, message: Message | CallbackQuery) -> bool:
         """Проверяет что пользователь администратор чата."""
-        if message.chat.type == "private":
+        if isinstance(message, Message):
+            chat = message.chat
+        elif isinstance(message, CallbackQuery):
+            chat = message.message.chat
+
+        if chat is None:
             return True
 
-        member = await message.chat.get_member(message.from_user.id)
+        if chat.type == "private":
+            return True
+
+        member = await chat.get_member(message.from_user.id)
         if member.status not in (
             ChatMemberStatus.CREATOR,
             ChatMemberStatus.ADMINISTRATOR,
