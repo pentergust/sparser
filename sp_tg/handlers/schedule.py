@@ -4,7 +4,6 @@
 дни недели или на всю неделю.
 """
 
-from datetime import datetime
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -20,7 +19,6 @@ from sp_tg.keyboards import (
     get_select_day_keyboard,
     get_week_keyboard,
 )
-from sp_tg.utils.days import get_relative_day
 
 router = Router(name=__name__)
 
@@ -55,11 +53,11 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 # ===============
 
 @router.message(Command("week"))
-async def week_sc_command(message: Message, sp: SPMessages, user: User):
+async def week_sc_command(
+    message: Message, sp: SPMessages, user: User, platform: Platform
+):
     """Получате расписание уроков на неделю."""
-    today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
-    relative_day = get_relative_day(today, tomorrow)
+    relative_day = platform.relative_day(user)
     await message.answer(
         text=sp.send_lessons(
             Intent.construct(
@@ -89,9 +87,7 @@ async def sc_callback(
             ),
             user
         )
-        today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
-        relative_day = get_relative_day(today, tomorrow)
+        relative_day = platform.relative_day(user)
         reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
     # Расипсание на сегодня/завтра
@@ -116,12 +112,10 @@ async def sc_callback(
 @router.callback_query(SelectDayCallback.filter())
 async def select_day_callback(
     query: CallbackQuery, callback_data: ScCallback, sp: SPMessages,
-    user: User
+    user: User, platform: Platform
 ):
     """Отобржает клавиатуру для выбора дня расписания уроков."""
-    today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
-    relative_day = get_relative_day(today, tomorrow)
+    relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=f"📅 на ...\n🔶 Для {callback_data.cl}:",
         reply_markup=get_select_day_keyboard(callback_data.cl, relative_day),

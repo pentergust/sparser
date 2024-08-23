@@ -37,7 +37,6 @@ from sp_tg.keyboards import (
     get_other_keyboard,
 )
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
-from sp_tg.utils.days import get_relative_day
 
 # Настройкки и константы
 # ======================
@@ -74,7 +73,7 @@ except ViewCompatibleError as e:
 # ==========================
 
 dp = Dispatcher(
-    # `platform=platform,
+    platform=platform,
     sp=platform.view
 )
 
@@ -193,7 +192,8 @@ async def info_handler(
 async def start_handler(
     message: Message,
     sp: SPMessages,
-    user: User
+    user: User,
+    platform: Platform
 ) -> None:
     """Отправляет сообщение справки и главную клавиатуру.
 
@@ -201,11 +201,7 @@ async def start_handler(
     """
     await message.delete()
     if user.data.set_class:
-        today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(
-            sp.sc.construct_intent(days=today),
-        )
-        relative_day = get_relative_day(today, tomorrow)
+        relative_day = platform.relative_day(user)
         await message.answer(
             text=get_home_message(user.data.cl),
             reply_markup=get_main_keyboard(user.data.cl, relative_day),
@@ -221,7 +217,8 @@ async def start_handler(
 async def delete_msg_callback(
     query: CallbackQuery,
     sp: SPMessages,
-    user: User
+    user: User,
+    platform: Platform
 ) -> None:
     """Удаляет сообщение.
 
@@ -230,11 +227,7 @@ async def delete_msg_callback(
     try:
         await query.message.delete()
     except TelegramBadRequest:
-        today = datetime.today().weekday()
-        tomorrow = sp.get_current_day(
-            sp.sc.construct_intent(days=today),
-        )
-        relative_day = get_relative_day(today, tomorrow)
+        relative_day = platform.relative_day(user)
         await query.message.edit_text(
             text=get_home_message(user.data.cl),
             reply_markup=get_main_keyboard(user.data.cl, relative_day)
@@ -244,16 +237,11 @@ async def delete_msg_callback(
 async def home_callback(
     query: CallbackQuery,
     sp: SPMessages,
-    user: User
+    user: User,
+    platform: Platform
 ) -> None:
     """Возаращает в главный раздел."""
-    today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(
-        sp.sc.construct_intent(days=today),
-        user
-    )
-    relative_day = get_relative_day(today, tomorrow)
-
+    relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=get_home_message(user.data.cl),
         reply_markup=get_main_keyboard(user.data.cl, relative_day)

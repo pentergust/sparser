@@ -8,7 +8,8 @@ from typing import Optional
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from sp_tg.utils.days import days_names
+from sp.enums import SHORT_DAY_NAMES
+
 
 # Статическая клавиатура для выбора класса.
 # Она появляется, когда пользователь переходит в состояние выбра класса.
@@ -122,7 +123,7 @@ def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(text=x, callback_data=f"sc:{cl}:{i}")
-                for i, x in enumerate(days_names)
+                for i, x in enumerate(SHORT_DAY_NAMES)
             ],
             [
                 InlineKeyboardButton(text="◁", callback_data="home"),

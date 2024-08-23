@@ -8,11 +8,13 @@
 доступ к расписанию.
 """
 
+from datetime import date
 from typing import Optional
 
 from loguru import logger
 
 from sp.counter import CounterTarget
+from sp.enums import WeekDay
 from sp.exceptions import ViewCompatibleError, ViewSelectedError
 from sp.intents import Intent
 from sp.messages import SPMessages
@@ -202,6 +204,38 @@ class Platform:
                 raise ValueError("User class is None")
             intent = self.view.sc.construct_intent(cl=user.data.cl)
         return self.view.send_today_lessons(intent)
+
+    def currne_day(self, user: User, intent: Intent | None = None) -> int:
+        if Intent is None:
+            if user.data.cl is None:
+                raise ValueError("User class is None")
+            intent = self.view.sc.construct_intent(
+                cl=user.data.cl,
+                days=date.today().weekday()
+            )
+        return self.view.get_current_day(intent)
+
+    def relative_day(self, user: User) -> str:
+        today = date.today().weekday()
+        tomorrow = today + 1
+        if tomorrow > WeekDay.SATURDAY:
+            tomorrow = 0
+
+        if user.data.cl is None:
+            raise ValueError("User class is None")
+        current_day = self.view.get_current_day(
+            intent=self.view.sc.construct_intent(cl=user.data.cl, days=today)
+        )
+
+        if current_day == tomorrow:
+            relatove_day = "Сегодня"
+        elif current_day+1 == tomorrow:
+            relatove_day = "Завтра"
+        else:
+            relatove_day = WeekDay(tomorrow).to_short_str()
+
+        return relatove_day
+
 
     def search(
         self,

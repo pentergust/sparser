@@ -7,7 +7,6 @@
 использованияб бота.
 """
 
-from datetime import datetime
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
@@ -20,11 +19,11 @@ from aiogram.types import (
 )
 
 from sp.messages import SPMessages
+from sp.platform import Platform
 from sp.users.storage import User
 from sp_tg.filters import IsAdmin
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
-from sp_tg.utils.days import get_relative_day
 
 router = Router(name=__name__)
 
@@ -63,8 +62,9 @@ async def restrictions_handler(message: Message):
     await message.answer(text=CL_FEATURES_MESSAGE)
 
 @router.message(Command("set_class"), IsAdmin())
-async def set_class_command(message: Message, sp: SPMessages, user: User,
-    command: CommandObject
+async def set_class_command(
+    message: Message, sp: SPMessages, user: User,
+    command: CommandObject, platform: Platform
 ):
     """Изменяет класс или удаляет данные о пользователе.
 
@@ -77,11 +77,7 @@ async def set_class_command(message: Message, sp: SPMessages, user: User,
     # Если указали класс в команде
     if command.args is not None:
         if user.set_class(command.args, sp.sc):
-            today = datetime.today().weekday()
-            tomorrow = sp.get_current_day(
-                sp.sc.construct_intent(days=today)
-            )
-            relative_day = get_relative_day(today, tomorrow)
+            relative_day = platform.relative_day(user)
             await message.answer(
                 text=get_home_message(command.args),
                 reply_markup=get_main_keyboard(command.args, relative_day)
@@ -101,15 +97,15 @@ async def set_class_command(message: Message, sp: SPMessages, user: User,
         )
 
 @router.message(Command("pass"), IsAdmin())
-async def pass_handler(message: Message, sp: SPMessages, user: User):
+async def pass_handler(
+    message: Message, sp: SPMessages, user: User, platform: Platform
+):
     """Отвязаывает пользователя от класса по умолчанию.
 
     Если более конкретно, то устанавливает калсс пользователя в
     None и отправляет главное сообщение и клавиатуру.
     """
-    today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
-    relative_day = get_relative_day(today, tomorrow)
+    relative_day = platform.get_relative_day(user)
     user.set_class(None, sp.sc)
     await message.answer(
         text=get_home_message(user.data.cl),
@@ -141,16 +137,16 @@ async def set_class_callback(query: CallbackQuery, user: User):
     )
 
 @router.callback_query(F.data == "pass", IsAdmin())
-async def pass_class_callback(query: CallbackData, sp: SPMessages, user: User):
+async def pass_class_callback(
+    query: CallbackData, sp: SPMessages, user: User, platform: Platform
+):
     """Отвязывает пользователя от класса.
 
     Как и в случае с командой /pass.
     Просто устанавливает класс пользвотеля в None и отправляет
     главное сообщение с основной клавиатурой бота.
     """
-    today = datetime.today().weekday()
-    tomorrow = sp.get_current_day(sp.sc.construct_intent(days=today))
-    relative_day = get_relative_day(today, tomorrow)
+    relative_day = platform.relative_day(user)
     user.set_class(None, sp.sc)
     await query.message.edit_text(
         text=get_home_message(user.data.cl),
