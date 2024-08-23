@@ -9,7 +9,7 @@
 """
 
 from datetime import datetime, time
-from typing import Iterable, NamedTuple, Optional, Union, cast
+from typing import Iterable, NamedTuple, Optional, Union
 
 from .counter import CounterTarget, reverse_counter
 from .intents import Intent
@@ -205,7 +205,7 @@ def get_update_header(
         raise ValueError("End update timestanp value must be integer")
 
     start_timespamp = update.get("start_time", end_timestamp)
-    if not isinstance(start_timestamp, int):
+    if not isinstance(start_timespamp, int):
         raise ValueError("Start update timestanp value must be integer")
 
     etime = datetime.fromtimestamp(end_timestamp)
@@ -414,7 +414,7 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +15 (189)"
+        res = "🌟 Версия sp: 6.0.1 +16 (190)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
