@@ -1,11 +1,8 @@
 """Система управления намерениями.
 
-СОдержит обработчики и функции, необходимые для работы с системой
-намерений.
-Просматривать, создавать, изенять и удалять пользовательские намерения.
-
-Пользовательстие намерения позволяют сохранять намерения
-для пользователей и уже после их использовать в прочих разделах бота.
+Пользовательские намерения позволяют запечатывать намерения, присваивая
+им имя, чтобы после быстро использовать их в обработчиках.
+Позволяет создавать, изенять и удалять пользовательские намерения.
 """
 
 from aiogram import F, Router
@@ -20,6 +17,7 @@ from aiogram.types import (
     Message,
 )
 
+from sp.enums import SHORT_DAY_NAMES
 from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.users.intents import IntentObject, UserIntentsStorage
@@ -28,7 +26,6 @@ from sp_tg.messages import get_intent_status
 
 router = Router(name=__name__)
 
-days_names = ("пн", "вт", "ср", "чт", "пт", "сб")
 _MAX_INTENTS = 9
 _MIN_INTENT_NAME = 3
 _MAX_INTENT_NAME = 15
@@ -65,15 +62,12 @@ INTENTS_REMOVE_MANY_MESSAGE = ("🧹 Режим удаления намерен�
     "\nЭтот инструмент для вас!"
     "\nПросто нажмите на название намерения и оно исчезнет."
     "\nТакже по нажатию на одну кнопку вы можете удалить всё."
-    "\nБудьте осторожны."
-    "\n\nНажмите \"завершить\" как наиграетесь."
 )
 
-INTENTS_LIMIT_MESSAGE = ("💼 Это ваш предел количества намерений."
-    "\n🧹 Пожалуйста удалите не используемые намерения,"
+INTENTS_LIMIT_MESSAGE = ("💼 Это предел количества намерений."
+    "\n🧹 Пожалуйста удалите не используемые намерения, "
     "прежде чем добавлять новые в коллекцию."
     "\n\n/remove_intents - Для быстрой чистки намерений"
-    "\nИли воспользуйтесь кнопкой ниже."
 )
 
 
@@ -93,12 +87,10 @@ def get_intents_keyboard(intents: list[IntentObject]) -> InlineKeyboardMarkup:
         intent:add: => Добавить новое намерение.
         home => Вернуться на главный экран.
 
-    Args:
-        intents (list[IntentObject]): Намерения пользователя.
-
-    Returns:
-        InlineKeyboardMarkup: Клавиатура редактора намерений.
-    
+    :param intents: Список намерений для отображения.
+    :type intents: list[IntentObject]
+    :returns: Клавиатура редактирования списка намерений.
+    :rtype: InlineKeyboardMarkup
     """
     inlene_keyboard = [[]]
 
@@ -119,9 +111,8 @@ def get_intents_keyboard(intents: list[IntentObject]) -> InlineKeyboardMarkup:
 
     if len(intents) < _MAX_INTENTS:
         inlene_keyboard[-1].append(InlineKeyboardButton(
-            text="➕ Добавить", callback_data="intent:add:"
-            )
-        )
+            text="➕", callback_data="intent:add:"
+        ))
     inlene_keyboard[-1].append(
         InlineKeyboardButton(text="🏠 Домой", callback_data="home")
     )
@@ -138,23 +129,19 @@ def get_edit_intent_keyboard(intent_name: str) -> InlineKeyboardMarkup:
         intent:remove:{name} => Удалить намерение.
         intents => Вернуться к списку намерений.
 
-    Args:
-        intent_name (str): Имя намерения для редактирования
-
-    Returns:
-        InlineKeyboardMarkup: Клавиатура редактирования намерения.
-    
+    :param intent_name: Имя намерения для редактирования.
+    :type intent_name: str
+    :returns: Клавиатура для изменения намерения.
+    :rtype: InlineKeyboardMarkup
     """
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(
-            text="✏️ Изменить", callback_data=f"intent:reparse:{intent_name}"
-            )
-    ],
-    [
         InlineKeyboardButton(text="<", callback_data="intents"),
         InlineKeyboardButton(
             text="🗑️ Удалить", callback_data=f"intent:remove:{intent_name}"
-        )
+        ),
+        InlineKeyboardButton(
+            text="✏️ Изменить", callback_data=f"intent:reparse:{intent_name}"
+            )
     ]])
 
 def get_remove_intents_keyboard(intents: list[IntentObject]
@@ -170,28 +157,25 @@ def get_remove_intents_keyboard(intents: list[IntentObject]
         intents => Вернуться к списку намерений.
         intents:remove_all => Удаляет все намерения пользователя.
 
-    Args:
-        intents (list[IntentObject]): Список намерений пользователя.
-
-    Returns:
-        InlineKeyboardMarkup: Клавиатура быстрого удаления намерений.
-    
+    :param intents: Список намерений пользователя.
+    :type intents: list[IntentOnject]
+    :returns: Клавиатура быстрого удаления намерений.
+    :rtype: InlineKeyboardMarkup
     """
     inlene_keyboard = [[]]
-    if len(intents):
-        for i, x in enumerate(intents):
-            if i % 3 == 0:
-                inlene_keyboard.append([])
-            inlene_keyboard[-1].append(
-                InlineKeyboardButton(
-                    text=x.name, callback_data=f"intent:remove_many:{x.name}"
-                )
-            )
-        inlene_keyboard.append([
+    for i, x in enumerate(intents):
+        if i % 3 == 0:
+            inlene_keyboard.append([])
+        inlene_keyboard[-1].append(
             InlineKeyboardButton(
-                text="🧹 Удалить все", callback_data="intents:remove_all"
+                text=x.name, callback_data=f"intent:remove_many:{x.name}"
             )
-        ])
+        )
+    inlene_keyboard.append([
+        InlineKeyboardButton(
+            text="🧹 Удалить все", callback_data="intents:remove_all"
+        )
+    ])
 
     inlene_keyboard[-1].append(
         InlineKeyboardButton(text="✅ Завершить", callback_data="intents")
@@ -203,17 +187,16 @@ def get_remove_intents_keyboard(intents: list[IntentObject]
 def get_intent_info(name: str, i: Intent) -> str:
     """Возвращает подробное содержимое намерения.
 
-    Args:
-        name (str): Имя намерения.
-        i (Intent): Экземпляр намерения.
-
-    Returns:
-    str: Подробная информация о намерении.
-    
+    :param name: имя намерения.
+    :type name: str
+    :param i: Экземпляр намерения.
+    :type i: Intent
+    :returns: Информация о намерении.
+    :rtype: str
     """
     info = (f"💼 Намерение \"{name}\":"
         f"\n\n🔸 Классы: {', '.join(i.cl)}"
-        f"\n🔸 Дни: {', '.join([days_names[x] for x in i.days])}"
+        f"\n🔸 Дни: {', '.join([SHORT_DAY_NAMES[x] for x in i.days])}"
         f"\n🔸 Уроки: {', '.join(i.lessons)}"
         f"\n🔸 Кабинеты: {', '.join(i.cabinets)}"
     )
@@ -224,21 +207,18 @@ def get_intent_info(name: str, i: Intent) -> str:
 def get_intents_message(intents: list[IntentObject]) -> str:
     """Отправляет главное сообщение редактора намерений.
 
-    Оно используется чтобы представить список ваших намерений.
+    Используется чтобы представить список ваших намерений.
     Для чего нужны намерения и что вы можете сделать в редакторе.
 
-    Args:
-        intents (list[IntentObject]): Список намерений пользователя.
-
-    Args:
-        str: Главное сообщение редактора намерений.
-    
+    :param intents: Список намеренйи пользователя.
+    :type intent: list[IntentObject]
+    :returns: Сообщение со списком намерений.
+    :rtype: str
     """
     message = f"💼 Ваши намерения.\n\n{INTENTS_INFO_MESSAGE}\n"
 
     if len(intents) == 0:
         message += "\n\nУ вас пока нет намерений."
-
     else:
         for x in intents:
             message += f"\n🔸 {x.name}: {get_intent_status(x.intent)}"
@@ -251,8 +231,6 @@ def get_intents_message(intents: list[IntentObject]) -> str:
     return message
 
 
-
-
 @router.message(Command("cancel"), IsAdmin())
 async def cancel_handler(message: Message, state: FSMContext) -> None:
     """Cбрасывает состояние контекста машины состояний."""
@@ -261,22 +239,21 @@ async def cancel_handler(message: Message, state: FSMContext) -> None:
         return
 
     await state.clear()
-    await message.answer("Отменено.")
+    await message.answer("Отменено ...")
 
 
 class EditIntentStates(StatesGroup):
     """Состояния изменения намерения.
 
-    States:
-        name => Выбор имение намерения.
-        parse => Выбор параментов намерения.
+    - name => Выбор имение намерения.
+    - parse => Выбор параментов намерения.
     """
 
     name = State()
     parse = State()
 
 
-class IntentCallback(CallbackData, prefix="intent"):
+class IntentCall(CallbackData, prefix="intent"):
     """Управляет намерением.
 
     action (str): Что сделать с намерением.
@@ -296,26 +273,26 @@ class IntentCallback(CallbackData, prefix="intent"):
 # Получение списка намерений ---------------------------------------------------
 
 @router.message(Command("intents"))
-async def manage_intents_handler(message: Message,
-    intents: UserIntentsStorage
-) -> None:
+async def manage_intents_handler(message: Message, intents: UserIntentsStorage):
     """Команда для просмотра списка намерений пользователя."""
+    user_intents = intents.get()
     await message.answer(
-        text=get_intents_message(intents.get()),
-        reply_markup=get_intents_keyboard(intents.get())
+        text=get_intents_message(user_intents),
+        reply_markup=get_intents_keyboard(user_intents)
     )
 
 @router.callback_query(F.data=="intents")
 async def intents_callback(query: CallbackQuery, intents: UserIntentsStorage):
     """Кнопка для просмотра списка намерений пользователя."""
+    user_intents = intents.get()
     await query.message.edit_text(
-        text=get_intents_message(intents.get()),
-        reply_markup=get_intents_keyboard(intents.get())
+        text=get_intents_message(user_intents),
+        reply_markup=get_intents_keyboard(user_intents)
     )
 
 # Добавление нового намерения --------------------------------------------------
 
-@router.callback_query(IntentCallback.filter(F.action=="add"), IsAdmin())
+@router.callback_query(IntentCall.filter(F.action=="add"), IsAdmin())
 async def add_intent_callback(query: CallbackQuery, state: FSMContext) -> None:
     """Начать добавление нового намерения по кнопке."""
     await state.set_state(EditIntentStates.name)
@@ -324,7 +301,7 @@ async def add_intent_callback(query: CallbackQuery, state: FSMContext) -> None:
 @router.message(Command("add_intent"), IsAdmin())
 async def add_intent_handler(
     message: Message, state: FSMContext, intents: UserIntentsStorage
-) -> None:
+):
     """Команда для добавления нового намерения.
 
     Выводит сообщение при достижении предела количества намерений.
@@ -341,7 +318,7 @@ async def add_intent_handler(
         await message.answer(SET_INTENT_NAME_MESSAGE)
 
 @router.message(EditIntentStates.name, IsAdmin())
-async def intent_name_handler(message: Message, state: FSMContext) -> None:
+async def intent_name_handler(message: Message, state: FSMContext):
     """Устанавливает имя намерения."""
     name = message.text.lower().strip()
 
@@ -363,7 +340,7 @@ async def parse_intent_handler(
 ):
     """Устанавливает парамеры намерения."""
     i = Intent.parse(sp.sc, message.text.lower().strip().split())
-    if i.lessons == () and i.cl == () and i.days == () and i.cabinets == ():
+    if sum(map(len, i)) == 0:
         return await message.answer((
             "⚠️ Переданная строка не сожержит ни одного ключа, который может "
             "быть использован в намерении.\n"
@@ -372,20 +349,21 @@ async def parse_intent_handler(
     name = (await state.get_data())["name"]
     intents.add(name, i)
     await state.clear()
+    intents_list = intents.get()
     await message.answer(
-        text=get_intents_message(intents.get()),
-        reply_markup=get_intents_keyboard(intents.get())
+        text=get_intents_message(intents_list),
+        reply_markup=get_intents_keyboard(intents_list)
     )
 
 # Режим просмотра намерения ----------------------------------------------------
 
-@router.callback_query(IntentCallback.filter(F.action=="show"))
+@router.callback_query(IntentCall.filter(F.action=="show"))
 async def show_intent_callback(
     query: CallbackQuery,
     intents: UserIntentsStorage,
-    callback_data: IntentCallback
+    callback_data: IntentCall
 ):
-    """Просматривать информацию о намерении."""
+    """Информацию о намерении."""
     intent = intents.get_intent(callback_data.name)
     if intent is None:
         await query.message.edit_text(text="⚠️ Неправильное имя намерения")
@@ -395,24 +373,21 @@ async def show_intent_callback(
             reply_markup=get_edit_intent_keyboard(callback_data.name)
         )
 
-@router.callback_query(IntentCallback.filter(F.action=="remove"), IsAdmin())
-async def remove_intent_callback(
-    query: CallbackQuery,
-    intents: UserIntentsStorage,
-    callback_data: IntentCallback
+@router.callback_query(IntentCall.filter(F.action=="remove"), IsAdmin())
+async def remove_intent_call(
+    query: CallbackQuery, intents: UserIntentsStorage, callback_data: IntentCall
 ) -> None:
-    """Удаляет намерение по имени."""
+    """Удаляет намерение по его имени."""
     intents.remove(callback_data.name)
     await query.message.edit_text(
         text=get_intents_message(intents.get()),
         reply_markup=get_intents_keyboard(intents.get())
     )
 
-@router.callback_query(IntentCallback.filter(F.action=="reparse"), IsAdmin())
-async def reparse_intent_callback(
+@router.callback_query(IntentCall.filter(F.action=="reparse"), IsAdmin())
+async def reparse_intent_call(
     query: CallbackQuery,
-    intents: UserIntentsStorage,
-    callback_data: IntentCallback,
+    callback_data: IntentCall,
     state: FSMContext
 ) -> None:
     """Изменение параметров намерения."""
@@ -434,25 +409,19 @@ async def intents_remove_mode_handler(
     )
 
 @router.callback_query(F.data=="intents:remove_mode", IsAdmin())
-async def intents_remove_mode_callback(
-    query: CallbackQuery, intents: UserIntentsStorage
-) -> None:
+async def remove_mode_call(query: CallbackQuery, intents: UserIntentsStorage):
     """Переключает в режми удаления намерений."""
     await query.message.edit_text(
         text=INTENTS_REMOVE_MANY_MESSAGE,
         reply_markup=get_remove_intents_keyboard(intents.get())
     )
 
-@router.callback_query(
-    IntentCallback.filter(F.action=="remove_many"),
-    IsAdmin()
-)
-async def remove_many_intent_callback(
+@router.callback_query(IntentCall.filter(F.action=="remove_many"), IsAdmin())
+async def remove_many_call(
     query: CallbackQuery,
     intents: UserIntentsStorage,
-    callback_data:
-    IntentCallback
-) -> None:
+    callback_data: IntentCall
+):
     """Удаляет намерение и возвращает в меню удаления."""
     intents.remove(callback_data.name)
     await query.message.edit_text(
@@ -461,12 +430,9 @@ async def remove_many_intent_callback(
     )
 
 @router.callback_query(F.data=="intents:remove_all", IsAdmin())
-async def intents_set_remove_mode_callback(
-    query: CallbackQuery, intents: UserIntentsStorage
-) -> None:
-    """Удаляет всен амерения пользвоателя."""
+async def remova_all_call(query: CallbackQuery, intents: UserIntentsStorage):
+    """Удаляет все намерения пользвоателя."""
     intents.remove_all()
     await query.message.edit_text(
-        text=get_intents_message(intents.get()),
-        reply_markup=get_intents_keyboard(intents.get())
+        get_intents_message([]), reply_markup=get_intents_keyboard([])
     )

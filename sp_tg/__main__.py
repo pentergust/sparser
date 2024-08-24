@@ -1,8 +1,11 @@
 """Отправная точна для запуска бота.
 
+Запускает функцию для запуска бота.
+Которая в свою очередь запускает Long polling.
+
 .. code-block:: shell
 
-    python -m sp_tg
+    python sp_tg
 """
 
 import asyncio

@@ -1,6 +1,6 @@
 """Содержит функции для генерации динамических клавиатур.
 
-Это общие функции для генерации InlineCallbackMarkup.
+Это общие функции для генерации InlineKeyboardMarkup.
 Они могут быть использованы всеми обработчиками бота.
 """
 
@@ -15,27 +15,20 @@ from sp.enums import SHORT_DAY_NAMES
 # Позволяет быстро отвязатель пользователя от класса.
 # А также ознакомить с преимуществами, которые получит пользователь
 # если укажет свой класс по умолчанию.
-PASS_SET_CL_MARKUP = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="Без класса", callback_data="pass"
-            ),
-            InlineKeyboardButton(
-                text="Преимущества класса", callback_data="cl_features"
-            )
-        ]
-    ]
-)
+PASS_SET_CL_MARKUP = InlineKeyboardMarkup(inline_keyboard=[[
+    InlineKeyboardButton(
+        text="Без класса", callback_data="pass"
+    ),
+    InlineKeyboardButton(
+        text="Преимущества класса", callback_data="cl_features"
+    )
+]])
 
-
-# Функции сборки динамических клавиатур
-# =====================================
 
 # Для расписания уроков --------------------------------------------------------
 
 def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
-    """Возращает клавиатуру, для получение расписания на неделю.
+    """Возвращает клавиатуру, для получение расписания на неделю.
 
     Используется в сообщении с расписанием уроков.
     Когда режии просмотра выставлен "на сегодня".
@@ -52,22 +45,18 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     :return: Клавиатура для просмотра расписания.
     :rtype: InlineKeyboardMarkup
     """
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🏠Домой", callback_data="home"),
-                InlineKeyboardButton(
-                    text="На неделю", callback_data=f"sc:{cl}:week"
-                ),
-                InlineKeyboardButton(
-                    text="▷", callback_data=f"select_day:{cl}"
-                )
-            ]
-        ]
-    )
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+        InlineKeyboardButton(
+            text="На неделю", callback_data=f"sc:{cl}:week"
+        ),
+        InlineKeyboardButton(
+            text="▷", callback_data=f"select_day:{cl}"
+        )
+    ]])
 
 def get_sc_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
-    """Возаращает клавиатуру, для получения расписания на сегодня.
+    """Вовращает клавиатуру, для получения расписания на сегодня.
 
     Используется в сообщениях с расписанием уроков.
     Когда режии просмотра выставлен "на неделю".
@@ -86,17 +75,13 @@ def get_sc_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     :return: Кдавиатура для просмотра расписнаия на неделю.
     :rtype: InlineKeyboardMarkup
     """
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🏠Домой", callback_data="home"),
-                InlineKeyboardButton(
-                    text=relative_day, callback_data=f"sc:{cl}:today"
-                ),
-                InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}")
-            ]
-        ]
-    )
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+        InlineKeyboardButton(
+            text=relative_day, callback_data=f"sc:{cl}:today"
+        ),
+        InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}")
+    ]])
 
 def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     """Возаращает клавиатуру выбора дня недели в рассписания.
@@ -118,23 +103,20 @@ def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     :return: Клавиатура для выбора дня недели для просмотра расписнаия.
     :rtype: InlineKeyboardMarkup
     """
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text=x, callback_data=f"sc:{cl}:{i}")
-                for i, x in enumerate(SHORT_DAY_NAMES)
-            ],
-            [
-                InlineKeyboardButton(text="◁", callback_data="home"),
-                InlineKeyboardButton(
-                    text=relative_day, callback_data=f"sc:{cl}:today"
-                ),
-                InlineKeyboardButton(
-                    text="Неделя", callback_data=f"sc:{cl}:week"
-                ),
-            ],
-        ]
-    )
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=x, callback_data=f"sc:{cl}:{i}")
+            for i, x in enumerate(SHORT_DAY_NAMES)
+        ],
+        [
+            InlineKeyboardButton(text="◁", callback_data="home"),
+            InlineKeyboardButton(
+                text=relative_day, callback_data=f"sc:{cl}:today"
+            ),
+            InlineKeyboardButton(
+                text="Неделя", callback_data=f"sc:{cl}:week"
+            ),
+        ]])
 
 # Основные клавиатуры ----------------------------------------------------------
 

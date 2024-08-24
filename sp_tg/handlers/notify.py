@@ -1,6 +1,6 @@
 """Настройка системы уведомлений бота.
 
-позволяет пользователям настроить систему уведомлений бота.
+Позволяет пользователям настроить систему уведомлений бота.
 
 - Включить лии отключить расслыку уведомлений.
 - Включить или отключить рассылку расписнаия в определённый час.
@@ -16,7 +16,6 @@ from aiogram.types import (
     Message,
 )
 
-from sp.messages import SPMessages
 from sp.users.storage import User
 from sp_tg.filters import IsAdmin
 
@@ -69,21 +68,18 @@ def get_notify_keyboard(enabled: bool, hours: list[int]
     if not enabled:
         inline_keyboard[0].append(InlineKeyboardButton(
                 text="🔔 Включить", callback_data="notify:on:0"
-            )
-        )
+        ))
     else:
         # Кнопка выключения уведомлений
         inline_keyboard[0].append(InlineKeyboardButton(
             text="🔕 Выключить", callback_data="notify:off:0"
-            )
-        )
+        ))
         # Если пользователь уже указал какой-то час, добавляем кнопку
         # для быстрого сброса всей расссылки расписнаия.
         if hours:
             inline_keyboard[0].append(InlineKeyboardButton(
                 text="❌ Сброс", callback_data="notify:reset:0"
-                )
-            )
+            ))
         # Собираем клавиатуру для настроки времени отправки рассылки
         hours_line = []
         for i, x in enumerate(range(6, 24)):
@@ -95,13 +91,11 @@ def get_notify_keyboard(enabled: bool, hours: list[int]
                 hours_line.append(
                     InlineKeyboardButton(
                         text=f"✔️{x}", callback_data=f"notify:remove:{x}"
-                    )
-                )
+                ))
             else:
                 hours_line.append(InlineKeyboardButton(
                     text=str(x), callback_data=f"notify:add:{x}"
-                    )
-                )
+                ))
 
         if len(hours_line):
             inline_keyboard.append(hours_line)
@@ -167,8 +161,7 @@ async def notify_callback(query: CallbackQuery, user: User) -> None:
 
 @router.callback_query(NotifyCallback.filter(), IsAdmin())
 async def notify_mod_callback(
-    query: CallbackQuery, sp: SPMessages, callback_data: NotifyCallback,
-    user: User
+    query: CallbackQuery, callback_data: NotifyCallback, user: User
 ) -> None:
     """Применяет настройки к системе уведомлениям.
 

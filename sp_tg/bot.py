@@ -1,22 +1,29 @@
-"""Telegram-бот для доступа к SPMessages.
+"""Главный файл Telegram бота для работы с SPlatform.
 
 Полностью реализует доступ ко всем методам SPMessages.
 Не считая некоторых ограничений в настройке "намерений" (Intents).
+Также это касается ограничения текстовых сообщений.
 
 Получает обновления в первую очередь.
 Является основной платформой для работы расписания.
 
 Это главный файл с саммыми необходимыми обработчиками.
-С функцией для загрузки всех дополнительных обработчиков и последующего
+С функцией для загрузки всех дополнительных роутеров и последующего
 запуска бота.
+
+Предоставляет
+-------------
+
+- /start /help (home): Главное сообщение бота.
+- /info: Статус работы платформы и бота.
+- delete_msg: Удалить сообщение или отправить главный раздел.
 """
 
-import sqlite3
 from datetime import datetime
 from os import getenv
 from pathlib import Path
 from sys import exit
-from typing import Any, Awaitable, Callable, Dict, Union
+from typing import Any, Awaitable, Callable
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
@@ -28,7 +35,7 @@ from loguru import logger
 from sp.exceptions import ViewCompatibleError
 from sp.messages import SPMessages
 from sp.platform import Platform
-from sp.users.storage import FileUserStorage, User
+from sp.users.storage import User
 from sp.utils import get_str_timedelta
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (
@@ -44,8 +51,6 @@ from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 load_dotenv()
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 _TIMETAG_PATH = Path("sp_data/last_update")
-DB_CONN = sqlite3.connect("sp_data/tg.db")
-USER_STORAGE = FileUserStorage("sp_data/users/tg.json")
 
 # Некоторые константные настройки бота
 _BOT_VERSION = "v2.4.3"
@@ -85,23 +90,22 @@ dp = Dispatcher(
 @dp.callback_query.middleware()
 @dp.error.middleware()
 async def user_middleware(
-    handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
-    event: Union[Update, CallbackQuery, ErrorEvent],
-    data: Dict[str, Any],
+    handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
+    event: Message | CallbackQuery | ErrorEvent,
+    data: dict[str, Any],
 ) -> Any:
-    """Добавляет экземпляр SPMessages и намерения пользователя."""
+    """Добавляет экземпляр пользователя и хранилище намерений."""
+    # Это выглядит как костыль, работает примерно так же
     if isinstance(event, ErrorEvent):
-        if event.update.callback_query is not None:
-            uid = event.update.callback_query.message.chat.id
-        else:
-            uid = event.update.message.chat.id
-    elif isinstance(event, CallbackQuery):
+       event = event.update
+    if isinstance(event, CallbackQuery):
         uid = event.message.chat.id
     else:
         uid = event.chat.id
 
     data["user"] = platform.get_user(str(uid))
     data["intents"] = platform.get_intents(uid)
+
     return await handler(event, data)
 
 # Если вы хотите отключить логгирование в боте
@@ -109,9 +113,9 @@ async def user_middleware(
 @dp.message.middleware()
 @dp.callback_query.middleware()
 async def log_middleware(
-    handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
-    event: Update,
-    data: Dict[str, Any],
+    handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
+    event: Message | CallbackQuery,
+    data: dict[str, Any],
 ) -> Any:
     """Отслеживает полученные ботом сообщения и callback query."""
     if isinstance(event, CallbackQuery):
@@ -121,6 +125,9 @@ async def log_middleware(
 
     return await handler(event, data)
 
+
+# Сообщение статуса
+# =================
 
 def get_update_timetag(path: Path) -> int:
     """Получает время последней удачной проверки обнолвений.
@@ -141,7 +148,7 @@ def get_update_timetag(path: Path) -> int:
     except (ValueError, FileNotFoundError):
         return 0
 
-def get_status_message(sp: SPMessages, timetag_path: Path, user: User) -> str:
+def get_status_message(view: SPMessages, timetag_path: Path, user: User) -> str:
     """Отправляет информационно сособщение о работа бота и парсера.
 
     Инфомарционно сообщения содержит некоторую вспомогательную
@@ -151,14 +158,14 @@ def get_status_message(sp: SPMessages, timetag_path: Path, user: User) -> str:
     Также осдержит метку последнего автоматического обновления.
     Если давно не было автообновлений - выводит предупреждение.
 
-    :param sp: Экземпляр генератора сообщений.
-    :type sp: SPMessages
+    :param view: Экземпляр генератора сообщений.
+    :type view: SPMessages
     :param timetag_path: Путь к файлу временной метки обновления.
     :type timetag_path: Path
     :return: Информацинное сообщение.
     :rtype: str
     """
-    message = sp.send_status(user)
+    message = view.send_status(user)
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
 
     timetag = get_update_timetag(timetag_path)
@@ -177,37 +184,31 @@ def get_status_message(sp: SPMessages, timetag_path: Path, user: User) -> str:
 # ==================
 
 @dp.message(Command("info"))
-async def info_handler(
-    message: Message,
-    sp: SPMessages,
-    user: User
-) -> None:
-    """Сообщение о статусе рабты бота и парсера."""
+async def info_handler(message: Message, platform: Platform, user: User):
+    """Статус рабты бота и платформы."""
     await message.answer(
-        text=get_status_message(sp, _TIMETAG_PATH, user),
+        text=get_status_message(platform.view, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
 
 @dp.message(Command("help", "start"))
-async def start_handler(
-    message: Message,
-    sp: SPMessages,
-    user: User,
-    platform: Platform
-) -> None:
-    """Отправляет сообщение справки и главную клавиатуру.
+async def start_handler(message: Message, user: User, platform: Platform):
+    """Отправляет домашнее сообщенеи и главную клавиатуру.
 
-    Если класс не указан, отпраляет сообщение смены класса.
+    Если класс не указан - отправляет сообщенеи смены класса.
     """
-    await message.delete()
-    if user.data.set_class:
-        relative_day = platform.relative_day(user)
-        await message.answer(
-            text=get_home_message(user.data.cl),
-            reply_markup=get_main_keyboard(user.data.cl, relative_day),
+    if not user.data.set_class:
+        return await message.answer(
+            SET_CLASS_MESSAGE,
+            reply_markup=PASS_SET_CL_MARKUP
         )
-    else:
-        await message.answer(SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
+
+    await message.delete()
+    relative_day = platform.relative_day(user)
+    await message.answer(
+        text=get_home_message(user.data.cl),
+        reply_markup=get_main_keyboard(user.data.cl, relative_day),
+    )
 
 
 # Обработчик Callback запросов
@@ -215,14 +216,11 @@ async def start_handler(
 
 @dp.callback_query(F.data == "delete_msg")
 async def delete_msg_callback(
-    query: CallbackQuery,
-    sp: SPMessages,
-    user: User,
-    platform: Platform
-) -> None:
-    """Удаляет сообщение.
+    query: CallbackQuery, user: User, platform: Platform
+):
+    """Удаляет сообщение пользователя.
 
-    Если не удалось удалить, отправляет гланый раздел.
+    Если не удалось удалить, отправляет главное сообщение.
     """
     try:
         await query.message.delete()
@@ -235,12 +233,9 @@ async def delete_msg_callback(
 
 @dp.callback_query(F.data == "home")
 async def home_callback(
-    query: CallbackQuery,
-    sp: SPMessages,
-    user: User,
-    platform: Platform
-) -> None:
-    """Возаращает в главный раздел."""
+    query: CallbackQuery, user: User, platform: Platform
+):
+    """Возвращает в главный раздел."""
     relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=get_home_message(user.data.cl),
@@ -249,11 +244,12 @@ async def home_callback(
 
 @dp.callback_query(F.data == "other")
 async def other_callback(
-    query: CallbackQuery,
-    sp: SPMessages,
-    user: User
+    query: CallbackQuery, sp: SPMessages, user: User
 ) -> None:
-    """Возвращает сообщение статуса и доплнительную клавиатуру."""
+    """Сообщение о статусе бота и платформы.
+
+    Также предоставляет клавиатуру с менее используемыми разделами.
+    """
     await query.message.edit_text(
         text=get_status_message(sp, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
@@ -266,13 +262,15 @@ async def other_callback(
 def send_error_messsage(exception: ErrorEvent, user: User) -> str:
     """Отпрвляет отладочное сообщние об ошибке пользователю.
 
-    Data
+    Предоставляемые данные:
 
-    - user_name => Кто вызвал ошибку.
-    - user_id => Какой пользователь вызвал ошибку.
+    - new => Когда вызвано исключение.
+    - user_name => Кто вызвал исключение.
+    - user_id => Какой пользователь вызвал искючение.
     - class_let => К какому класс относился пользователь.
+    - set_class => Установлене ли коасс.
     - chat_id => Где была вызвана ошибка.
-    - exception => Описание текста ошибки.
+    - exception => Описание исключения.
     - action => Callback data или текст сообщение, вызвавший ошибку.
 
     :param exception: Событие исключения в aiogram.
@@ -301,7 +299,7 @@ def send_error_messsage(exception: ErrorEvent, user: User) -> str:
         f"\n-- Имя: {user_name}"
         f"\n-- Класс: {user.data.cl} (установлен: {set_class_flag})"
         f"\n-- ID: {chat_id}"
-        f"\n-- Action: {action}"
+        f"\n{action}"
         f"\n\n🚫 Возникло исключение  {exception.exception.__class__.__name__}:"
         f"\n-- {exception.exception}"
         "\n\nПожалуйста, отправьте @milinuri данное сообщение."
@@ -309,16 +307,17 @@ def send_error_messsage(exception: ErrorEvent, user: User) -> str:
     )
 
 @dp.errors()
-async def error_handler(exception: ErrorEvent, user: User) -> None:
+async def error_handler(exception: ErrorEvent, user: User):
     """Ловит и обрабатывает все исключения.
 
     Отправляет сообщение об ошибке пользователям.
+    Некоторое исключения будут подавляться, поскольку не предоставляют
+    ничего инетерсного.
     """
     if isinstance(exception.exception,
         (TelegramBadRequest, TelegramNetworkError)
     ):
-        logger.error(exception)
-        return
+        return logger.error(exception)
 
     logger.exception(exception.exception)
     if exception.update.callback_query is not None:
@@ -335,7 +334,11 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
 # ===========
 
 async def main() -> None:
-    """Главная функция запуска бота."""
+    """Главная функция запуска бота.
+
+    Подключает роутеры из других файлов к диспетчеру.
+    Запускает обработку событий.
+    """
     bot = Bot(TELEGRAM_TOKEN)
 
     # Загружаем обработчики.

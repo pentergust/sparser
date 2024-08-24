@@ -10,7 +10,6 @@ from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, Message
 
-from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.platform import Platform
 from sp.users.storage import User
@@ -41,10 +40,7 @@ class ScCallback(CallbackData, prefix="sc"):
     day: str
 
 class SelectDayCallback(CallbackData, prefix="select_day"):
-    """Используется для выбора дня недели при получении расписания.
-
-    cl (str): Для какого класса получить расписание.
-    """
+    """Используется для выбора дня недели при получении расписания."""
 
     cl: str
 
@@ -53,10 +49,8 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 # ===============
 
 @router.message(Command("week"))
-async def week_sc_command(
-    message: Message, sp: SPMessages, user: User, platform: Platform
-):
-    """Получате расписание уроков на неделю."""
+async def week_sc_command(message: Message, user: User, platform: Platform):
+    """Расписание уроков на неделю."""
     relative_day = platform.relative_day(user)
     await message.answer(
         text=platform.lessons(
@@ -92,7 +86,7 @@ async def sc_callback(
     # Расипсание на сегодня/завтра
     elif callback_data.day == "today":
         text = platform.today_lessons(
-            user, Intent.construct(sp.sc,cl=callback_data.cl)
+            user, platform.view.sc.construct_intent(cl=callback_data.cl)
         )
         reply_markup = get_week_keyboard(callback_data.cl)
 
@@ -100,7 +94,7 @@ async def sc_callback(
     else:
         text = platform.lessons(
             user,
-            sp.sc.construct_intent(
+            platform.view.sc.construct_intent(
                 cl=callback_data.cl, days=int(callback_data.day)
             ),
         )

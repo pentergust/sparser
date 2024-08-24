@@ -169,8 +169,8 @@ def get_updates_message(
 # ===============
 
 @router.message(Command("updates"))
-async def updates_handler(message: Message, platform: Platform,
-    intents: UserIntentsStorage
+async def updates_handler(
+    message: Message, platform: Platform, intents: UserIntentsStorage
 ) -> None:
     """Отправляет последную страницу списка изменений в расписании.
 

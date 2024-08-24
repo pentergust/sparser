@@ -47,4 +47,4 @@ routers = (
     request.router
 )
 
-__all__ = ["routers"]
+__all__ = ("routers",)
