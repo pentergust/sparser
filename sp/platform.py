@@ -199,6 +199,7 @@ class Platform:
         """
         return self.view.send_today_lessons(self._get_user_intent(user, intent))
 
+
     def current_day(self, user: User, intent: Intent | None = None) -> int:
         """Получает текщий день в расписании.
 
@@ -218,6 +219,14 @@ class Platform:
         :rtype: int
         """
         return self.view.get_current_day(self._get_user_intent(user, intent))
+
+    def _get_day_str(self, today: int, relative_day: str) -> str:
+        if relative_day == today:
+            return "Сегодня"
+        elif relative_day == today+1:
+            return "Завтра"
+        else:
+            return WeekDay(relative_day).to_short_str()
 
     def relative_day(self, user: User) -> str:
         """Получает строковое название текущего дня недели.
@@ -240,19 +249,15 @@ class Platform:
             tomorrow = 0
 
         if user.data.cl is None:
-            raise ValueError("User class is empty, unable to get relative day")
+            # raise ValueError("User class is empty, unable to get relative day")
+            # Костыль номер 34
+            return "Сегодня"
+
         current_day = self.view.get_current_day(
             intent=self.view.sc.construct_intent(cl=user.data.cl, days=today)
         )
+        return self._get_day_str(today, current_day)
 
-        if current_day == today:
-            relatove_day = "Сегодня"
-        elif current_day+1 == tomorrow:
-            relatove_day = "Завтра"
-        else:
-            relatove_day = WeekDay(tomorrow).to_short_str()
-
-        return relatove_day
 
     def search(
         self,
