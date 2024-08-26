@@ -8,13 +8,14 @@
 Вы можете использовать их в чат-ботах, например Telegram.
 """
 
+from collections import Counter, defaultdict
 from datetime import datetime, time
 from typing import Iterable, NamedTuple, Optional, Union
 
 from .counter import CounterTarget, reverse_counter
 from .intents import Intent
 from .parser import Schedule
-from .users.storage import User
+from .users.storage import User, CountedUsers
 from .utils import get_str_timedelta, plural_form
 
 # Некоторые настройки генератора сообщений
@@ -340,30 +341,30 @@ def _get_next_update_str(time: datetime, now: Optional[datetime]=None) -> str:
 
     return res
 
-# def _get_cl_counter_str(cl_counter: Counter) -> str:
-#     groups = defaultdict(list)
-#     for k, v in cl_counter.items():
-#         groups[v].append(k)
+def _get_cl_counter_str(cl_counter: Counter) -> str:
+    groups = defaultdict(list)
+    for k, v in cl_counter.items():
+        groups[v].append(k)
 
-#     res = ""
-#     for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
-#         res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+    res = ""
+    for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
+        res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
 
-#     return res
+    return res
 
-# def _get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
-#     groups = defaultdict(list)
-#     for k, v in hour_counter.items():
-#         groups[v].append(k)
+def _get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
+    groups = defaultdict(list)
+    for k, v in hour_counter.items():
+        groups[v].append(k)
 
-#     res = ""
-#     for k, v in sorted(groups.items(), key=lambda x: x[0]):
-#         if k == 1:
-#             res += f" 🔸{', '.join(sorted(v))}"
-#         else:
-#             res += f" 🔹{k} ({', '.join(sorted(v))})"
+    res = ""
+    for k, v in sorted(groups.items(), key=lambda x: x[0]):
+        if k == 1:
+            res += f" 🔸{', '.join(map(str, sorted(v)))}"
+        else:
+            res += f" 🔹{k} ({', '.join(map(str, sorted(v)))})"
 
-#     return res
+    return res
 
 
 class SPMessages:
@@ -385,8 +386,8 @@ class SPMessages:
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
-    def send_status(self, user: User) -> str:
-        """Возвращает информацию о парсере и пользователях.
+    def send_status(self, storage_users: CountedUsers, user: User) -> str:
+        """Возвращает информацию о платформе.
 
         Эта статистическая информация, о работа парсера, времени
         последней проерки и обновления и прочих параметрах, связанных
@@ -414,22 +415,23 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).seconds))
 
-        res = "🌟 Версия sp: 6.0.1 +24 (200)"
+        active_pr = round((storage_users.active / storage_users.total)*100, 2)
+
+        res = "🌟 Версия sp: 6.0.1 +26 (203)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
         res += f"\n🌲 {user.data.cl} класс"
         res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
-        # res += f"\n🌲 {len(users)} пользователей ({notify_count}🔔)"
-        # res += f"\n🌲 из них {active_users} активны ({active_pr}%)"
-        # if len(hour_counter) > 0:
-        #     res += "\n🌲 Уведомления пользователей:"
-        #     res += f"\n🔔 {_get_hour_counter_str(hour_counter)}"
-        # res += f"\n🌲 {_get_cl_counter_str(cl_counter)}"
-
-        # other_cl = sorted(set(self.sc.lessons) - set(cl_counter))
-        # if other_cl:
-        #     res += f" 🔸{', '.join(other_cl)}"
+        res += f"\n🌲 {storage_users.total} пользователей ({storage_users.notify}🔔)"
+        res += f"\n🌲 из них {storage_users.active} активны ({active_pr}%)"
+        res += f"\n🌲 {_get_cl_counter_str(storage_users.cl)}"
+        other_cl = sorted(set(self.sc.lessons) - set(storage_users.cl))
+        if other_cl:
+            res += f" 🔸{', '.join(other_cl)}"
+        if len(storage_users.hour) > 0:
+            res += "\n🌲 Уведомления пользователей:"
+            res += f"\n🔔 {_get_hour_counter_str(storage_users.hour)}"
 
         return res
 

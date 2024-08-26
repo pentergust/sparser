@@ -8,6 +8,7 @@
 доступ к расписаниям.
 """
 
+from pathlib import Path
 from datetime import date
 from typing import Optional
 
@@ -51,9 +52,10 @@ class Platform:
         self.version = version
         self.api_version = api_version
 
-        self._db_path = Path(f"sp_data/users/{pid}.json")
+        self._file_path = Path(f"sp_data/users/{pid}.json")
+        self._db_path = Path(f"sp_data/users/{pid}.db")
         #: Экземпляр хранилища пользователей платформы
-        self.users = FileUserStorage(self._db_path)
+        self.users = FileUserStorage(self._file_path)
         self._view: SPMessages | None = None
 
 
@@ -360,4 +362,5 @@ class Platform:
         :return: Информация о работе платформы.
         :rtype: str
         """
-        return self.view.send_status(user)
+        count_result = self.users.count_users(self.view.sc)
+        return self.view.send_status(count_result, user)

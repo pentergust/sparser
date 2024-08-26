@@ -79,12 +79,14 @@ class CountedUsers(NamedTuple):
     Используется в методе для подсчёта количества пользователей.
 
     total (int): Сколько всего пользователей платформы.
+    notify (int): Сколько пользователей включили уведомления.
     active (int): Сколько пользователей использую платформу.
     cl (Counter): Счётчик классов пользователей.
     hours (Counter): счётчик времени отправки расписания.
     """
 
     total: int
+    notify: int
     active: int
     cl: Counter
     hour: Counter
@@ -212,19 +214,28 @@ class FileUserStorage:
             self.get_users()
 
         total_users = len(self._users)
+        notify_users = 0
         active_users = 0
         cl_counter = Counter()
         hour_counter = Counter()
         for k, v in self._users.items():
             cl_counter[v.cl] += 1
             if v.notifications:
+                notify_users += 1
+
                 for hour in v.hours:
                     hour_counter[hour] += 1
 
                 if v.last_parse >= sc.schedule["last_parse"]:
                     active_users += 1
 
-        return CountedUsers(total_users, active_users, cl_counter)
+        return CountedUsers(
+            total_users,
+            notify_users,
+            active_users,
+            cl_counter,
+            hour_counter
+        )
 
 
     # Рабоат с пользователями базы
