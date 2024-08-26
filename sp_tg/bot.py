@@ -97,8 +97,11 @@ async def user_middleware(
     """Добавляет экземпляр пользователя и хранилище намерений."""
     # Это выглядит как костыль, работает примерно так же
     if isinstance(event, ErrorEvent):
-       event = event.update
-    if isinstance(event, CallbackQuery):
+        if event.update.callback_query is not None:
+            uid = event.update.callback_query.message.chat.id
+        else:
+            uid = event.update.message.chat.id
+    elif isinstance(event, CallbackQuery):
         uid = event.message.chat.id
     else:
         uid = event.chat.id
@@ -148,7 +151,7 @@ def get_update_timetag(path: Path) -> int:
     except (ValueError, FileNotFoundError):
         return 0
 
-def get_status_message(view: SPMessages, timetag_path: Path, user: User) -> str:
+def get_status_message(platform: Platform, timetag_path: Path, user: User) -> str:
     """Отправляет информационно сособщение о работа бота и парсера.
 
     Инфомарционно сообщения содержит некоторую вспомогательную
@@ -165,7 +168,7 @@ def get_status_message(view: SPMessages, timetag_path: Path, user: User) -> str:
     :return: Информацинное сообщение.
     :rtype: str
     """
-    message = view.send_status(user)
+    message = platform.send_status(user)
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
 
     timetag = get_update_timetag(timetag_path)
@@ -187,7 +190,7 @@ def get_status_message(view: SPMessages, timetag_path: Path, user: User) -> str:
 async def info_handler(message: Message, platform: Platform, user: User):
     """Статус рабты бота и платформы."""
     await message.answer(
-        text=get_status_message(platform.view, _TIMETAG_PATH, user),
+        text=get_status_message(platform, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
 
@@ -244,14 +247,14 @@ async def home_callback(
 
 @dp.callback_query(F.data == "other")
 async def other_callback(
-    query: CallbackQuery, sp: SPMessages, user: User
+    query: CallbackQuery, platform: Platform, user: User
 ) -> None:
     """Сообщение о статусе бота и платформы.
 
     Также предоставляет клавиатуру с менее используемыми разделами.
     """
     await query.message.edit_text(
-        text=get_status_message(sp, _TIMETAG_PATH, user),
+        text=get_status_message(platform, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
 
@@ -321,13 +324,17 @@ async def error_handler(exception: ErrorEvent, user: User):
 
     logger.exception(exception.exception)
     if exception.update.callback_query is not None:
-        await exception.update.callback_query.message.answer(
-            send_error_messsage(exception, user)
-        )
+        message = exception.update.callback_query.message
     else:
-        await exception.update.message.answer(
-            send_error_messsage(exception, user)
-        )
+        message = exception.update.message
+
+    # Не исключено что сообщение может быть пустым
+    if message is None:
+        return None
+
+    await message.answer(
+        send_error_messsage(exception, user)
+    )
 
 
 # Запуск бота
