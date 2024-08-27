@@ -15,7 +15,7 @@ from typing import Iterable, NamedTuple, Optional, Union
 from .counter import CounterTarget, reverse_counter
 from .intents import Intent
 from .parser import Schedule
-from .users.storage import User, CountedUsers
+from .users.storage import CountedUsers, User
 from .utils import get_str_timedelta, plural_form
 
 # Некоторые настройки генератора сообщений
@@ -417,7 +417,7 @@ class SPMessages:
 
         active_pr = round((storage_users.active / storage_users.total)*100, 2)
 
-        res = "🌟 Версия sp: 6.0.1 +27 (204)"
+        res = "🌟 Версия sp: 6.0.1 +28 (207)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"

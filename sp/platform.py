@@ -8,8 +8,8 @@
 доступ к расписаниям.
 """
 
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 from typing import Optional
 
 from loguru import logger
@@ -215,7 +215,7 @@ class Platform:
         :type user: User
         :param inent: Намеренеи для уточнения расписнаия (классы).
         :type intent: Intent | None
-        :returns: Текущий день недели для расписаниея.
+        :return: Текущий день недели для расписаниея.
         :rtype: int
         """
         return self.view.get_current_day(self._get_user_intent(user, intent))
@@ -240,7 +240,7 @@ class Platform:
 
         :param user: Для какого пользователя получаем расписание.
         :type User: User
-        :returns: Сегодня/Завтра/день недели.
+        :return: Сегодня/Завтра/день недели.
         :rtype: str
         """
         today = date.today().weekday()

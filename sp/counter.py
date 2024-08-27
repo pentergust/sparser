@@ -1,45 +1,19 @@
 """Счётчики элементов расписания.
 
-Проедостовляют вспомогательные функции для подсчёта количества
+Предоставляет вспомогательный класс для подсчёта количества
 элементов в расписании.
-Эти статистические функции могут использоваться для последующего
-анализа расписания.
-Все функции используют намерения, для уточнения результатов
-подсчёта элементов.
+Испоользуется для последующего анализа расписания.
+Все функции используют намерения, для уточнения результатов подсчёта.
 
 Обрабите внимение, что счётчики возвращают "сырой" результат.
 Который вы можеет в последствии самостоятельно обработать
 в необходимый вам формат.
 
-.. warning:: Новый класс счётчика
+.. warning:: Новый класс счётчика.
 
-    Поскольку появлися новый класс счётчика ``Counter``, более нет
-    необходимости использовать ``TextCounter``, от чего последний
-    был удалён.
-
-Старый вариант:
-
-.. code-block:: python
-
-    from sp.counters import days_counter
-    from sp.parser import Schedule
-    from sp.messages import send_counter
-
-    sc = Schedule()
-    res = days_counter(sc, sc.construct_intent())
-    groups = _group_counter_res(res)
-    message = send_counter(groups, target="cl")
-
-Новый вариант:
-
-Содержит:
-
-- Перечисление подгрупп счётчика.
-- Вспомогательные функции для результатов счётчиков.
-- Счётчики:
-    - классы.
-    - Дни.
-    - Индексы (уроки/кабинеты).
+    Поскольку появлися новый класс счётчика ``CurrentCounter``,
+    более нет необходимости использовать ``TextCounter``, от чего
+    последний был удалён.
 """
 
 from collections import Counter, defaultdict
@@ -53,13 +27,12 @@ from .parser import Schedule
 class CounterTarget(Enum):
     """Описывает все доступные подгруппы счётчиков.
 
-    Пример использования с TextCounter:
+    Пример использования с CurrentCounter:
 
     .. code-block:: python
-
-        # coutnter - экземпляр TextCounter с переданным Schedule
-        message = counter.cl(
-            sc.construct_intent()
+        counter = CurrentCounter(sc, Intent())
+        message = platform.counter(
+            counter.cl()
             target=CounterTarget.CL
         )
 
@@ -84,7 +57,7 @@ class CounterTarget(Enum):
 # Вспомогательные функции
 # =======================
 
-def _group_counter_res(counter_res: dict[str, dict[str, Union[int, Counter]]]
+def _group_counter_res(counter_res: dict[str, dict[str, int | Counter]]
 ) -> dict[int, dict[str, dict]]:
     """Группирует результат работы счётчиков по total ключу.
 
@@ -104,7 +77,7 @@ def _group_counter_res(counter_res: dict[str, dict[str, Union[int, Counter]]]
         }
 
     :param counter_res: Результаты работы счётчика расписания.
-    :type counter_res: dict[str, dict[str, Union[int, Counter]]]
+    :type counter_res: dict[str, dict[str, int | Counter]]
     :return: Сгруппированные результаты работы счётчика.
     :rtype: dict[int, dict[str, dict]]
     """
@@ -119,14 +92,14 @@ def _group_counter_res(counter_res: dict[str, dict[str, Union[int, Counter]]]
     return groups
 
 def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
-    """Меняет ключ и занчение collections.Counter местами.
+    """Меняет ключ и занчение ``collections.Counter`` местами.
 
-    Перевоварачивает счётчик из name:count -> count:[name, name, name].
+    Переворачивает счётчик из name:count -> count:[name, name, name].
     Используется в групперовке результатов работы счётчиков по
     количеству.
-    Также он будет пропускать пустые значения при подсчёте.
+    Также будет пропускать пустые значения при подсчёте.
 
-    :param cnt: Счётчик элементов расписаия.
+    :param cnt: Счётчик элементов расписания.
     :type cnt: Сounter
     :return: Перевёрнутый счётчик расписнаия.
     :rtype: dict[int, list[str]]
@@ -140,24 +113,30 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
     return res
 
 
-# Функции счётчиков
-# =================
-
 class CurrentCounter:
-    """Счтётчих элементов текущего расписания."""
+    """Счтётчих элементов текущего расписания.
+
+    Предоставляет методы для подсчёта элементов текущего расписния.
+    Возаращет сырые результаты, которое после можно обработать через
+    класс представления.
+
+    :param sc: Расписание, для которого будет производиться подсчёт.
+    :type sc: Schedule
+    :param intent: Уточняющее намерение при подсчёте элементов.
+    :type intent: Intent
+    """
 
     def __init__(self, sc: Schedule, intent: Intent) -> None:
         self.sc = sc
         self.intent = intent
 
     def cl(
-        self,
-        intent: Optional[Intent]=None
+        self, intent: Intent | None=None
     ) -> dict[int, dict[str, dict]]:
         """Счётчик по классам с использованием sp.lessons.
 
         Считает элементы расписнаия, пробегаясь по sp.lessons.
-        Использует намерения для уточнения результатов поиска.
+        Использует намерение для уточнения результатов поиска.
 
         Пример результатов работы счетчика:
 
@@ -173,7 +152,7 @@ class CurrentCounter:
             }
 
         :param intent: Намерения для уточнения результатов подсчёта.
-        :type intent: Optional[Intent]
+        :type intent: Intent | None
         :return: Подсчитанные элементы расписания по классам.
         :rtype: dict[int, dict[str, dict]]
         """
@@ -215,8 +194,8 @@ class CurrentCounter:
     ) -> dict[int, dict[str, dict]]:
         """Счётчик по дням с использованием sc.lessons.
 
-        Производит подсчёт элементов относительно дней недели в расписании.
-        Использует намерения для уточнения результатов работы счётчиков.
+        Производит подсчёт элементов относительно дней недели.
+        Использует намерение для уточнения результатов работы счётчиков.
 
         Пример результатов работы счётчика:
 
@@ -266,14 +245,14 @@ class CurrentCounter:
 
     def index(
         self,
-        intent: Optional[Intent] = None,
-        cabinets_mode: Optional[bool]=False
+        intent: Intent | None = None,
+        cabinets_mode: bool = False
     ) -> dict[int, dict[str, dict]]:
         """Счётчик уроков/кабинетов с использованием индексов.
 
         Производит подсчёт элементов расписания в счётиках.
         В зависимости от режима считает уроки или кабинеты.
-        Использует намерения, для уточнения результатов счётчика.
+        Использует намерение, для уточнения результатов счётчика.
 
         .. caution:: Этот счётик сильно отличается
 
@@ -291,10 +270,7 @@ class CurrentCounter:
                 | true     | cabinet | lesson  |
                 +----------+---------+---------+
 
-        Пример результатов работы счётчика:
-
         .. code-block:: python
-
             {
                 "obj": { # урок или кабинет в зависимости от режима.
                     "total": 12 # Общее количесво элементов расписания.
@@ -304,10 +280,10 @@ class CurrentCounter:
                 }
             }
 
-        :param intent: Намерения для уточнения результатов подсчёта.
-        :type intent: Optional[Intent]
+        :param intent: Намерение для уточнения результатов подсчёта.
+        :type intent: Intent | None
         :param cabinets_mode: Делать ли подсчёты по кабинетам (c_index).
-        :type cabinets_mode: Optional[bool]
+        :type cabinets_mode: bool
         :return: Подсчитанные элементы расписнаия по урокам/кабинетам.
         :rtype: dict[int, dict[str, dict]]
         """
