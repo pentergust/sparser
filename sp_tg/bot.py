@@ -168,17 +168,15 @@ def get_status_message(platform: Platform, timetag_path: Path, user: User) -> st
     :return: Информацинное сообщение.
     :rtype: str
     """
-    message = platform.send_status(user)
-    message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @sp6510"
+    message = platform.status(user)
+    message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @micronuri"
 
     timetag = get_update_timetag(timetag_path)
     timedelta = int(datetime.now().timestamp()) - timetag
     message += f"\n📀 Проверка была {get_str_timedelta(timedelta)} назад"
 
     if timedelta > _ALERT_AUTOUPDATE_AFTER_SECONDS:
-        message += ("\n⚠️ Автоматическая проверка была более часа назад."
-            "\nПожалуйста свяжитесь с администратором бота."
-        )
+        message += "\n ┗ Может что-то сломалось?.."
 
     return message
 
