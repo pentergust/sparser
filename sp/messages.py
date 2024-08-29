@@ -410,28 +410,31 @@ class SPMessages:
         lp_str = _get_next_update_str(last_parse, now)
 
         nu_delta = get_str_timedelta(
-            int((next_update - now).seconds),
+            int((next_update - now).total_seconds()),
             hours=False
         )
-        lp_delta = get_str_timedelta(int((now - last_parse).seconds))
+        lp_delta = get_str_timedelta(int((now - last_parse).total_seconds()))
 
         active_pr = round((storage_users.active / storage_users.total)*100, 2)
 
-        res = "🌟 Версия sp: 6.0.1 +30 (210)"
-        res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
-        res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
-        res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"
-        res += f"\n🌲 {user.data.cl} класс"
-        res += f"\n🌲 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
-        res += f"\n🌲 {storage_users.total} пользователей ({storage_users.notify}🔔)"
-        res += f"\n🌲 из них {storage_users.active} активны ({active_pr}%)"
-        res += f"\n🌲 {_get_cl_counter_str(storage_users.cl)}"
+        res = (
+            "🌟 Версия sp: 6.0.1 +32 (212)"
+            "\nРазработчик: Milinuri Nirvalen (@milinuri)"
+            f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
+            f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"
+            f"\n🌳 {user.data.cl} класс"
+            f"\n🌳 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
+            f"\n🌳 {storage_users.total} участников ({storage_users.notify}🔔)"
+            f"\n🌳 из них {storage_users.active} активны ({active_pr}%)"
+            f"\n{_get_cl_counter_str(storage_users.cl)}"
+        )
+
         other_cl = sorted(set(self.sc.lessons) - set(storage_users.cl))
         if other_cl:
             res += f" 🔸{', '.join(other_cl)}"
         if len(storage_users.hour) > 0:
-            res += "\n🌲 Уведомления пользователей:"
-            res += f"\n🔔 {_get_hour_counter_str(storage_users.hour)}"
+            res += "\n🌳 Уведомления пользователей:"
+            res += f"\n{_get_hour_counter_str(storage_users.hour)}"
 
         return res
 
