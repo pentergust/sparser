@@ -417,7 +417,7 @@ class SPMessages:
 
         active_pr = round((storage_users.active / storage_users.total)*100, 2)
 
-        res = "🌟 Версия sp: 6.0.1 +28 (207)"
+        res = "🌟 Версия sp: 6.0.1 +29 (209)"
         res += "\n\n🌲 Разработчик: Milinuri Nirvalen (@milinuri)"
         res += f"\n🌲 [{nu_delta}] {nu_str} проверено"
         res += f"\n🌲 {lp_str} обновлено ({lp_delta} назад)"

@@ -12,7 +12,7 @@
 """
 
 import sqlite3
-from typing import NamedTuple
+from typing import NamedTuple, Iterator
 
 from loguru import logger
 
@@ -84,6 +84,23 @@ class UserIntentsStorage:
     # Получение намреений
     # ===================
 
+    def __len__(self) -> int:
+        """Получает количество намерений пользовтеля."""
+        cur = self._db.cursor()
+        cur.execute(
+            "SELECT name,intent FROM intent WHERE user_id=?",
+            (self.uid,)
+        )
+        return len(cur.fetchall())
+
+    def __iter__(self) -> Iterator[IntentObject]:
+        """Позвоялет по очереди получать каждое намерение пользователя.
+
+        :return: Экземпляр намерения из базы данных.
+        :rtype: IntentObject
+        """
+        return self.get()
+
     def _get_intent_object(self, name: str, intent_str: str) -> IntentObject:
         try:
             intent = Intent.from_str(intent_str)
@@ -96,13 +113,12 @@ class UserIntentsStorage:
 
         return IntentObject(name, intent)
 
-    # TODO: Передалть под итератор
-    def get(self) -> list[IntentObject]:
+    def get(self) -> Iterator[IntentObject]:
         """Получает список всех намерений пользователя.
 
         Намерения возвращаеются в виде списка IntentObject.
 
-        :return: Список всех намерений пользвоателя.
+        :yield: Экземпляр намерения пользователя.
         :trype: list[IntentObject]
         """
         # Получаем имя и намерение из списка намерений для пользователя.
@@ -111,8 +127,8 @@ class UserIntentsStorage:
             "SELECT name,intent FROM intent WHERE user_id=?",
             (self.uid,)
         )
-
-        return [self._get_intent_object(n, i) for n, i in cur.fetchall()]
+        for n, i in cur:
+            yield self._get_intent_object(n, i)
 
     def get_intent(self, name: str) -> Intent | None:
         """Возвращает первое намерение пользователя по имени.
