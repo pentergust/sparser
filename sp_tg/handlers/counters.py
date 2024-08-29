@@ -237,7 +237,7 @@ def get_counter_message(
     else:
         groups = cur_counter.index(cabinets_mode=True)
 
-    message += platform.send_counter(groups=groups, target=target)
+    message += platform.counter(groups=groups, target=target)
     return message
 
 
