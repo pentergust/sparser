@@ -30,6 +30,7 @@ class CounterTarget(Enum):
     Пример использования с CurrentCounter:
 
     .. code-block:: python
+
         counter = CurrentCounter(sc, Intent())
         message = platform.counter(
             counter.cl()
@@ -112,6 +113,9 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
         res[v].append(k)
     return res
 
+
+# Класс счётчика
+# ==============
 
 class CurrentCounter:
     """Счтётчих элементов текущего расписания.
@@ -271,6 +275,7 @@ class CurrentCounter:
                 +----------+---------+---------+
 
         .. code-block:: python
+
             {
                 "obj": { # урок или кабинет в зависимости от режима.
                     "total": 12 # Общее количесво элементов расписания.

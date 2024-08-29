@@ -153,7 +153,7 @@ def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
 
     Расписание в CSV файле представленно подобным образом.
 
-    .. code-block::
+    .. code-block:: text
 
         +--+-------+---------+
         |  | класс |         | <- Шапка с классами в расписание
@@ -229,9 +229,8 @@ def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
     ] for k, v in lessons.items()}
 
 class ScheduleFile(NamedTuple):
-    """Описывает скачанный из сети файл расписания.
+    """Описывает скачанный из сети CSV файл расписания.
 
-    Зачастую это CSV файл расписания, представленный в бинанрном виде.
     Данный класс используется внутри методов обновления и загрузки
     расписания, для лучшей структуризации.
 
@@ -256,30 +255,20 @@ class Schedule:
     отфильтровать результаты поиска.
     Тажке предосталвяет доступ к индексам расписания.
 
-    Класс по умолчанию используется как спокосб быстрого получения
-    расписания для определённого класса.
-    Однако в последствии класс по умолчанию будет удалён из класса.
-    На его замену придут намерения пользователя по умолчнаию, которые
-    будут передаваться извне.
-
-    :param cl: Ваш класс по умолчанию.
-    :type cl: Optional[str]
     :param sc_path: Ваш путь к файлу расписания.
-    :type sc_path: Optional[Union[Path, str]]
+    :type sc_path: Path | str
     :param updates_path: Ваш путь к файлу списка изменений расписания.
-    :type updates_path: Optional[Union[Path, str]]
+    :type updates_path: Path | str
     :param index_path: Ваш путь для сохранения индексов расписания.
-    :type index_path: Optional[Union[Path, str]]
+    :type index_path: Path | str
     """
 
-    def __init__(self, cl: Optional[str]=None,
-        sc_path: Union[Path, str]=SC_PATH,
-        updates_path: Union[Path, str]=SC_UPDATES_PATH,
-        index_path: Union[Path, str]=INDEX_PATH,
+    def __init__(self,
+        sc_path: Path | str = SC_PATH,
+        updates_path: Path | str = SC_UPDATES_PATH,
+        index_path: Path | str = INDEX_PATH,
     ) -> None:
         super().__init__()
-        self.cl = cl
-
         # Определение путей к файлам.
         self.sc_path = Path(sc_path)
         self.updates_path = Path(updates_path)
@@ -307,12 +296,10 @@ class Schedule:
         К примеру если быстро нужно найти урок и посмотреть где, когда
         и для кого он проводится.
 
-        Пример структуры индекса:
-
         .. code-block:: json
 
             {
-                "матем": [
+                "матем": [ // Урок ...
                     { // Понедельник ...
                         "204" { // Каибнет
                             "8в" [ // класс
@@ -322,9 +309,7 @@ class Schedule:
                     },
                     {}, // Вторник ...
                     {}, // Среда ...
-                    {}, // ...
-                    {},
-                    {},
+                    // ...
                 ]
             }
 
@@ -347,8 +332,6 @@ class Schedule:
         Какой урок, когда, для кого проходит в том или ином кабинете.
         Используется в функции поиска информации по кабинетам.
 
-        Пример структуры индекса:
-
         .. code-block:: json
 
             {
@@ -362,9 +345,7 @@ class Schedule:
                     },
                     {}, // Вторник ...
                     {}, // Среда ...
-                    {}, // ...
-                    {},
-                    {},
+                    // ...
                 ]
             }
 
@@ -376,7 +357,7 @@ class Schedule:
         return self._c_index
 
     @property
-    def updates(self) -> Optional[list[dict[str, Union[int, list[dict]]]]]:
+    def updates(self) -> list[dict[str, int | list[dict]]] | None:
         """Список изменений в расписании.
 
         Загружает полный список изменений из файла.
@@ -404,24 +385,17 @@ class Schedule:
                                 "None:110" // Новый урок:класс
                             ],
                             null, // Если уроки не изменились
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null
+                            // И так далее...
                         ],
                     },
                     {}, // Вторик ...
                     {}, // Среда ...
-                    {}, // ...
-                    {},
-                    {}
+                    // ...
                 ]
             }
 
         :return: Полный список изменений в расписании.
-        :rtype: list[list[dict[str, Union[int, list[dict]]]]]
+        :rtype: list[dict[str, int | list[dict]]] | None
         """
         if self._updates is None:
             self._updates = load_file(self.updates_path)
@@ -431,7 +405,7 @@ class Schedule:
     # Получаем расписание
     # ===================
 
-    def _load_schedule(self, url: str) -> Optional[ScheduleFile]:
+    def _load_schedule(self, url: str) -> ScheduleFile | None:
         logger.info("Download schedule csv_file ...")
         try:
             csv_file = requests.get(url).content
@@ -440,7 +414,6 @@ class Schedule:
         except Exception as e:
             logger.exception(e)
             return
-
 
     def _update_diff_file(
         self,
@@ -475,11 +448,6 @@ class Schedule:
             save_file(self.updates_path, list(sc_changes))
 
     def _update_index_files(self, sp_lessons: dict[str, list]) -> None:
-        """Обновляет файл индексов.
-
-        :param sp_lessons: Расписание уроков.
-        :type sp_lessons: dict[str, list]
-        """
         logger.info("Udate index files...")
         save_file(self.index_path,
             [get_index(sp_lessons), get_index(sp_lessons, False)]
@@ -501,12 +469,10 @@ class Schedule:
         :type t: dict[str, Union[list, int, str]]
         """
         logger.info("Start schedule update ...")
-        now = datetime.now()
-        timestamp = int(datetime.timestamp(now))
+        timestamp = int(datetime.now().timestamp(now))
 
         # Скачяиваем файла с расписанием
         csv_file = self._load_schedule(url)
-
         if csv_file is None:
             # Откладываем обновление на минуту
             t["next_update"] = timestamp+60
@@ -522,6 +488,7 @@ class Schedule:
 
         try:
             lessons = parse_lessons(csv_file.content.decode("utf-8"))
+            self._update_index_files(lessons)
         except Exception as e:
             logger.exception(e)
 
@@ -529,8 +496,6 @@ class Schedule:
             t["next_update"] = timestamp+60
             save_file(self.sc_path, t)
             return
-
-        self._update_index_files(lessons)
 
         # Собираем новое расписанеи уроков
         new_t = {
@@ -542,7 +507,6 @@ class Schedule:
 
         self._update_diff_file(t, new_t)
         save_file(self.sc_path, new_t)
-
 
     def get(self) -> dict[str, Union[int, dict, str]]:
         """Получает расписание уроков.
@@ -584,19 +548,6 @@ class Schedule:
     # Получение данных из расписания
     # ==============================
 
-    def get_class(self, cl: str) -> str:
-        """Получает класс из расписания.
-
-        .. deprecated:: 5.7 Этот метод будет вскоре удалён
-
-            Лучшще используйте вместо этого:
-
-            .. code-block:: python
-
-                if cl in sp.lessons: ...
-        """
-        return cl if cl in self.lessons else self.cl
-
     def get_lessons(self, cl: Optional[str]=None) -> list[list[str]]:
         """Получает полное расписание уроков для указанного класса.
 
@@ -611,30 +562,26 @@ class Schedule:
         расписание на неделю.
         Обратите внимание, что даже при неправильном классе результат
         вернётся корректный.
-        Внимательно следите в каком регистре вы передаёте класс.
-        Или это может сыграть с вами злую шутку.
 
         :param cl: Для какого класса получить расписание.
         :type cl: Optional[str]
         :return: расписание уроков на неделю для класса.
         :rtype: list[list[str]]
         """
-        if cl is None:
-            cl = self.cl
+        cl = cl or self.cl
         if cl is None:
             raise ValueError("User class let is None")
-
         return self.lessons.get(cl, [[], [], [], [], [], []])
 
-    def get_updates(self, intent: Intent, offset: Optional[int]=None
-    ) -> list[list[dict[str, Union[int, list[dict]]]]]:
+    def get_updates(self, intent: Intent, offset: int | None=None
+    ) -> list[list[dict[str, int | list[dict]]]]:
         """Получает список изменений расписания.
 
         Это более продвинутый метод полчения записей об изменениях
         в расписании.
         Проходится по всему списку изменений, возвращая необходимые
         вам результаты.
-        Для уточнения результатов вы можеет использовать Намерения.
+        Для уточнения результатов используется Намерение.
         К примеру чтобы получить все изменения для одного класса.
         Или посмотреть как изменялост расписание в определённый день.
 
@@ -649,9 +596,9 @@ class Schedule:
         :param intent: Намерения для уточнения поиска изменений.
         :type intent: Intent
         :param offset: С какой временной метки обновления начать.
-        :type offset: int
+        :type offset: int | None
         :return: Список обновлений расписания.
-        :rtype: list[list[dict[str, Union[int, list[dict]]]]]
+        :rtype: list[list[dict[str, int | list[dict]]]]
         """
         updates = []
 
@@ -690,9 +637,8 @@ class Schedule:
         self, target: str, intent: Intent,
         cabinets: Optional[bool]=False
     ) -> list[list[list[str]]]:
-        """Производит поиск в расписании.
+        """Производит поиск в расписании по индексу расписания.
 
-        Для поиска цели в индексах расписания.
         Сама же цель - название кабинета/урока.
         Для уточнения результатов поиска используются намерения.
         Например чтобы получить результаты на опрелдённый день.
@@ -723,26 +669,17 @@ class Schedule:
                         "..."
                     ],
                     [], // Если список пустой - ничего не найдено
-                    [],
-                    [],
-                    [],
-                    [],
-                    [],
-                    []
+                    // Дальше все прочие уроки.
                 ],
                 [], // Вторник ...
-                [], // Среда ...
-                [], // ...
-                [],
-                []
+                // Среда ...
             ]
 
-        Как вы могли заметить, результат поиска - строка.
-        Формат строки зависит от некоторых условий:
+        Формат строки результата зависит от некоторых условий:
 
-        - `{cl}` - Если в намерении 1 кабинет и указаны уроки.
-        - `{obj}` - Если в намерении 1 класс (опускаем описание класса).
-        - `{cl}:{obj}` - Для всех прочих случаев.
+        - ``{cl}`` - Если в намерении 1 кабинет и указаны уроки.
+        - ``{obj}`` - Если в намерении 1 класс (опускаем описание класса).
+        - ``{cl}:{obj}`` - Для всех прочих случаев.
 
         :param target: Цель для поиска, урок или кабинет.
         :type target: str
@@ -787,31 +724,29 @@ class Schedule:
     # ====================
 
     def construct_intent(self,
-        cl: Union[Iterable[str], str]=(),
-        days: Union[Iterable[int], int]=(),
-        lessons: Union[Iterable[str], str]=(),
-        cabinets: Union[Iterable[str], str]=()
+        cl: Iterable[str] | str = (),
+        days: Iterable[int] | int = (),
+        lessons: Iterable[str] | str = (),
+        cabinets: Iterable[str] | str = ()
     ) -> Intent:
         """Создаёт новое намерение для текущего расписания.
 
-        Является сокращением для Intent.construct(sc, ...)
+        Сокращение для ``Intent.construct()``.
 
         .. code-block:: python
-
-            sc = Schedule()
 
             # Можно использовать любой вариант
             i = Intent.construct(sc, ...)
             i = sc.construct_intent(...)
 
         :param cl: Какие классы расписания добавить в намерение
-        :type cl: Union[Iterable[str], str]
+        :type cl: Iterable[str] | str
         :param days: Какие дни добавить в намерение (0-5)
-        :type days: Union[Iterable[int], int]
+        :type days: Iterable[int] | int
         :param lessons: Какие уроки добавить в намерение (из l_index).
-        :type lessons: Union[Iterable[str], str]
+        :type lessons: Iterable[str] | str
         :param cabinets: Какие кабинеты добавить в намерение (c_index).
-        :type cabinets: Union[Iterable[str], str]
+        :type cabinets: Iterable[str] | str
         :return: Проверенное намерение из переданных аргументов
         :rtype: Intent
         """
@@ -820,13 +755,9 @@ class Schedule:
     def parse_intent(self, args: Iterable[str]) -> Intent:
         """Парсит намерение из строковых аргументов.
 
-        Парсит для текущего расписания.
-        Является сокращением для Intent.parse(sc, args)
+        Сокражение для ``Intent.parse()``
 
         .. code-block:: python
-
-            sc = Schedule()
-            args = "матем 204".split()
 
             # Можно использовать любой вариант
             i = Intent.parse(sc, args)

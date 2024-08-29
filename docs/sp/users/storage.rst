@@ -16,8 +16,8 @@ Users storage
 
 .. autoclass:: FileUserStorage
 
-    Файл хранилища
-    ~~~~~~~~~~~~~~
+    Управление хранилищем
+    ~~~~~~~~~~~~~~~~~~~~~
 
     .. automethod:: get_users
     .. automethod:: remove_users

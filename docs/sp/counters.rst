@@ -1,29 +1,28 @@
-counters
+Counters
 ========
 
-.. automodule:: sp.counters
+.. automodule:: sp.counter
 
 .. autoclass:: CounterTarget
+
 
 Вспомогательные функции
 -----------------------
 
 Используеются для поддержания работы основных функций счётчиков.
 
-.. autofunction:: group_counter_res
+.. note:: Устаревшие функции?
+    Обратите внимение что возможно в будущих версиях данные функции
+    полностью исчезнут.
+
 .. autofunction:: reverse_counter
 
 
-Функции счётчиков
------------------
+Класс счётчика
+--------------
 
-Это базовые счётчики, которые используются для подсчёта количества
-элементов в расписании.
-Возможно после будет переписан как отдельный класс.
+.. autoclass:: CurrentCounter
 
-Используйте базовые счётчики, если планируете самостоятельно
-обрабатывать результат подсчётов.
-
-.. autofunction:: cl_counter
-.. autofunction:: days_counter
-.. autofunction:: index_counter
+    .. automethod:: cl
+    .. automethod:: days
+    .. automethod:: index

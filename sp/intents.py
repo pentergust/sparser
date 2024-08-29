@@ -48,12 +48,14 @@ class Intent(NamedTuple):
         метод класса ``construct``:
 
         .. code-block:: python
+
             sc = Schedule()
             i = Intent.construct(sc, cl="8в")
 
         Или воспользуйтесь методом `parse`:
 
         .. code-block:: python
+
             sc = Schedule()
             prompt = "9в матем 204"
             i = Intent.parse(sc, prompt.split())
@@ -199,7 +201,7 @@ class Intent(NamedTuple):
     def parse(cls, sc, args: Iterable[str]):
         """Извлекает намерения из списка строковых аргументов.
 
-        .. code-block::
+        .. code-block:: text
 
                 Урок          Кабинет
                 /             /
@@ -315,7 +317,7 @@ class Intent(NamedTuple):
         :rtype: Intent
         """
         return Intent(
-            {sc.get_class(x) for x in _ensure_list(cl)} or self.cl,
+            {x for x in _ensure_list(cl) if x is sc.lessons} or self.cl,
             {x for x in _ensure_list(days) if x < 6} or self.days, # noqa: PLR2004
             (
                 {x for x in _ensure_list(lessons) if x in sc.l_index}

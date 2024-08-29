@@ -293,7 +293,7 @@ class Platform:
         """
         return self.view.search(target, intent, cabinets)
 
-    def send_counter(
+    def counter(
         self,
         groups: dict[int, dict[str, dict]],
         target: CounterTarget | None=None,
@@ -306,6 +306,7 @@ class Platform:
         формату отображения.
 
         .. code-block:: python
+
             from sp.parser import Schedule
             from sp.counter import CurrentCounter, CounterTarget
 
@@ -326,7 +327,7 @@ class Platform:
         """
         return self.view.send_counter(groups, target, days_counter)
 
-    def send_updates(self,
+    def updates(self,
         update: dict[str, int | list[dict]],
         hide_cl: str | None=None
     ) -> str:
@@ -357,7 +358,7 @@ class Platform:
         """
         return self.view.check_updates(user)
 
-    def send_status(self, user: User) -> str:
+    def status(self, user: User) -> str:
         """Отправялет статус работы платформы.
 
         Сокращение для: ``SPMessages.send_status()``.

@@ -1,4 +1,4 @@
-parser
+Parser
 ======
 
 .. automodule:: sp.parser
@@ -64,7 +64,6 @@ parser
     Методы для работы с расписанием
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    .. automethod:: get_class
     .. automethod:: get_lessons
     .. automethod:: get_updates
     .. automethod:: search
