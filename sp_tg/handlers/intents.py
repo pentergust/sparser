@@ -73,7 +73,7 @@ INTENTS_LIMIT_MESSAGE = ("💼 Это предел количества наме
 
 # Обработка намерений ----------------------------------------------------------
 
-def get_intents_keyboard(intents: list[IntentObject]) -> InlineKeyboardMarkup:
+def get_intents_keyboard(intents: UserIntentsStorage) -> InlineKeyboardMarkup:
     """Отправляет клавиатуру редактора намерений.
 
     Используется в главном сообщении редактора.
@@ -87,8 +87,8 @@ def get_intents_keyboard(intents: list[IntentObject]) -> InlineKeyboardMarkup:
         intent:add: => Добавить новое намерение.
         home => Вернуться на главный экран.
 
-    :param intents: Список намерений для отображения.
-    :type intents: list[IntentObject]
+    :param intents: Хранилише намерений пользователя.
+    :type intents: UserIntentsStorage
     :returns: Клавиатура редактирования списка намерений.
     :rtype: InlineKeyboardMarkup
     """
@@ -204,14 +204,14 @@ def get_intent_info(name: str, i: Intent) -> str:
         info += "\n\n⚠️ Вероятно ошибка при чтении намерения, пересоздайте его."
     return info
 
-def get_intents_message(intents: list[IntentObject]) -> str:
+def get_intents_message(intents: UserIntentsStorage) -> str:
     """Отправляет главное сообщение редактора намерений.
 
     Используется чтобы представить список ваших намерений.
     Для чего нужны намерения и что вы можете сделать в редакторе.
 
-    :param intents: Список намеренйи пользователя.
-    :type intent: list[IntentObject]
+    :param intents: Хранилише намерений ползоваеля.
+    :type intent: UserIntentsStorage
     :returns: Сообщение со списком намерений.
     :rtype: str
     """
@@ -275,19 +275,17 @@ class IntentCall(CallbackData, prefix="intent"):
 @router.message(Command("intents"))
 async def manage_intents_handler(message: Message, intents: UserIntentsStorage):
     """Команда для просмотра списка намерений пользователя."""
-    user_intents = intents.get()
     await message.answer(
-        text=get_intents_message(user_intents),
-        reply_markup=get_intents_keyboard(user_intents)
+        text=get_intents_message(intents),
+        reply_markup=get_intents_keyboard(intents)
     )
 
 @router.callback_query(F.data=="intents")
 async def intents_callback(query: CallbackQuery, intents: UserIntentsStorage):
     """Кнопка для просмотра списка намерений пользователя."""
-    user_intents = intents.get()
     await query.message.edit_text(
-        text=get_intents_message(user_intents),
-        reply_markup=get_intents_keyboard(user_intents)
+        text=get_intents_message(intents),
+        reply_markup=get_intents_keyboard(intents)
     )
 
 # Добавление нового намерения --------------------------------------------------
@@ -307,7 +305,7 @@ async def add_intent_handler(
     Выводит сообщение при достижении предела количества намерений.
     """
     # Если превышено количество максимальных намерений
-    if len(intents.get()) >= _MAX_INTENTS:
+    if len(intents) >= _MAX_INTENTS:
         await message.answer(INTENTS_LIMIT_MESSAGE,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(
@@ -349,10 +347,9 @@ async def parse_intent_handler(
     name = (await state.get_data())["name"]
     intents.add(name, i)
     await state.clear()
-    intents_list = intents.get()
     await message.answer(
-        text=get_intents_message(intents_list),
-        reply_markup=get_intents_keyboard(intents_list)
+        text=get_intents_message(intents),
+        reply_markup=get_intents_keyboard(intents)
     )
 
 # Режим просмотра намерения ----------------------------------------------------
@@ -380,7 +377,7 @@ async def remove_intent_call(
     """Удаляет намерение по его имени."""
     intents.remove(callback_data.name)
     await query.message.edit_text(
-        text=get_intents_message(intents.get()),
+        text=get_intents_message(intents),
         reply_markup=get_intents_keyboard(intents.get())
     )
 
@@ -426,7 +423,7 @@ async def remove_many_call(
     intents.remove(callback_data.name)
     await query.message.edit_text(
         text=INTENTS_REMOVE_MANY_MESSAGE,
-        reply_markup=get_remove_intents_keyboard(intents.get())
+        reply_markup=get_remove_intents_keyboard(intents)
     )
 
 @router.callback_query(F.data=="intents:remove_all", IsAdmin())
@@ -434,5 +431,5 @@ async def remova_all_call(query: CallbackQuery, intents: UserIntentsStorage):
     """Удаляет все намерения пользвоателя."""
     intents.remove_all()
     await query.message.edit_text(
-        get_intents_message([]), reply_markup=get_intents_keyboard([])
+        get_intents_message([]), reply_markup=get_intents_keyboard(intents)
     )
