@@ -53,7 +53,7 @@ TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 _TIMETAG_PATH = Path("sp_data/last_update")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.4.3"
+_BOT_VERSION = "v2.5"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 
@@ -64,7 +64,7 @@ platform = Platform(
     pid=1, # RESERVED FOR TELEGRAM
     name="Telegram",
     version=_BOT_VERSION,
-    api_version=0
+    api_version=1
 )
 
 try:

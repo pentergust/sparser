@@ -3,8 +3,8 @@
 
 [tool.poetry]
 name = "sp"
-version = "6.0"
-description = "School timetable parser."
+version = "6.1"
+description = "latform for working with class schedules."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
 readme = ["README.md", "docs/index.rst"]

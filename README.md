@@ -2,7 +2,7 @@
 
 ![](docs/_images/banner.png)
 
-> Самостоятельный платформа для школьного расписания занятий.
+> Самостоятельный платформа для расписания занятий.
 > Включает в себя поставщики, классы представления, чат-боты и многое другое.
 
  <!-- some shields -->
@@ -10,11 +10,10 @@
   <a href='https://sparser.readthedocs.io/ru/latest/?badge=latest'>
     <img alt="Documentation", src='https://readthedocs.org/projects/sparser/badge/?version=latest'>
   </a>
-  <img alt="Version" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.version&prefix=v&label=SParser&color=green">
-  <img alt="License" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.license&label=License&color=red">
-  <img alt="Python verion" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fnotabug.org%2Fmilinuri%2Fsparser%2Fraw%2Fmaster%2Fpyproject.toml&query=tool.poetry.dependencies.python&label=Python">
+  <img alt="Version" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fcodeberg.org%2FSalormoon%2Fsparser%2Fraw%2Fbranch%2Fmain%2Fpyproject.toml&query=tool.poetry.version&prefix=v&label=version&color=green">
+  <img alt="license" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fcodeberg.org%2FSalormoon%2Fsparser%2Fraw%2Fbranch%2Fmain%2Fpyproject.toml&query=tool.poetry.license&label=license&color=red">
+  <img alt="python" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fcodeberg.org%2FSalormoon%2Fsparser%2Fraw%2Fbranch%2Fmain%2Fpyproject.toml&query=tool.poetry.dependencies.python&label=python&color=blue">
 </p>
-
 
 Приветствую в проекте.
 Когда-то мне надоело смотреть расписание в гугл таблицах.
@@ -54,17 +53,7 @@ poetry install
 poetry install --with telegram
 ```
 
-
-Или через pip + Python venv:
-```bash
-# Создаём и активируем виртуальное окружение
-# Запускать проект нужно также из виртуального окружения
-python -m venv venv
-source venv/bin/activate
-
-# Устанавливаем ВСЕ зависимости для ВСЕХ платформ
-pip install -r requirements.txt
-```
+> Способ установки через venv считается устаревшим.
 
 
 ## Запуск
@@ -83,18 +72,11 @@ TELEGRAM_TOKEN="YOUR_TELEGRAM_TOKEN_HERE
 После указания токена вы можете запускать бота...
 
 Через Poetry:
-```
+```bash
 poetry run python -m sp_tg
 ```
 
-Через Python venv.
-```sh
-# Активируем окружения, если вы это ещё не сделали
-source venv/bin/activate
-python -m sp_tg
-```
-
-> Запуск друних платформ происходит по похожему принципу.
+> Запуск других платформ происходит по похожему принципу.
 > Посмотреть как запускать другие платформы в документации.
 
 ## Чат-боты
@@ -135,8 +117,9 @@ python -m sp_tg
 Также для доступа к осноным разделам вы можете использовать **команды**:
 
 - `/sc`: Быстро получить расписание на сегодня/завтра.
-- `/updates`: Изменения в расписании
-- `/notify`: Настроить уведомления
+- `/week`: Расписание не всю неделю.
+- `/updates`: Изменения в расписании.
+- `/notify`: Настроить уведомления.
 - `/tutorial`: Маленькая справка как писать запросы к расписанию.
 - `/set_class`: Изменить класс по умолчанию.
 - *И прочие команды...*
@@ -148,7 +131,6 @@ python -m sp_tg
 прямо, использую команды.
 Стрелками же показаны как вы можете перемещаться по разделам при
 помощи inline-клавиатуры.
-
 
 
 ### Некоторые ограничения чат-ботов
