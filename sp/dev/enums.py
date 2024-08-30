@@ -10,8 +10,11 @@
 
 from enum import IntEnum
 
-# Общие пречисления
-# =================
+# Дни недели
+# ==========
+
+DAY_NAMES = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота")
+SHORT_DAY_NAMES = ("пн", "вт", "ср", "чт", "пт", "сб")
 
 class WeekDays(IntEnum):
     """Все доступные дни недели.
@@ -27,6 +30,14 @@ class WeekDays(IntEnum):
     THURSDAY = 3
     FRIDAY = 4
     SATURDAY = 5
+
+    def to_str(self) -> str:
+        """Преобразует индекс дня недели в названия дня недели."""
+        return DAY_NAMES[self.value]
+
+    def to_short_str(self) -> str:
+        """Преобразует индекс дня недели в короткую строку."""
+        return SHORT_DAY_NAMES[self.value]
 
 
 # Расписание
@@ -74,6 +85,6 @@ class IntentType(IntEnum):
     При упаковке тип намерения указывается первым числом.
     """
 
-    AND = 0 # ""
+    AND = 0
     OR = 1
-    NOT = 2 # !
+    NOT = 2
