@@ -203,6 +203,23 @@ class DayLessons:
                     self._lessons.append(None)
                 self.add(lesson)
 
+    def iter_day(self) -> Iterator[Lesson]:
+        """Получает каждый урок в дне.
+
+        В отличие от обычного итератора по урокам, данный метод вернёт
+        также все немуществующие уроки в дне.
+        К примеру если в расписании всего 5 уроков, все остальные уроки
+        будут пустуми.
+        Данный метод может быть полезен при сравнении двух расписаний,
+        когда важно чтобы элементы были одинаковой длинны.
+
+        :yield: Экземпляр каждого урока расписания.
+        :rtype: Iterator[Lesson]
+        """
+        for i, mini_lesson in enumerate(self._lessons):
+            yield self._get_lesson(i, mini_lesson)
+        for i in range(8-len(self._lessons)):
+            yield self._get_lesson(i, None)
 
     # Магические методы
     # =================
@@ -336,11 +353,23 @@ class WeekLessons:
         """
         self._days[day] = lessons._lessons
 
+    def iter_week(self) -> Iterator[Lesson]:
+        """Проходится по всем урокам для всех дней недели.
+
+        Данный метод также будет возаращть пустые уроки в каждом дне,
+        чтобы выровнять расписание относительно количества дней.
+        Это также касается и дней недели, которые могут быть пустыми.
+        Метод можно использовать для полного сравнения двух расписаний.
+
+        Полезно, когда нужно обработь полный список уроков.
+        """
+        for i, day_lessons in enumerate(self._days):
+            dl = DayLessons(cl=self.cl, weekday=i, lessons=day_lessons)
+            for lesson in dl.iter_day():
+                yield lesson
+
 
     # Магические методы
-    # =================
-
-     # Магические методы
     # =================
 
     def __repr__(self) -> str:
