@@ -221,6 +221,7 @@ class DayLessons:
         for i in range(8-len(self._lessons)):
             yield self._get_lesson(i, None)
 
+
     # Магические методы
     # =================
 
@@ -417,3 +418,54 @@ class WeekLessons:
         if not isinstance(lessons, DayLessons):
             raise ValueError("Can only set DayLessons")
         self.set(index, lessons)
+
+
+# Распиание уроков для нескольких классов
+# =======================================
+
+# TODO Документация, документация, документация ...
+class Schedule:
+    """Основной класс для представления расписания.
+
+    Хранит в себе расписание на неделю для нескольких классов.
+    Реализует методы для урпалвения расписанием уроков для несокльих
+    классов.
+    """
+
+    def __init__(self):
+        self._schedule: dict[str, list[list[LessonMini] | None]] = {}
+
+
+    # Работа с расписанием
+    # ====================
+
+    def get(self, cl: str) -> WeekLessons:
+        return WeekLessons(cl, self._schedule.get(cl))
+
+    def set(self, cl: str, week: WeekLessons) -> WeekLessons:
+        self._schedule[cl] = week._days
+
+
+    # Магические методы
+    # =================
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._schedule.__repr__()})"
+
+    def __len__(self) -> int:
+        return len(self._schedule)
+
+    def __iter__(self) -> Iterator[WeekLessons]:
+        for k, v in self._schedule.items():
+            yield WeekLessons(k, v)
+
+    # Магическме индексы
+    # ==================
+
+    def __getitem__(self, index: str) -> WeekLessons:
+        return WeekLessons(index, self._schedule.get(index))
+
+    def __setitem__(self, index: str, week: WeekLessons) -> None:
+        if not isinstance(week, WeekLessons):
+            raise ValueError("Shedule can contains WeekLessons only")
+        self._schedule[index] = week._days
