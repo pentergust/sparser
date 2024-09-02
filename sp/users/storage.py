@@ -144,6 +144,7 @@ class FileUserStorage:
         """
         if self._users is None:
             try:
+                self._path.parent.mkdir(exist_ok=True, parents=True)
                 with open(self._path) as f:
                     users = ujson.loads(f.read())
             except FileNotFoundError:
