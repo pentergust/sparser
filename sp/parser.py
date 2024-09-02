@@ -469,7 +469,7 @@ class Schedule:
         :type t: dict[str, Union[list, int, str]]
         """
         logger.info("Start schedule update ...")
-        timestamp = int(datetime.now().timestamp(now))
+        timestamp = int(datetime.now().timestamp())
 
         # Скачяиваем файла с расписанием
         csv_file = self._load_schedule(url)
