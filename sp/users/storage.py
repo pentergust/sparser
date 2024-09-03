@@ -492,7 +492,7 @@ class User:
         updates = sc.get_updates(i, self.data.last_parse)
 
         # Обновление времени последней проверки расписания
-        new_user = UserData(
+        self.data = UserData(
                 create_time=self.data.create_time,
                 cl=self.data.cl,
                 set_class=self.data.set_class,
@@ -500,7 +500,7 @@ class User:
                 notifications=self.data.notifications,
                 hours=self.data.hours
         )
-        self.save(new_user, save_users)
+        self.save(save_users)
 
         if len(updates) != 0:
             return compact_updates(updates)
