@@ -51,6 +51,9 @@ from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 load_dotenv()
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 _TIMETAG_PATH = Path("sp_data/last_update")
+# Используются для отладки сообщений об исключенииях
+_DEBUG_MODE = getenv("DEBUG_MODE")
+_ADMIN_ID = getenv("ADMIN_ID")
 
 # Некоторые константные настройки бота
 _BOT_VERSION = "v2.5.1"
@@ -333,6 +336,11 @@ async def error_handler(exception: ErrorEvent, user: User):
     await message.answer(
         send_error_messsage(exception, user)
     )
+    if not _DEBUG_MODE and _ADMIN_ID is not None:
+        await message.bot.send_message(
+            chat_id=_ADMIN_ID,
+            text=send_error_messsage(exception, user)
+        )
 
 
 # Запуск бота
