@@ -10,7 +10,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.11.2 (sp v6, telegram v2.4)
+Ver: 0.11.3 (sp v6.1, telegram v2.5)
 """
 
 import asyncio
@@ -110,14 +110,15 @@ async def process_update(
         )
 
     # Отправляем уведомления об обновлениях
-    updates = user.get_updates(platform.view.sc)
-    if updates is not None:
-        await bot.send_message(user.uid, text=(
-            "🎉 У вас изменилось расписание!\n"
-            f"{platform.view.send_update(updates, cl=user.data.cl)}"
-        ),
-            reply_markup=get_updates_keyboard(user.data.cl)
-        )
+    updates = user.get_updates(platform.view.sc, save_users=False)
+    if updates is None:
+        return
+    await bot.send_message(user.uid, text=(
+        "🎉 У вас изменилось расписание!\n"
+        f"{platform.view.send_update(updates, hide_cl=user.data.cl)}"
+    ),
+        reply_markup=get_updates_keyboard(user.data.cl)
+    )
 
 def set_timetag(path: Path, timestamp: int) -> None:
     """Оставляет временную метку последней проверки обнолвения.
@@ -181,6 +182,7 @@ async def main() -> None:
 
     # Осталяем временную метку успешного обновления
     set_timetag(_TIMETAG_PATH, int(now.timestamp()))
+    platform.users.save_users()
 
 
 # Запуск скрипта обновлений
