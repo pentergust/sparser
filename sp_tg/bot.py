@@ -53,7 +53,7 @@ TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 _TIMETAG_PATH = Path("sp_data/last_update")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.5"
+_BOT_VERSION = "v2.5.1"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 

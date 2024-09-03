@@ -153,7 +153,7 @@ def get_updates_message(
         message += f"⚙️ {get_intent_status(intent)}\n"
 
     if update is not None:
-        update_text = platform.update(update, hide_cl=cl)
+        update_text = platform.updates(update, hide_cl=cl)
 
         if len(update_text) > _MAX_UPDATE_MESSAGE_LENGTHT:
             message += "\n📚 Слишком много изменений."
