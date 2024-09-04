@@ -400,7 +400,7 @@ class SPMessages:
         """
         now = datetime.now()
         next_update = datetime.fromtimestamp(
-            float(self.sc.schedule["next_parse"])
+            float(self.sc.next_parse)
         )
         last_parse = datetime.fromtimestamp(
             float(self.sc.schedule["last_parse"])
@@ -417,8 +417,9 @@ class SPMessages:
 
         active_pr = round((storage_users.active / storage_users.total)*100, 2)
 
+
         res = (
-            "🌟 Версия sp: 6.1.3 (223)"
+            "🌟 Версия sp: 6.1.4 (225)"
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"
