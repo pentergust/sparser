@@ -513,7 +513,7 @@ class Schedule:
         """
         logger.info("Start schedule update ...")
 
-        # Скачяиваем файла с расписанием
+        # Скачиваем файл с расписанием
         csv_file = self._load_schedule(url)
         if csv_file is None:
             # Откладываем обновление на минуту
@@ -551,7 +551,7 @@ class Schedule:
 
         self._update_diff_file(t, new_t)
         save_file(self.sc_path, new_t)
-        self._schedule = t
+        self._schedule = new_t
 
 
     # Получение данных из расписания
