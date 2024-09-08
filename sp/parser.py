@@ -494,9 +494,13 @@ class Schedule:
             [get_index(sp_lessons), get_index(sp_lessons, False)]
         )
 
-    def _save_schedule(self, t: dict[str, dict | int | str]) -> None:
-        self._schedule = t
-        save_file(self.sc_path, t)
+    def _save_schedule(self, t: dict[str, dict | int | str],
+        owerwrite: bool=False
+    ) -> None:
+        if owerwrite or self._schedule is None:
+            self._schedule = t
+            save_file(self.sc_path, t)
+
 
     def _process_update(self, t: dict[str, dict | int | str], timestamp: int) -> None:
         """Полное обновление расписания, индексов, файла обновлений.
@@ -552,7 +556,7 @@ class Schedule:
 
         self.next_parse = timestamp+1800
         self._update_diff_file(t, new_t)
-        self._save_schedule(new_t)
+        self._save_schedule(new_t, overload=True)
 
 
     # Получение данных из расписания
