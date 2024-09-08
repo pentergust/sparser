@@ -494,6 +494,10 @@ class Schedule:
             [get_index(sp_lessons), get_index(sp_lessons, False)]
         )
 
+    def _save_schedule(self, t: dict[str, dict | int | str]) -> None:
+        self._schedule = t
+        save_file(self.sc_path, t)
+
     def _process_update(self, t: dict[str, dict | int | str], timestamp: int) -> None:
         """Полное обновление расписания, индексов, файла обновлений.
 
@@ -518,16 +522,14 @@ class Schedule:
         if csv_file is None:
             # Откладываем обновление на минуту
             self.next_parse = timestamp+60
-            save_file(self.sc_path, t)
-            self._schedule = t
+            self._save_schedule(t)
             return
 
         # Сравниваем хеши расписаний
         if t.get("hash", "") == csv_file.hash:
             logger.info("Schedule is up to date")
             self.next_parse = timestamp+1800
-            save_file(self.sc_path, t)
-            self._schedule = t
+            self._save_schedule(t)
             return
 
         try:
@@ -538,8 +540,7 @@ class Schedule:
 
             # Откладываем обновление на минуту
             self.next_parse = timestamp+60
-            save_file(self.sc_path, t)
-            self._schedule = t
+            self._save_schedule(t)
             return
 
         # Собираем новое расписанеи уроков
@@ -549,9 +550,9 @@ class Schedule:
             "last_parse": timestamp,
         }
 
+        self.next_parse = timestamp+1800
         self._update_diff_file(t, new_t)
-        save_file(self.sc_path, new_t)
-        self._schedule = new_t
+        self._save_schedule(new_t)
 
 
     # Получение данных из расписания
