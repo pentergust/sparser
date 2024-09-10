@@ -556,7 +556,7 @@ class Schedule:
 
         self.next_parse = timestamp+1800
         self._update_diff_file(t, new_t)
-        self._save_schedule(new_t, overload=True)
+        self._save_schedule(new_t, owerwrite=True)
 
 
     # Получение данных из расписания
