@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import NamedTuple, TypeVar, Any
 from pathlib import Path
+from typing import Any, NamedTuple, TypeVar
 
 import ujson
 from loguru import logger
 
-from sp.dev.schedule import Schedule, WeekLessons, DayLessons, LessonMini
+from sp.dev.schedule import DayLessons, LessonMini, Schedule, WeekLessons
 
 
 class StorageMetadata(NamedTuple):
