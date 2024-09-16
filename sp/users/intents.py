@@ -15,14 +15,11 @@ from typing import NamedTuple, Optional
 
 from sp.intents import Intent
 
-<<<<<<< HEAD
 # Имя намерения по умолчанию
 # Данное имя будет использовать, когда нужно будет провести
 # операции с намерением пользователя по умолчанию
 DEFAULT_INTENT_NAME = "main"
 
-=======
->>>>>>> 06e81c3 (Sp: Fix save user while check updates)
 # Вспомогательные классы
 # ======================
 
