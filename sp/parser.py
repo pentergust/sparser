@@ -508,7 +508,11 @@ class Schedule:
             save_file(self.sc_path, t)
 
 
-    def _process_update(self, t: dict[str, dict | int | str], timestamp: int) -> None:
+    def _process_update(
+        self,
+        t: dict[str, dict | int | str],
+        timestamp: int
+    ) -> None:
         """Полное обновление расписания, индексов, файла обновлений.
 
         Производит полное обновление расписания уроков.

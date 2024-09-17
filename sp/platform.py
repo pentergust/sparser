@@ -151,7 +151,11 @@ class Platform:
     # Сокращения для методов класса представления
     # ===========================================
 
-    def _get_user_intent(self, user: User, intent: Intent | None=None) -> Intent:
+    def _get_user_intent(
+        self,
+        user: User,
+        intent: Intent | None=None
+    ) -> Intent:
         if intent is None:
             if user.data.cl is None:
                 raise ValueError("User class is None")
@@ -249,8 +253,6 @@ class Platform:
             tomorrow = 0
 
         if user.data.cl is None:
-            # raise ValueError("User class is empty, unable to get relative day")
-            # Костыль номер 34
             return "Сегодня"
 
         current_day = self.view.get_current_day(
