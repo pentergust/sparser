@@ -106,7 +106,7 @@ async def process_update(
     if hour in user.data.hours:
         logger.info("Send schedule")
         await bot.send_message(user.uid,
-            text=platform.view.send_today_lessons(Intent(), user),
+            text=platform.today_lessons(user),
             reply_markup=get_week_keyboard(user.data.cl)
         )
 
@@ -114,11 +114,14 @@ async def process_update(
     updates = user.get_updates(platform.view.sc, save_users=False)
     if updates is None:
         return
+
     logger.info("Send comparc updates message")
-    await bot.send_message(user.uid, text=(
-        "🎉 У вас изменилось расписание!\n"
-        f"{platform.view.send_update(updates, hide_cl=user.data.cl)}"
-    ),
+    updates_message = platform.updates(updates, hide_cl=user.data.cl)
+    if len(updates_message) > 4000:
+        updates_message = "f\n< слишком много изменений >"
+
+    await bot.send_message(user.uid,
+        text=f"🎉 У вас изменилось расписание!\n{updates_message}",
         reply_markup=get_updates_keyboard(user.data.cl)
     )
 
