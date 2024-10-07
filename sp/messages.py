@@ -269,7 +269,7 @@ def send_day_lessons(lessons: Iterable[Union[list[str], str]]) -> str:
         message += f"\n{cursor}"
 
         tt = timetable[i]
-        if current_lesson is not None and current_lesson.index < i:
+        if current_lesson is not None and current_lesson.index <= i:
             message += time(tt[0], tt[1]).strftime(" %H:%M -")
 
         message += time(tt[2], tt[3]).strftime(" %H:%M")
@@ -418,7 +418,7 @@ class SPMessages:
         active_pr = round((storage_users.active / storage_users.total)*100, 2)
 
         res = (
-            "🌟 Версия sp: 6.1.3 (223)"
+            "🌟 Версия sp: 6.1.4 (224)"
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"
