@@ -274,25 +274,72 @@ class Schedule:
         self.updates_path = Path(updates_path)
         self.index_path = Path(index_path)
 
-        # Определнеи индексов расписания.
+        # Определение индексов расписания.
         self._l_index: dict[str, list[dict]] = None
         self._c_index: dict[str, list[dict]] = None
         self._updates = None
 
-        #: Полное расписание, включая метаданные, прим. время полчения
-        self.schedule: dict[str, Union[int, dict, str]] = self.get()
+        #: Полное расписание, включая метаданные, прим. время получения
+        self._schedule: dict[str, Union[int, dict, str]] | None = None
+        self.next_parse: int | None = None
         #: Расписание уроков, он же индекс классов (часто используется)
-        self.lessons: dict[str, list[str]] = self.schedule.get("lessons", {})
+        # self.lessons: dict[str, list[str]] = self.schedule.get("lessons", {})
+
+    @property
+    def lessons(self) -> dict[str, list[list[str]]]:
+        """Получает словарь расписания уроков по классам.
+
+        При получении расписания также автоматически будет проводить
+        проверку обновлений.
+
+        :return: Расписание уроков по классам.
+        :rtype: dict[str, list[list[str]]]
+        """
+        return self.schedule["lessons"]
+
+    @property
+    def schedule(self) -> dict[str, Union[int, dict, str]]:
+        """Получает расписание уроков.
+
+        Если расписание уроков пустое или таймер истёк, запускает
+        процесс обновления.
+
+        **Процесс обновления**:
+
+        - Загрузка файла расписания.
+            - Если не удалось, передвигаем метку обновления.
+        - Сравниваем хеши расписаний.
+        - Если различаются:
+            - Парсим расписание из файла.
+            - Обновляем индексы расписания.
+            - Сравниваем и записывает изменения в расписании.
+        - Сдвигаем временную метку следующего обновления.
+
+        Расписание уроков представляет собой словарь:
+
+        - ``hash``: Хеш сумма расписания уроков.
+        - ``last_parse``: Unixtime последней проверки расписания.
+        - ``next_parse``: Ubixtume следующей проверки расписания.
+        - ``lessons``: Сам словарь расписаний уроков по классам.
+
+        :return: Словарь данных расписания уроков.
+        :rtype: dict[str, Union[int, dict, str]]
+        """
+        now = int(datetime.timestamp(datetime.now()))
+        if self.next_parse is None or self.next_parse < now:
+            t = load_file(self.sc_path)
+            self._process_update(t, now)
+        return self._schedule
 
     @property
     def l_index(self) -> dict[str, list[dict]]:
         """Индекс уроков.
 
-        Загружает индекс урокво из файла.
+        Загружает индекс уроков из файла.
         Индекс урока предоставляет изменённый словарь расписания,
         где вместо ключа используется название урока, а не класс.
 
-        Индексы удобно использовать при поиске данныех из разписания.
+        Индексы удобно использовать при поиске данных из расписания.
         К примеру если быстро нужно найти урок и посмотреть где, когда
         и для кого он проводится.
 
@@ -453,7 +500,19 @@ class Schedule:
             [get_index(sp_lessons), get_index(sp_lessons, False)]
         )
 
-    def _process_update(self, t: dict[str, Union[list, int, str]]) -> None:
+    def _save_schedule(self, t: dict[str, dict | int | str],
+        owerwrite: bool=False
+    ) -> None:
+        if owerwrite or self._schedule is None:
+            self._schedule = t
+            save_file(self.sc_path, t)
+
+
+    def _process_update(
+        self,
+        t: dict[str, dict | int | str],
+        timestamp: int
+    ) -> None:
         """Полное обновление расписания, индексов, файла обновлений.
 
         Производит полное обновление расписания уроков.
@@ -467,23 +526,24 @@ class Schedule:
 
         :param t: Текущее расписание уроков.
         :type t: dict[str, Union[list, int, str]]
+        :param timestamp: Текущее время в UNIX формате
+        :type timestamp: int
         """
         logger.info("Start schedule update ...")
-        timestamp = int(datetime.now().timestamp())
 
-        # Скачяиваем файла с расписанием
+        # Скачиваем файл с расписанием
         csv_file = self._load_schedule(url)
         if csv_file is None:
             # Откладываем обновление на минуту
-            t["next_update"] = timestamp+60
-            save_file(self.sc_path, t)
+            self.next_parse = timestamp+60
+            self._save_schedule(t)
             return
 
         # Сравниваем хеши расписаний
         if t.get("hash", "") == csv_file.hash:
             logger.info("Schedule is up to date")
-            t["next_parse"] = timestamp + 1800
-            save_file(self.sc_path, t)
+            self.next_parse = timestamp+1800
+            self._save_schedule(t)
             return
 
         try:
@@ -493,8 +553,8 @@ class Schedule:
             logger.exception(e)
 
             # Откладываем обновление на минуту
-            t["next_update"] = timestamp+60
-            save_file(self.sc_path, t)
+            self.next_parse = timestamp+60
+            self._save_schedule(t)
             return
 
         # Собираем новое расписанеи уроков
@@ -502,47 +562,11 @@ class Schedule:
             "hash": csv_file.hash,
             "lessons": lessons,
             "last_parse": timestamp,
-            "next_parse": timestamp+1800
         }
 
+        self.next_parse = timestamp+1800
         self._update_diff_file(t, new_t)
-        save_file(self.sc_path, new_t)
-
-    def get(self) -> dict[str, Union[int, dict, str]]:
-        """Получает расписание уроков.
-
-        Если расписание уроков пустое или таймёр истёк, запускает
-        процесс обновления.
-
-        **Процесс обновления**:
-
-        - Загрузка файла расписания.
-            - Если не удалосью, передвигаем метку обновления.
-        - Сравниваем хеши расписаний.
-        - Если различаются:
-            - Парсим расписание из файла.
-            - Обновляем индексы расписания.
-            - Сравниваем и записывает изменения в расписании.
-        - Сдвигаем временнцую метку следующего обновления.
-
-        Расписание уроков представляет собой словарь:
-
-        - ``hash``: Хеш сумма рсписания уроков.
-        - ``last_parse``: Unixtime посленей проверки расписания.
-        - ``next_parse``: Ubixtume следующей проверки расписания.
-        - ``lessons``: Сам словарь расписаний уроков по классам.
-
-        :return: Словарь данных расписания уроков.
-        :rtype: dict[str, Union[int, dict, str]]
-        """
-        now = datetime.timestamp(datetime.now())
-        t = load_file(self.sc_path)
-
-        # Время обновлять расписание!
-        if not t or t.get("next_parse", 0) < now:
-            self._process_update(t)
-
-        return t
+        self._save_schedule(new_t, owerwrite=True)
 
 
     # Получение данных из расписания
@@ -568,7 +592,6 @@ class Schedule:
         :return: расписание уроков на неделю для класса.
         :rtype: list[list[str]]
         """
-        cl = cl or self.cl
         if cl is None:
             raise ValueError("User class let is None")
         return self.lessons.get(cl, [[], [], [], [], [], []])
