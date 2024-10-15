@@ -3,7 +3,7 @@
 
 [tool.poetry]
 name = "sp"
-version = "6.1"
+version = "6.2"
 description = "latform for working with class schedules."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
@@ -33,7 +33,7 @@ ruff = "^0.6"
 mypy = "^1.8.0"
 
 
-# For building docs ----------------------------------------------------
+# For building docs with sphinx ----------------------------------------
 
 [tool.poetry.group.docs]
 optional = true
@@ -44,7 +44,7 @@ sphinx-copybutton = "^0.5.2"
 sphinx-book-theme = "^1.1.2"
 
 
-# For Telegram Platform ------------------------------------------------
+# For Telegram bot Platform --------------------------------------------
 
 [tool.poetry.group.telegram]
 optional = true
@@ -54,14 +54,14 @@ aiogram = "^3.2.0"
 python-dotenv = "^1.0.0"
 
 
-# Configure ruff -------------------------------------------------------
+# Configure Ruff -------------------------------------------------------
 
 [tool.ruff]
 line-length = 80
 indent-width = 4
 
-# Assume Python 3.8
-target-version = "py38"
+# Assume Python 3.10
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "D", "N", "PL"]
