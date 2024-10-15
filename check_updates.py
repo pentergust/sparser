@@ -1,6 +1,6 @@
 """Скрипт для автоматической проверки расписания.
 
-Работает в паре с Teleram ботом.
+Работает в паре с Telegram ботом.
 Данные для авторизации будут взяты из env файла.
 
 - Проверяет пользователей.
@@ -10,7 +10,7 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.11.4 (sp v6.1.7, telegram v2.5)
+Ver: 0.11.5 (sp v6.1.7, telegram v2.5)
 """
 
 import asyncio
@@ -24,12 +24,11 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
 from loguru import logger
 
-from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.platform import Platform
 from sp.users.storage import User
 
-# Запуск плфтформы и TG бота
+# Запуск платформы и TG бота
 # ==========================
 
 load_dotenv()
@@ -38,13 +37,13 @@ bot = Bot(TELEGRAM_TOKEN)
 logger.add("sp_data/updates.log")
 _TIMETAG_PATH = Path("sp_data/last_update")
 
-# Если данные мигрировали вследствии
+# Если данные мигрировали в следствии
 CHAT_MIGRATE_MESSAGE = (
     "⚠️ У вашего чата сменился ID.\n"
     "Настройки чата были перемещены."
 )
 
-# Функкии для сбора клавиатур
+# Функции для сбора клавиатур
 # ===========================
 
 def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
@@ -63,11 +62,11 @@ def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
 
     Данная клавиатура будет отправляться в месте с сообщением об
     изменениях в расписании.
-    Она содержет в себе ссылки на все основные разделы, которые нужны
+    Она содержит в себе ссылки на все основные разделы, которые нужны
     при просмотре сообщения с изменением:
 
     - Вернуться домой.
-    - Перейти к списку измененйи.
+    - Перейти к списку изменений.
     - Получить расписание на сегодня/завтра.
     """
     return InlineKeyboardMarkup(inline_keyboard=[[
@@ -90,8 +89,8 @@ async def process_update(
 ) -> None:
     """Проверяет обновления для одного пользователя (или чата).
 
-    Отправляет расписани на сегодня/завтра в указанный час или
-    список измнений в расписании, при наличии.
+    Отправляет расписание на сегодня/завтра в указанный час или
+    список изменений в расписании, при наличии.
 
     :param bot: Экземпляр бота для отправки сообщений.
     :type bot: Bot
@@ -115,7 +114,7 @@ async def process_update(
     if updates is None:
         return
 
-    logger.info("Send comparc updates message")
+    logger.info("Send compare updates message")
     updates_message = platform.updates(updates, hide_cl=user.data.cl)
     if len(updates_message) > 4000:
         updates_message = "f\n< слишком много изменений >"
@@ -126,10 +125,10 @@ async def process_update(
     )
 
 def set_timetag(path: Path, timestamp: int) -> None:
-    """Оставляет временную метку последней проверки обнолвения.
+    """Оставляет временную метку последней проверки обновления.
 
     После успешной работы скрипта записывает в файл временную метку.
-    Метка может использватьна для проверки работаспособности
+    Метка может использоваться для проверки работоспособности
     скрипта обновлений.
 
     Args:
@@ -148,6 +147,11 @@ def set_timetag(path: Path, timestamp: int) -> None:
 # =======================
 
 async def main() -> None:
+    """Запускает процесс проверки обновления.
+
+    Проверяет для каждого пользователя наличие обновлений, а также
+    отправляет по необходимости расписание на сегодня/завтра.
+    """
     platform = Platform(
         pid=1, name="Telegram updater",
         version="0.11", api_version=0
@@ -185,7 +189,7 @@ async def main() -> None:
     if remove_ids:
         platform.users.remove_users(remove_ids)
 
-    # Осталяем временную метку успешного обновления
+    # Обновляем временную метку успешного обновления
     set_timetag(_TIMETAG_PATH, int(now.timestamp()))
     platform.users.save_users()
 
