@@ -1,240 +1,278 @@
-"""Командный интерфейc для доступа к генератору сообщений.
+"""Командный интерфейс для доступа к платформе расписания.
+
+Позволяет напрямую взаимодействовать с генератором сообщений.
+А также управлять хранилищем пользователя.
 
 Author: Milinuri Nirvalen
-Ver: 1.6.1 +1 (sp v6)
+Ver: v2 (sp v6.2)
 """
 
-import argparse
+from datetime import datetime
 from time import time
+from typing import NamedTuple
 
-from sp.counters import CounterTarget
+import click
+
+from sp.counter import CounterTarget, CurrentCounter
 from sp.intents import Intent
 from sp.messages import SPMessages, send_search_res
 from sp.platform import Platform
-from sp.text_counter import TextCounter
 from sp.users.storage import User
 from sp.utils import get_str_timedelta
 
-# Вспомогательные фцнкции для работы
-# ==================================
+# Определение группы
+# ==================
 
-def _get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--version", help="Информация о парсере",
-        action="store_true"
-    )
-    parser.add_argument("-i", "--intents", type=str,
-        help="Набор намерений для генератора сообщений"
-    )
+class AppContext(NamedTuple):
+    """Контекст приложения."""
 
-    # Настройки хранилища пользователя
-    parser.add_argument("-u", "--uid", type=str,
-        help="User ID пользователя с котороым работаем",
-        default="Console"
-    )
-
-    parser.add_argument("-s", "--ustorage", type=str,
-        help="Путь к файлу с пользователями",
-        default="sp_data/users/cli.json"
-    )
-
-    # Главные команды парсера
-    subparsers = parser.add_subparsers(dest="cmd", metavar="command")
-    sp = subparsers.add_parser("sc", help="Расписание уроков")
-    sp = subparsers.add_parser("updates", help="Изменения в расписании")
-
-    # Поисковая система по расписнаию
-    sp = subparsers.add_parser("search", help="Поиск в расписании")
-    sp.add_argument("-c", "--cabinets", help="Поиск по кабинетам",
-                    action="store_true")
-    sp.add_argument("target", help="Цель для поиска: урок, кабинет")
-
-    # Работа с счётчиками расписания
-    sp = subparsers.add_parser("counter", help="Счётчик уроков/кабинетов")
-    sp.add_argument("counter", help="Тип Счётчика", default="lessons",
-                    choices=["cl", "days", "lessons", "cabinets"])
-    sp.add_argument(
-        "target", help="Вторичный ключ для отображения",
-        type=CounterTarget, default=CounterTarget.NONE, nargs='?'
-    )
-
-    # Аргументы хранилища пользователей
-    # =================================
-
-    up = subparsers.add_parser("user", help="Взаимодействие с пользователем")
-    up.add_argument("action", help="Что нужно сделать с пользователем",
-        default="users", nargs='?',
-        choices=[
-            "get", "count", "users", "create", "remove", "class", "notify",
-            "houradd", "hourremove", "hourreset"
-        ]
-    )
-    up.add_argument("value", help="Дополнительный аргумент команды",
-        default=None, nargs='?',
-    )
-
-    return parser
-
-def _get_main_intent(platform: Platform, args: argparse.Namespace) -> Intent:
-    # получает глобальное намерение из аргументов
-    if args.intents is not None:
-        return platform.view.sc.parse_intent(args.intent.split())
-    else:
-        return Intent()
-
-
-# Рукава обработки аргументов
-# ===========================
-
-def _process_user(
-    args: argparse.Namespace,
-    platform: Platform,
+    platform: Platform
     user: User
-) -> None:
-    # Получает данные пользователя
-    if args.action == "get":
-        create_delta = get_str_timedelta(
-            int(time()) - user.data.create_time
-        )
-        if user.data.last_parse != 0:
-            parse_delta = get_str_timedelta(
-                int(time()) - user.data.last_parse
-            )
-        else:
-            parse_delta = 0
 
-        print(f"Создан: {user.data.create_time} ({create_delta})")
-        print(f"Класс: {user.data.cl} (Установлен: {user.data.set_class})")
-        print(f"Последняя проверка {user.data.last_parse} ({parse_delta})")
-        print(f"Уведомления: {user.data.notifications}")
-        print(f"Уведомлять: {','.join([str(x) for x in user.data.hours])}")
+pass_app = click.make_pass_decorator(AppContext)
 
-    # Счаитет пользователей в базе данных
-    elif args.action == "count":
-        counted_users = platform.users.count_users(platform.view.sc)
-        print(f"Active: {counted_users.active}")
-        print(f"Class counter ({len(counted_users.cl)}):")
-        for k, v in counted_users.cl.items():
-            print(f"-- {k}: {v}")
+@click.option(
+    "--uid", "-u", type=str, default="Console",
+    help="ID пользователя хранилища."
+)
+@click.option(
+    "--pid", "-p", type=int, default=0, help="ID платформы (хранилища)."
+)
+@click.group()
+@click.pass_context
+def cli(ctx: click.Context, uid: str, pid: int):
+    """Скрипт для управления платформой расписания.
 
-    # Создать пользователя
-    elif args.action == "create":
-        user.create()
-        print(f"Create user: {user.uid}")
-
-    # Удалить пользователя
-    elif args.action == "remove":
-        user.remove()
-        print(f"Remove user: {user.uid}")
-
-    # Установить класс пользователю
-    elif args.action == "class":
-        status = user.set_class(args.value, platform.view.sc)
-        if status:
-            print(f"User {user.uid} set class {args.value}")
-        else:
-            print(f"User {user.uid} error set {args.value} class")
-
-    # Настройка отправки уведомлений
-    elif args.action == "notify":
-        if args.value in ("on", "enable"):
-            user.set_notify_on()
-        elif args.value in ("off", "disable"):
-            user.set_notify_off()
-        print(f"User {user.uid} set notify {args.value}!")
-
-    # Добавить рассылку в указанный час
-    elif args.action == "houradd":
-        if args.value.isdigit():
-            hour = max(min(int(args.value), 20), 6)
-            user.add_notify_hour(hour)
-            print(f"{user.uid}: add notify at {hour}:00.")
-
-    # Удаляет рассылку в указанный час
-    elif args.action == "hourremove":
-        if args.value.isdigit():
-            hour = max(min(int(args.value), 20), 6)
-            user.remove_notify_hour(hour)
-            print(f"{user.uid}: remove notify at {hour}:00.")
-
-    # Сбрасывает рассылку уведомлений
-    elif args.action == "hourreset":
-        user.reset_notify()
-
-    else: # artion == "users"
-        for k, v in platform.users.get_users().items():
-            print(f"-- {k} / {v.cl} - {v.set_class}")
-
-
-# Главная функция обработки аргументов
-# ====================================
-
-def main() -> None:
-    """Запускает обработку аргументов командной строки."""
-    parser = _get_parser()
-    args = parser.parse_args()
-
-    platform = Platform(0, "Console", "v1.6", 1)
+    Позволяет напрямую взаимодействовать с генератором сообщений
+    и хранилищем пользователя.
+    """
+    platform = Platform(pid, "Console", "v2", 1)
     platform.view = SPMessages()
-    user = platform.get_user(args.uid)
-    intent = _get_main_intent(platform, args)
+    user = platform.get_user(uid)
+    ctx.obj = AppContext(platform, user)
 
-    # Статус генератора сообщений
-    if args.version:
-        print(platform.view.send_status(user))
+def _get_intent(
+    ctx: click.Context, arg: click.Argument, value: str | None
+) -> Intent | None:
+    if value is None:
+        return None
+    return ctx.obj.platform.view.sc.parse_intent(value.split())
 
 
-    # Обработка пользователей
-    # =======================
+# Определение команд
+# ==================
 
-    if args.cmd == "user":
-        _process_user(args, platform. users)
+@cli.command()
+@pass_app
+def status(app: AppContext):
+    """Состояние платформы и статуса."""
+    click.echo(app.platform.status(app.user))
 
-    # # Получить расписание уроков
-    elif args.cmd == "sc":
-        if intent.days:
-            print(platform.view.send_lessons(intent, user))
-        else:
-            print(platform.view.send_today_lessons(intent), user)
+@cli.command()
+@click.argument('intent', callback=_get_intent, required=False)
+@pass_app
+def iparse(app: AppContext, intent: Intent | None):
+    """Проверка парсера намерений для конкретного расписания."""
+    click.echo(intent)
 
-    # Просмотреть обновления в расписании
-    elif args.cmd == "updates":
-        for u in platform.view.sc.get_updates(intent):
-            print(platform.view.send_update(u))
-
-    # Поиск в расписании
-    elif args.cmd == "search":
-        res = platform.view.sc.search(args.target, intent, args.cabinets)
-        print(send_search_res(intent, res))
-
-    # Работа с счётчиками расписания
-    elif args.cmd == "counter":
-        cnt = TextCounter(platform.view.sc)
-        header = "✨ Счётчик"
-
-        if args.counter == "cl":
-            header += " по классам:"
-            res = cnt.cl(intent, args.target)
-        elif args.counter == "days":
-            header += " по дням:"
-            res = cnt.days(intent, args.target)
-        elif args.counter == "lessons":
-            header += " по урокам:"
-            res = cnt.index(intent, target=args.target)
-
-        elif args.counter == "cabinets":
-            header += " по кабинетам:"
-            res = cnt.index(intent, cabinets_mode=True, target=args.target)
-
-        print(header)
-        print(res)
-
+@cli.command()
+@click.argument("intent", required=False, callback=_get_intent)
+@pass_app
+def sc(app: AppContext, intent: Intent | None):
+    """Расписание уроков для класса."""
+    if intent is not None and intent.days:
+        click.echo(app.platform.lessons(app.user, intent))
     else:
-        print(platform.view.send_today_lessons(intent, user))
+        click.echo(app.platform.today_lessons(app.user, intent))
+
+@cli.command()
+@pass_app
+def users(app: AppContext):
+    """Список всех пользователей платформы."""
+    for k, v in app.platform.users.get_users().items():
+        print(f"-- {k} / {v.cl} - {v.set_class}")
+
+@cli.command()
+@click.option('--offset',
+    help="С какого момента начинать отправлять записи об изменениях",
+    type=click.DateTime()
+)
+@click.argument("intent", callback=_get_intent, required=False)
+@pass_app
+def updates(app: AppContext, intent: Intent | None, offset: datetime | None):
+    """Записи об изменениях в расписании."""
+    if offset is not None:
+        offset = int(offset.timestamp())
+    if intent is None:
+        intent = Intent()
+    for u in app.platform.view.sc.get_updates(intent, offset):
+        print(app.platform.view.send_update(u))
+
+@cli.command()
+@click.argument('target', type=str)
+@click.option("--intent", '-i', callback=_get_intent, default=Intent())
+@click.option("--cabinets/--lessons", default=False)
+@pass_app
+def search(app: AppContext, target: str, intent: Intent, cabinets: bool):
+    """Глобальный поиск в расписании."""
+    res = app.platform.view.sc.search(target, intent, cabinets)
+    print(send_search_res(intent, res))
+
+@cli.command()
+@click.option('--intent', '-i', callback=_get_intent, required=False)
+@click.argument('counter',
+    type=click.Choice(('cl', 'days', 'lessons', 'cabinets')),
+    default='lessons'
+)
+@click.argument('target',
+    type=click.Choice(('cl', 'days', 'lessons', 'cabinets', 'main', 'none')),
+    default='main'
+)
+@pass_app
+def counter(app: AppContext, intent: Intent | None, counter: str, target: str):
+    """Подсчитывает элементы расписания."""
+    cnt = CurrentCounter(app.platform.view.sc, intent or Intent())
+    header = "✨ Счётчик"
+
+    if counter == "cl":
+        header += " по классам:"
+        res = cnt.cl()
+    elif counter == "days":
+        header += " по дням:"
+        res = cnt.days()
+    elif counter == "lessons":
+        header += " по урокам:"
+        res = cnt.index()
+
+    elif counter == "cabinets":
+        header += " по кабинетам:"
+        res = cnt.index(cabinets_mode=True)
+
+    print(header)
+    print(app.platform.counter(res, CounterTarget(target)))
+
+
+# Пользователи расписания
+# =======================
+
+@cli.group()
+def user():
+    """Управление хранилищем пользователя."""
+    pass
+
+@user.command()
+@pass_app
+def get(app: AppContext):
+    """Основная информация о пользователе."""
+    create_delta = get_str_timedelta(
+        int(time()) - app.user.data.create_time
+    )
+    if app.user.data.last_parse != 0:
+        parse_delta = get_str_timedelta(
+            int(time()) - app.user.data.last_parse
+        )
+    else:
+        parse_delta = 0
+
+    print(f"Создан: {app.user.data.create_time} ({create_delta})")
+    print(f"Класс: {app.user.data.cl} (Установлен: {app.user.data.set_class})")
+    print(f"Последняя проверка {app.user.data.last_parse} ({parse_delta})")
+    print(f"Уведомления: {app.user.data.notifications}")
+    print(f"Уведомлять: {','.join([str(x) for x in app.user.data.hours])}")
+
+@user.command()
+@pass_app
+def count(app: AppContext):
+    """Подсчитывает пользователей хранилища."""
+    c_users = app.platform.users.count_users(app.platform.view.sc)
+
+    if c_users.total > 0:
+        active_pr = round((c_users.active / c_users.total)*100, 2)
+        notify_pr = round((c_users.notify / c_users.total)*100, 2)
+    else:
+        active_pr = 0
+        notify_pr = 0
+
+    print(f"Всего: {c_users.total}")
+    print(f"  | Активных: {c_users.active} ({active_pr}%)")
+    print(f"  | С оповещениями: {c_users.notify} ({notify_pr}%)")
+
+    print(f"по классам ({len(c_users.cl)}):")
+    for k, v in c_users.cl.items():
+        print(f"  | {k}: {v}")
+
+    print(f"по оповещениям ({len(c_users.hour)}):")
+    for k, v in c_users.hour.items():
+        print(f"  | {k}: {v}")
+
+@user.command()
+@pass_app
+def create(app: AppContext):
+    """Добавляет нового/сбрасывает данные пользователя."""
+    app.user.create()
+    print(f"Create user: {user.uid}")
+
+@user.command()
+@pass_app
+def remove(app: AppContext):
+    """Удаляет пользователя."""
+    app.user.remove()
+    print(f"Remove user: {user.uid}")
+
+@user.command()
+@click.argument('cl', type=str)
+@pass_app
+def select(app: AppContext, cl: str):
+    """Устанавливает класс по умолчанию для пользователя."""
+    status = app.user.set_class(cl, app.platform.view.sc)
+    if status:
+        print(f"User {app.user.uid} set class {cl}")
+    else:
+        print(f"User {app.user.uid} {cl} not found?")
+
+@user.command()
+@click.argument('select',  type=click.Choice(['on', 'off']))
+@pass_app
+def notify(app: AppContext, select: str):
+    """Переключает режим отправки уведомлений."""
+    if select == "on":
+        app.user.set_notify_on()
+    else:
+        app.user.set_notify_off()
+    print(f"User {app.user.uid} set notify {select}!")
+
+
+# Оповещения пользователей
+# ========================
+
+@user.group()
+def hours():
+    """управляет часами оповещения расписания пользователя."""
+    pass
+
+@hours.command()
+@pass_app
+def reset(app: AppContext):
+    """Сбрасывает часы отправки расписания."""
+    app.user.reset_notify()
+
+@hours.command()
+@click.argument('hour', type=click.IntRange(6, 23))
+@pass_app
+def add(app: AppContext, hour: int):
+    """Добавляет час отправки расписания."""
+    app.user.add_notify_hour(hour)
+
+@hours.command()
+@click.argument('hour', type=click.IntRange(6, 23))
+@pass_app
+def remove(app: AppContext, hour: int): # noqa: F811
+    """Удаляет час отправки расписания."""
+    app.user.remove_notify_hour(hour)
 
 
 # Запуск скрипта
 # ==============
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    cli()
