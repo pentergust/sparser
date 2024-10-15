@@ -397,9 +397,11 @@ class SPMessages:
         :rtype: str
         """
         now = datetime.now()
-        next_update = datetime.fromtimestamp(
-            float(self.sc.next_parse or now)
-        )
+        # На случай если это первый раз когда мы получаем расписание
+        if self.sc.next_parse is None:
+            next_update = now
+        else:
+            next_update = datetime.fromtimestamp(float(self.sc.next_parse))
         last_parse = datetime.fromtimestamp(
             float(self.sc.schedule["last_parse"])
         )
@@ -413,11 +415,16 @@ class SPMessages:
         )
         lp_delta = get_str_timedelta(int((now - last_parse).total_seconds()))
 
-        active_pr = round((storage_users.active / storage_users.total)*100, 2)
-
+        # При первом запуске из консоли у нас ещё нет пользователей
+        if storage_users.total > 0:
+            active_pr = round(
+                (storage_users.active / storage_users.total)*100, 2
+            )
+        else:
+            active_pr = 0
 
         res = (
-            "🌟 Версия sp: 6.2 (236)"
+            "🌟 Версия sp: 6.2.1 (237)"
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"
