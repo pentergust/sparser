@@ -36,6 +36,8 @@ TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN")
 bot = Bot(TELEGRAM_TOKEN)
 logger.add("sp_data/updates.log")
 _TIMETAG_PATH = Path("sp_data/last_update")
+# Максимальная длинна отправляемого сообщения для Telegram и Вконтакте
+_MAX_UPDATE_MESSAGE_LEN = 4000
 
 # Если данные мигрировали в следствии
 CHAT_MIGRATE_MESSAGE = (
@@ -116,7 +118,7 @@ async def process_update(
 
     logger.info("Send compare updates message")
     updates_message = platform.updates(updates, hide_cl=user.data.cl)
-    if len(updates_message) > 4000:
+    if len(updates_message) > _MAX_UPDATE_MESSAGE_LEN:
         updates_message = "f\n< слишком много изменений >"
 
     await bot.send_message(user.uid,
