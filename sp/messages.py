@@ -13,12 +13,17 @@ from datetime import datetime, time
 from typing import Iterable, NamedTuple, Optional, Union
 
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
+from loguru import logger
 
 from .counter import CounterTarget, reverse_counter
 from .intents import Intent
 from .parser import Schedule
 from .users.storage import CountedUsers, User
 from .utils import get_str_timedelta, plural_form
+from .version import (
+    PROJECT_VERSION, check_updates, UPDATES_URL, VersionInfo,
+    VersionOrd, VersionStatus
+)
 
 # Константы
 # =========
@@ -362,6 +367,23 @@ def _get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
 
     return res
 
+def _get_ver_str(cur_ver: VersionInfo, dest_url: str) -> str:
+    res = cur_ver.full
+    try:
+        vs = check_updates(cur_ver, dest_url)
+    except Exception as e:
+        logger.error("Error while check updates: {}", e)
+        vs = None
+
+    if vs is None:
+        res += "\n⚠️ Не удалось проверить обновления.."
+    elif vs.status == VersionOrd.LT:
+        res += f"\n🍰 Ура ура, доступно обновление: {vs.git_ver.full}"
+    elif vs.status == VersionOrd.GT:
+        res += "\n🎩 Кажется это тестовая сборка."
+
+    return res
+
 
 class SPMessages:
     """Предоставляет методы для более удобной работы с расписанием.
@@ -424,7 +446,7 @@ class SPMessages:
             active_pr = 0
 
         res = (
-            "🌟 Версия sp: 6.2.1 (237)"
+            f"🌟 Версия sp: {_get_ver_str(PROJECT_VERSION, UPDATES_URL)}"
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"
