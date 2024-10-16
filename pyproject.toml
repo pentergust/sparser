@@ -1,9 +1,15 @@
+# Версионирование проекта ----------------------------------------------
+
+[tool.sp]
+version = "v6.2.1"
+build = 238
+api_version = 6
 
 # main -----------------------------------------------------------------
 
 [tool.poetry]
 name = "sp"
-version = "6.2"
+version = "6.2.1"
 description = "latform for working with class schedules."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
@@ -19,6 +25,7 @@ python = "^3.10"
 requests = "^2.31.0"
 loguru = "^0.7.0"
 ujson = "^5.7.0"
+click = "^8.1.7"
 
 
 # For dev depencies ----------------------------------------------------
