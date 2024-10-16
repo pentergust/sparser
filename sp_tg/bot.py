@@ -37,6 +37,7 @@ from sp.messages import SPMessages
 from sp.platform import Platform
 from sp.users.storage import User
 from sp.utils import get_str_timedelta
+from sp.version import VersionInfo
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (
     PASS_SET_CL_MARKUP,
@@ -45,13 +46,13 @@ from sp_tg.keyboards import (
 )
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
 
-# Настройкки и константы
-# ======================
+# Настройки и константы
+# =====================
 
 load_dotenv()
 TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN", "")
 _TIMETAG_PATH = Path("sp_data/last_update")
-# Используются для отладки сообщений об исключенииях
+# Используются для отладки сообщений об исключениях
 _DEBUG_MODE = getenv("DEBUG_MODE")
 _ADMIN_ID = getenv("ADMIN_ID")
 
@@ -66,8 +67,7 @@ _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 platform = Platform(
     pid=1, # RESERVED FOR TELEGRAM
     name="Telegram",
-    version=_BOT_VERSION,
-    api_version=1
+    version=VersionInfo(_BOT_VERSION, 0, 6),
 )
 
 try:
@@ -154,7 +154,9 @@ def get_update_timetag(path: Path) -> int:
     except (ValueError, FileNotFoundError):
         return 0
 
-def get_status_message(platform: Platform, timetag_path: Path, user: User) -> str:
+def get_status_message(
+    platform: Platform, timetag_path: Path, user: User
+) -> str:
     """Отправляет информационно сособщение о работа бота и парсера.
 
     Инфомарционно сообщения содержит некоторую вспомогательную
