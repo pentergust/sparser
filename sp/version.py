@@ -46,7 +46,7 @@ class VersionInfo(NamedTuple):
         if isinstance(other, VersionInfo):
             return (
                 self.build < other.build
-                and self.api_version < other.api_version
+                or self.api_version < other.api_version
             )
         elif isinstance(other, int):
             return self.build < other
@@ -64,7 +64,7 @@ class VersionInfo(NamedTuple):
         if isinstance(other, VersionInfo):
             return (
                 self.build <= other.build
-                and self.api_version <= other.api_version
+                or self.api_version <= other.api_version
             )
         elif isinstance(other, int):
             return self.build <= other
@@ -82,7 +82,7 @@ class VersionInfo(NamedTuple):
         if isinstance(other, VersionInfo):
             return (
                 self.build == other.build
-                and self.api_version == other.api_version
+                or self.api_version == other.api_version
             )
         elif isinstance(other, int):
             return self.build == other
@@ -100,7 +100,7 @@ class VersionInfo(NamedTuple):
         if isinstance(other, VersionInfo):
             return (
                 self.build != other.build
-                and self.api_version != other.api_version
+                or self.api_version != other.api_version
             )
         elif isinstance(other, int):
             return self.build != other
@@ -118,7 +118,7 @@ class VersionInfo(NamedTuple):
         if isinstance(other, VersionInfo):
             return (
                 self.build > other.build
-                and self.api_version > other.api_version
+                or self.api_version > other.api_version
             )
         elif isinstance(other, int):
             return self.build > other
@@ -136,7 +136,7 @@ class VersionInfo(NamedTuple):
         if isinstance(other, VersionInfo):
             return (
                 self.build >= other.build
-                and self.api_version >= other.api_version
+                or self.api_version >= other.api_version
             )
         elif isinstance(other, int):
             return self.build >= other
@@ -148,8 +148,8 @@ class VersionInfo(NamedTuple):
 # ======================
 
 PROJECT_VERSION = VersionInfo(
-    version="v6.2.1",
-    build=238,
+    version="v6.2.2",
+    build=239,
     api_version=6
 )
 
@@ -173,6 +173,7 @@ class VersionStatus(NamedTuple):
     status: VersionOrd
     build_diff: int
     api_diff: int
+    git_ver: VersionInfo
 
 
 def check_updates(cur_ver: str, dest_url: str) -> VersionStatus:
@@ -195,16 +196,18 @@ def check_updates(cur_ver: str, dest_url: str) -> VersionStatus:
     # Сравниваем версии
     if ver > cur_ver:
         return VersionStatus(
-            status=VersionOrd.GT,
+            status=VersionOrd.LT,
             build_diff=ver.build - cur_ver.build,
-            api_diff=ver.api_version - cur_ver.api_version
+            api_diff=ver.api_version - cur_ver.api_version,
+            git_ver=ver
         )
     elif ver < cur_ver:
         return VersionStatus(
-            status=VersionOrd.LT,
+            status=VersionOrd.GT,
             build_diff=cur_ver.build - ver.build ,
-            api_diff=cur_ver.api_version - ver.api_version
+            api_diff=cur_ver.api_version - ver.api_version,
+            git_ver=ver
         )
 
     else:
-        return VersionStatus(VersionOrd.EQ, 0, 0)
+        return VersionStatus(VersionOrd.EQ, 0, 0, ver)
