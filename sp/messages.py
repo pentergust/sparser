@@ -396,11 +396,11 @@ class SPMessages:
     генератор сообщения в своих методах возвращает строки.
     Генератор сообщений используется в чат-ботах, поскольку возвращает
     уже готовые текстовые сообщения.
-
-    **API Версия**: 1
     """
 
-    API_VERSION = 1
+    # Глобальное описание версии класса представления
+    # Пока что это пожалуй просто костыль, но что уж поделать
+    version = PROJECT_VERSION
 
     def __init__(
         self,
@@ -408,7 +408,11 @@ class SPMessages:
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
-    def send_status(self, storage_users: CountedUsers, user: User) -> str:
+    def send_status(self,
+        storage_users: CountedUsers,
+        user: User,
+        platform_version: VersionInfo
+    ) -> str:
         """Возвращает информацию о платформе.
 
         Эта статистическая информация, о работа парсера, времени
@@ -419,6 +423,8 @@ class SPMessages:
         :type storage_users: CountedUsers
         :param user: Какой пользователь запрашивает информацию.
         :type user: User
+        :param platform_version: На какой платформе запущено приложение.
+        :type  platform_version: VersionInfo
         :return: Статус парсера и хранилища пользователей.
         :rtype: str
         """
@@ -450,7 +456,8 @@ class SPMessages:
             active_pr = 0
 
         res = (
-            f"🌟 Версия sp: {_get_ver_str(PROJECT_VERSION, UPDATES_URL)}"
+            f"🌟 SPlatform {_get_ver_str(self.version, UPDATES_URL)}"
+            f"\n☕ Версия платформы: {platform_version.full}"
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"

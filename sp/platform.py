@@ -21,6 +21,7 @@ from sp.intents import Intent
 from sp.messages import SPMessages
 from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
+from sp.version import VersionInfo
 
 # Главный класс платформы
 # =======================
@@ -46,11 +47,10 @@ class Platform:
     :type api_version: int
     """
 
-    def __init__(self, pid: int, name: str, version: str, api_version: int):
+    def __init__(self, pid: int, name: str, version: VersionInfo):
         self.pid = pid
         self.name = name
         self.version = version
-        self.api_version = api_version
 
         self._file_path = Path(f"sp_data/users/{pid}.json")
         self._db_path = Path(f"sp_data/users/{pid}.db")
@@ -63,9 +63,9 @@ class Platform:
     # ==========================
 
     def _check_api_version(self, api_version: int) -> bool:
-        if api_version < self.api_version:
+        if api_version < self.version.api_version:
             raise ViewCompatibleError("Platform API is higher than view API")
-        elif api_version == self.api_version:
+        elif api_version == self.version.api_version:
             return True
         else:
             logger.warning("Platform API is lower than view")
@@ -110,7 +110,7 @@ class Platform:
     def view(self, view: SPMessages) -> None:
         if not isinstance(view, SPMessages):
             raise ViewCompatibleError("View must be instance of SPMessages")
-        self._check_api_version(view.API_VERSION)
+        self._check_api_version(view.version.api_version)
         self._view = view
 
 
@@ -371,4 +371,4 @@ class Platform:
         :rtype: str
         """
         count_result = self.users.count_users(self.view.sc)
-        return self.view.send_status(count_result, user)
+        return self.view.send_status(count_result, user, self.version)
