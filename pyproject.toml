@@ -13,7 +13,7 @@ version = "6.2.1"
 description = "latform for working with class schedules."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
-readme = ["README.md", "docs/index.rst"]
+readme = ["README.md", "docs/index.md"]
 repository = "https://codeberg.org/Salormoon/Sparser"
 documentation = "https://sparser.readthedocs.io/ru/latest/"
 
@@ -49,9 +49,12 @@ optional = true
 sphinx = "^7.2.6"
 sphinx-copybutton = "^0.5.2"
 sphinx-book-theme = "^1.1.2"
-
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.5.41"
 
 # For Telegram bot Platform --------------------------------------------
+mkdocstrings-python = "^1.12.1"
+pymend = "^1.0.10"
 
 [tool.poetry.group.telegram]
 optional = true

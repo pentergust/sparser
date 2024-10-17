@@ -57,7 +57,7 @@ _DEBUG_MODE = getenv("DEBUG_MODE")
 _ADMIN_ID = getenv("ADMIN_ID")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.5.1"
+_BOT_VERSION = "v2.5.2"
 _ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
 
 

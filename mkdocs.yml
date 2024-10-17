@@ -1,0 +1,64 @@
+site_name: SPlatform
+copyright: 2020 - 2024 Milinuri Nirvalen
+repo_url: https://codeberg.org/salormoon/sparser
+repo_name: Sparser
+edit_uri: _edit/main/docs/
+
+theme:
+  name: material
+  language: ru
+  palette:
+    scheme: slate
+    primary: teal
+    accent: teal
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - navigation.footer
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+
+nav:
+  - Home:
+    - index.md
+    - install.md
+    - contribute.md
+    - changelog.md
+  - API:
+    - sp/index.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: false
+            parameter_headings: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docsting_style: "google"
+            docstring_section_style: "list"
+            merge_init_into_class: true
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://codeberg.org/salormoon/
+      name: Команда разработчиков проекта
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/mili_qlaster
+      name: Новостной канал проекта
