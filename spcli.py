@@ -19,6 +19,7 @@ from sp.messages import SPMessages, send_search_res
 from sp.platform import Platform
 from sp.users.storage import User
 from sp.utils import get_str_timedelta
+from sp.version import VersionInfo
 
 # Определение группы
 # ==================
@@ -46,7 +47,7 @@ def cli(ctx: click.Context, uid: str, pid: int):
     Позволяет напрямую взаимодействовать с генератором сообщений
     и хранилищем пользователя.
     """
-    platform = Platform(pid, "Console", "v2", 1)
+    platform = Platform(pid, "Console", VersionInfo("v2.1", 22, 6))
     platform.view = SPMessages()
     user = platform.get_user(uid)
     ctx.obj = AppContext(platform, user)
