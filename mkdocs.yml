@@ -22,9 +22,24 @@ theme:
     - search.highlight
     - navigation.footer
     - content.action.edit
+    - content.code.copy
   icon:
     repo: fontawesome/brands/github
     edit: material/pencil
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/bullhorn
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/bomb
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/robot
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
+
 
 nav:
   - Home:
@@ -34,6 +49,9 @@ nav:
     - changelog.md
   - API:
     - sp/index.md
+    - sp/counter.md
+    - sp/utils.md
+    - sp/version.md
 
 plugins:
   - search
@@ -52,6 +70,21 @@ plugins:
             show_if_no_docstring: true
             show_signature_annotations: true
             signature_crossrefs: true
+            members_order: "source"
+
+markdown_extensions:
+  - toc:
+      toc_depth: 3
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 
 extra:
   generator: false
