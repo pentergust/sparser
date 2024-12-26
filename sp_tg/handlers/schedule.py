@@ -49,7 +49,9 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 # ===============
 
 @router.message(Command("week"))
-async def week_sc_command(message: Message, user: User, platform: Platform):
+async def week_sc_command(
+    message: Message, user: User, platform: Platform
+) -> None:
     """Расписание уроков на неделю."""
     relative_day = platform.relative_day(user)
     await message.answer(
@@ -70,7 +72,7 @@ async def week_sc_command(message: Message, user: User, platform: Platform):
 async def sc_callback(
     query: CallbackQuery, callback_data: ScCallback, sp: SPMessages,
     user: User, platform: Platform
-):
+) -> None:
     """Отправляет расписание уроков для класса в указанный день."""
     # Расписание на неделю
     if callback_data.day == "week":
@@ -83,7 +85,7 @@ async def sc_callback(
         relative_day = platform.relative_day(user)
         reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
-    # Расипсание на сегодня/завтра
+    # Расписание на сегодня/завтра
     elif callback_data.day == "today":
         text = platform.today_lessons(
             user, platform.view.sc.construct_intent(cl=callback_data.cl)
@@ -106,8 +108,8 @@ async def sc_callback(
 async def select_day_callback(
     query: CallbackQuery, callback_data: ScCallback, sp: SPMessages,
     user: User, platform: Platform
-):
-    """Отобржает клавиатуру для выбора дня расписания уроков."""
+) -> None:
+    """Отображает клавиатуру для выбора дня расписания уроков."""
     relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=f"📅 на ...\n🔶 Для {callback_data.cl}:",

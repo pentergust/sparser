@@ -54,7 +54,7 @@ CL_FEATURES_MESSAGE = ("🌟 Если вы укажете класс, то см�
 # ===============
 
 @router.message(Command("cl_features"))
-async def restrictions_handler(message: Message):
+async def restrictions_handler(message: Message) -> None:
     """Отправляет список примуществ при указанном классе."""
     await message.answer(text=CL_FEATURES_MESSAGE)
 
@@ -62,7 +62,7 @@ async def restrictions_handler(message: Message):
 async def set_class_command(
     message: Message, sp: SPMessages, user: User,
     command: CommandObject, platform: Platform
-):
+) -> None:
     """Изменяет класс или удаляет данные о пользователе.
 
     - Если такого класса не существует, показывает список доступных
@@ -96,7 +96,7 @@ async def set_class_command(
 @router.message(Command("pass"), IsAdmin())
 async def pass_handler(
     message: Message, sp: SPMessages, user: User, platform: Platform
-):
+) -> None:
     """Отвязаывает пользователя от класса по умолчанию.
 
     Если более конкретно, то устанавливает калсс пользователя в
@@ -114,7 +114,7 @@ async def pass_handler(
 # ===============================
 
 @router.callback_query(F.data == "cl_features")
-async def cl_features_callback(query: CallbackData, sp: SPMessages):
+async def cl_features_callback(query: CallbackData, sp: SPMessages) -> None:
     """Отправляет сообщения с преимуществами указанного класса."""
     await query.message.edit_text(
         text=CL_FEATURES_MESSAGE,
@@ -122,7 +122,7 @@ async def cl_features_callback(query: CallbackData, sp: SPMessages):
     )
 
 @router.callback_query(F.data == "set_class", IsAdmin())
-async def set_class_callback(query: CallbackQuery, user: User):
+async def set_class_callback(query: CallbackQuery, user: User) -> None:
     """Сбрасывает класс пользователя.
 
     Сбрасывает данные пользователя и переводит в состояние выбора
@@ -136,7 +136,7 @@ async def set_class_callback(query: CallbackQuery, user: User):
 @router.callback_query(F.data == "pass", IsAdmin())
 async def pass_class_callback(
     query: CallbackData, sp: SPMessages, user: User, platform: Platform
-):
+) -> None:
     """Отвязывает пользователя от класса.
 
     Как и в случае с командой /pass.

@@ -155,7 +155,6 @@ def get_tutorial_keyboard(page: int) -> InlineKeyboardMarkup:
 
     Returns:
         InlineKeyboardMarkup: Клавиатура для перемещения по справке.
-    
     """
     inline_keyboard = []
 

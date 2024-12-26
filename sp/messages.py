@@ -9,8 +9,9 @@
 """
 
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import datetime, time
-from typing import Iterable, NamedTuple, Optional, Union
+from typing import NamedTuple
 
 from loguru import logger
 
@@ -86,7 +87,7 @@ def seconds_to_time(now: int) -> time:
     m, s = divmod(d, 60)
     return time(h, m, s)
 
-def get_current_lesson(now: time) -> Optional[LessonTime]:
+def get_current_lesson(now: time) -> LessonTime | None:
     """Возвращает текущий урок.
 
     Используется в функции сбора расписания на день.
@@ -115,7 +116,7 @@ def get_current_lesson(now: time) -> Optional[LessonTime]:
 # ====================================
 
 def _send_cl_updates(
-    cl_updates: list[Optional[list[str]]]
+    cl_updates: list[list[str] | None]
 ) -> str:
     """Возвращает сообщение списка изменений для класса.
 
@@ -173,8 +174,8 @@ def _send_cl_updates(
     return message
 
 def _get_update_header(
-    update: dict[str, Union[int, list[dict]]],
-    extend_info: Optional[bool]=True
+    update: dict[str, int | list[dict]],
+    extend_info: bool | None=True
 ) -> str:
     """Возвращает заголовок списка изменений.
 
@@ -241,7 +242,7 @@ def _get_update_header(
 # Вспомогательные функции отображения
 # ===================================
 
-def send_day_lessons(lessons: Iterable[Union[list[str], str]]) -> str:
+def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
     """Собирает сообщение с расписанием уроков на день.
 
     Возвращает сообщение списка уроков на день.
@@ -335,7 +336,7 @@ def send_search_res(intent: Intent, res: list) -> str:
 # Вспомогательные функции для сообщения статуса парсера
 # =====================================================
 
-def _get_next_update_str(time: datetime, now: Optional[datetime]=None) -> str:
+def _get_next_update_str(time: datetime, now: datetime | None=None) -> str:
     if now is None:
         now = datetime.now()
 
@@ -357,7 +358,7 @@ def _get_cl_counter_str(cl_counter: Counter) -> str:
 
     return res
 
-def _get_hour_counter_str(hour_counter: Counter) -> Optional[str]:
+def _get_hour_counter_str(hour_counter: Counter) -> str | None:
     groups = defaultdict(list)
     for k, v in hour_counter.items():
         groups[v].append(k)
@@ -597,8 +598,8 @@ class SPMessages:
 
     def send_update(
         self,
-        update: dict[str, Union[int, list[dict]]],
-        hide_cl: Optional[str]=None
+        update: dict[str, int | list[dict]],
+        hide_cl: str | None=None
     ) -> str:
         """Собирает сообщение со списком изменений в расписании.
 
@@ -725,9 +726,9 @@ class SPMessages:
                                         key=lambda x: x[0], reverse=True):
                         # Заменяем числа на дни недели в подгруппу счётчика
                         if target == CounterTarget.DAYS:
-                            count_items = " ".join((
+                            count_items = " ".join(
                                 SHORT_DAY_NAMES[int(x)] for x in k
-                            ))
+                            )
                         else:
                             count_items = " ".join(k)
 

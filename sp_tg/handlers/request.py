@@ -66,7 +66,7 @@ def process_request(
 @router.message(Command("sc"))
 async def sc_handler(
     message: Message, command: CommandObject, user: User, platform: Platform
-):
+) -> None:
     """Отправляет расписание уроков пользовтелю.
 
     Позвоялет напрямую писать запросы, после ``/sc [запрос]``.

@@ -10,7 +10,6 @@
 
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -47,7 +46,7 @@ class Platform:
     :type api_version: int
     """
 
-    def __init__(self, pid: int, name: str, version: VersionInfo):
+    def __init__(self, pid: int, name: str, version: VersionInfo) -> None:
         self.pid = pid
         self.name = name
         self.version = version
@@ -179,7 +178,7 @@ class Platform:
         """
         return self.view.send_lessons(self._get_user_intent(user, intent))
 
-    def today_lessons(self, user: User, intent: Optional[Intent]=None) -> str:
+    def today_lessons(self, user: User, intent: Intent | None=None) -> str:
         """Расписание уроков на сегодня/завтра.
 
         Сокращение для метода ``SPMessages.send_today_lessons()``.

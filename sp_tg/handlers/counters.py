@@ -4,7 +4,6 @@
 в расписании.
 """
 
-from typing import Optional
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -83,7 +82,7 @@ class CounterCallback(CallbackData, prefix="count"):
 # =======================
 
 def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
-    intents: UserIntentsStorage, intent_name: Optional[str]=""
+    intents: UserIntentsStorage, intent_name: str | None=""
 ) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра счётчиков расписания.
 
@@ -180,8 +179,8 @@ def get_counter_message(
     platform: Platform,
     user: User,
     counter: str,
-    target: Optional[CounterTarget]=None,
-    intent: Optional[Intent]=None
+    target: CounterTarget | None=None,
+    intent: Intent | None=None
 ) -> str:
     """Собирает сообщение с результатами работы счётчиков.
 

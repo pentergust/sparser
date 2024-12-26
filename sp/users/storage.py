@@ -14,7 +14,7 @@
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple
 
 import ujson
 from loguru import logger
@@ -53,11 +53,11 @@ class UserData(NamedTuple):
     :type hours: list[int]
     """
 
-    create_time: Optional[int] = int(datetime.now().timestamp())
-    cl: Optional[str] = None
-    set_class: Optional[bool] = False
-    last_parse: Optional[int] = 0
-    notifications: Optional[bool] = True
+    create_time: int | None = int(datetime.now().timestamp())
+    cl: str | None = None
+    set_class: bool | None = False
+    last_parse: int | None = 0
+    notifications: bool | None = True
     hours: list[int] = []
 
 
@@ -442,7 +442,7 @@ class User:
         self._storage.save_users()
         self.update()
 
-    def save(self, save_users: Optional[bool]=True) -> None:
+    def save(self, save_users: bool | None=True) -> None:
         """Сохраняет текушие локальные данные пользователя.
 
         .. deprecated:: 6.0
@@ -459,7 +459,7 @@ class User:
         self.data = self._storage.get_user(self.uid)
 
     def get_updates(self, sc: Schedule, save_users: bool=True
-    ) -> dict[str, Union[int, list[dict]]] | None:
+    ) -> dict[str, int | list[dict]] | None:
         """Возвращет компактную запись о всех новых обновлениях.
 
         Полчает все новые записи об изменниях в расписании, начиная

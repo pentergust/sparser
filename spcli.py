@@ -41,7 +41,7 @@ pass_app = click.make_pass_decorator(AppContext)
 )
 @click.group()
 @click.pass_context
-def cli(ctx: click.Context, uid: str, pid: int):
+def cli(ctx: click.Context, uid: str, pid: int) -> None:
     """Скрипт для управления платформой расписания.
 
     Позволяет напрямую взаимодействовать с генератором сообщений
@@ -65,21 +65,21 @@ def _get_intent(
 
 @cli.command()
 @pass_app
-def status(app: AppContext):
+def status(app: AppContext) -> None:
     """Состояние платформы и статуса."""
     click.echo(app.platform.status(app.user))
 
 @cli.command()
 @click.argument('intent', callback=_get_intent, required=False)
 @pass_app
-def iparse(app: AppContext, intent: Intent | None):
+def iparse(app: AppContext, intent: Intent | None) -> None:
     """Проверка парсера намерений для конкретного расписания."""
     click.echo(intent)
 
 @cli.command()
 @click.argument("intent", required=False, callback=_get_intent)
 @pass_app
-def sc(app: AppContext, intent: Intent | None):
+def sc(app: AppContext, intent: Intent | None) -> None:
     """Расписание уроков для класса."""
     if intent is not None and intent.days:
         click.echo(app.platform.lessons(app.user, intent))
@@ -88,7 +88,7 @@ def sc(app: AppContext, intent: Intent | None):
 
 @cli.command()
 @pass_app
-def users(app: AppContext):
+def users(app: AppContext) -> None:
     """Список всех пользователей платформы."""
     for k, v in app.platform.users.get_users().items():
         print(f"-- {k} / {v.cl} - {v.set_class}")
@@ -100,7 +100,11 @@ def users(app: AppContext):
 )
 @click.argument("intent", callback=_get_intent, required=False)
 @pass_app
-def updates(app: AppContext, intent: Intent | None, offset: datetime | None):
+def updates(
+    app: AppContext,
+    intent: Intent | None,
+    offset: datetime | None
+) -> None:
     """Записи об изменениях в расписании."""
     if offset is not None:
         offset = int(offset.timestamp())
@@ -114,7 +118,12 @@ def updates(app: AppContext, intent: Intent | None, offset: datetime | None):
 @click.option("--intent", '-i', callback=_get_intent, default=Intent())
 @click.option("--cabinets/--lessons", default=False)
 @pass_app
-def search(app: AppContext, target: str, intent: Intent, cabinets: bool):
+def search(
+    app: AppContext,
+    target: str,
+    intent: Intent,
+    cabinets: bool
+) -> None:
     """Глобальный поиск в расписании."""
     res = app.platform.view.sc.search(target, intent, cabinets)
     print(send_search_res(intent, res))
@@ -130,7 +139,12 @@ def search(app: AppContext, target: str, intent: Intent, cabinets: bool):
     default='main'
 )
 @pass_app
-def counter(app: AppContext, intent: Intent | None, counter: str, target: str):
+def counter(
+    app: AppContext,
+    intent: Intent | None,
+    counter: str,
+    target: str
+) -> None:
     """Подсчитывает элементы расписания."""
     cnt = CurrentCounter(app.platform.view.sc, intent or Intent())
     header = "✨ Счётчик"
@@ -157,13 +171,13 @@ def counter(app: AppContext, intent: Intent | None, counter: str, target: str):
 # =======================
 
 @cli.group()
-def user():
+def user() -> None:
     """Управление хранилищем пользователя."""
     pass
 
 @user.command()
 @pass_app
-def get(app: AppContext):
+def get(app: AppContext) -> None:
     """Основная информация о пользователе."""
     create_delta = get_str_timedelta(
         int(time()) - app.user.data.create_time
@@ -183,7 +197,7 @@ def get(app: AppContext):
 
 @user.command()
 @pass_app
-def count(app: AppContext):
+def count(app: AppContext) -> None:
     """Подсчитывает пользователей хранилища."""
     c_users = app.platform.users.count_users(app.platform.view.sc)
 
@@ -208,14 +222,14 @@ def count(app: AppContext):
 
 @user.command()
 @pass_app
-def create(app: AppContext):
+def create(app: AppContext) -> None:
     """Добавляет нового/сбрасывает данные пользователя."""
     app.user.create()
     print(f"Create user: {user.uid}")
 
 @user.command()
 @pass_app
-def remove(app: AppContext):
+def remove(app: AppContext) -> None:
     """Удаляет пользователя."""
     app.user.remove()
     print(f"Remove user: {user.uid}")
@@ -223,7 +237,7 @@ def remove(app: AppContext):
 @user.command()
 @click.argument('cl', type=str)
 @pass_app
-def select(app: AppContext, cl: str):
+def select(app: AppContext, cl: str) -> None:
     """Устанавливает класс по умолчанию для пользователя."""
     status = app.user.set_class(cl, app.platform.view.sc)
     if status:
@@ -234,7 +248,7 @@ def select(app: AppContext, cl: str):
 @user.command()
 @click.argument('select',  type=click.Choice(['on', 'off']))
 @pass_app
-def notify(app: AppContext, select: str):
+def notify(app: AppContext, select: str) -> None:
     """Переключает режим отправки уведомлений."""
     if select == "on":
         app.user.set_notify_on()
@@ -247,27 +261,27 @@ def notify(app: AppContext, select: str):
 # ========================
 
 @user.group()
-def hours():
+def hours() -> None:
     """управляет часами оповещения расписания пользователя."""
     pass
 
 @hours.command()
 @pass_app
-def reset(app: AppContext):
+def reset(app: AppContext) -> None:
     """Сбрасывает часы отправки расписания."""
     app.user.reset_notify()
 
 @hours.command()
 @click.argument('hour', type=click.IntRange(6, 23))
 @pass_app
-def add(app: AppContext, hour: int):
+def add(app: AppContext, hour: int) -> None:
     """Добавляет час отправки расписания."""
     app.user.add_notify_hour(hour)
 
 @hours.command()
 @click.argument('hour', type=click.IntRange(6, 23))
 @pass_app
-def remove(app: AppContext, hour: int): # noqa: F811
+def remove(app: AppContext, hour: int) -> None: # noqa: F811
     """Удаляет час отправки расписания."""
     app.user.remove_notify_hour(hour)
 

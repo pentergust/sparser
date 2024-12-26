@@ -6,7 +6,6 @@
 Использованеи системы намерений для уточнения списка изменений.
 """
 
-from typing import Optional, Union
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -57,7 +56,7 @@ class UpdatesCallback(CallbackData, prefix="updates"):
 def get_updates_keyboard(
     page: int,
     updates: list[dict],
-    cl: Optional[str],
+    cl: str | None,
     intents: UserIntentsStorage,
     intent_name: str = ""
 ) -> InlineKeyboardMarkup:
@@ -127,9 +126,9 @@ def get_updates_keyboard(
 
 def get_updates_message(
     platform: Platform,
-    update: Optional[dict[str, Union[int, list[dict]]]]=None,
-    cl: Optional[str]=None,
-    intent: Optional[Intent]=None
+    update: dict[str, int | list[dict]] | None=None,
+    cl: str | None=None,
+    intent: Intent | None=None
 ) -> str:
     """Собирает сообщение со страницей списка изменений расписания.
 

@@ -52,7 +52,7 @@ def get_intent_status(i: Intent) -> str:
     """
     return (
         f"< {', '.join(i.cl)} /"
-        f" {', '.join((SHORT_DAY_NAMES[x] for x in i.days))} /"
+        f" {', '.join(SHORT_DAY_NAMES[x] for x in i.days)} /"
         f" {', '.join(i.lessons)} /"
         f" {', '.join(i.cabinets)} >"
     )

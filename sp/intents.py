@@ -9,18 +9,22 @@
 фильтр, чтобы более точно описать что вы хотите получить от расписания.
 """
 
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable, NamedTuple, TypeVar, Union
+from typing import TYPE_CHECKING, NamedTuple, Self, TypeVar
 
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES
+
+if TYPE_CHECKING:
+    from sp.parser import Schedule
 
 # Вспомогательный функции
 # =======================
 
 _T = TypeVar("_T")
-def _ensure_list(a: _T) -> Union[_T, tuple[Union[str, int]]]:
+def _ensure_list(a: _T) -> _T | tuple[str | int]:
     if a is not None:
-        return (a,) if isinstance(a, (str, int)) else a
+        return (a,) if isinstance(a, str | int) else a
 
 
 # Класс намерений
@@ -153,11 +157,11 @@ class Intent(NamedTuple):
 
     @classmethod
     def construct( # noqa
-        cls, sc, cl: Union[Iterable[str], str]=(),
-        days: Union[Iterable[int], int]=(),
-        lessons: Union[Iterable[str], str]=(),
-        cabinets: Union[Iterable[str], str]=()
-    ):
+        cls, sc: Schedule, cl: Iterable[str] | str=(),
+        days: Iterable[int] | int=(),
+        lessons: Iterable[str] | str=(),
+        cabinets: Iterable[str] | str=()
+    ) -> Self:
         """Собирает новый экземпляр намерений.
 
         Занимается сборкой и валидацией нового экземпляра намерений.
@@ -194,7 +198,7 @@ class Intent(NamedTuple):
         )
 
     @classmethod
-    def parse(cls, sc, args: Iterable[str]):
+    def parse(cls, sc: Schedule, args: Iterable[str]) -> Self:
         """Извлекает намерения из списка строковых аргументов.
 
         .. code-block:: text
@@ -275,11 +279,11 @@ class Intent(NamedTuple):
     # ============================================
 
     def reconstruct( # noqa
-        self, sc, cl: Union[Iterable[str], str]=(),
-        days: Union[Iterable[int], int]=(),
-        lessons: Union[Iterable[str], str]=(),
-        cabinets: Union[Iterable[str], str]=()
-    ):
+        self, sc: Schedule, cl: Iterable[str] | str=(),
+        days: Iterable[int] | int=(),
+        lessons: Iterable[str] | str=(),
+        cabinets: Iterable[str] | str=()
+    ) -> Self:
         """Собирает новый экземпляр намерений.
 
         Занимается сборкой и валидацией нового экземпляра намерений

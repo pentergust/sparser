@@ -18,7 +18,6 @@
 
 from collections import Counter, defaultdict
 from enum import Enum
-from typing import Optional, Union
 
 from .intents import Intent
 from .parser import Schedule
@@ -160,7 +159,7 @@ class CurrentCounter:
         :return: Подсчитанные элементы расписания по классам.
         :rtype: dict[int, dict[str, dict]]
         """
-        res: dict[str, Union[int, Counter]] = {}
+        res: dict[str, int | Counter] = {}
         if intent is None:
             intent = self.intent
 
@@ -194,7 +193,7 @@ class CurrentCounter:
 
     def days(
         self,
-        intent: Optional[Intent] = None,
+        intent: Intent | None = None,
     ) -> dict[int, dict[str, dict]]:
         """Счётчик по дням с использованием sc.lessons.
 
@@ -219,7 +218,7 @@ class CurrentCounter:
         :return: Подсчитанные элементы расписания по дням.
         :rtype: dict[int, dict[str, dict]]
         """
-        res: dict[int, dict[str, Union[int, Counter]]] = {
+        res: dict[int, dict[str, int | Counter]] = {
             str(x): {"cl": Counter(),
                     "total": 0,
                     "lessons": Counter(),
@@ -292,7 +291,7 @@ class CurrentCounter:
         :return: Подсчитанные элементы расписания по урокам/кабинетам.
         :rtype: dict[int, dict[str, dict]]
         """
-        res: dict[str, dict[str, Union[int, Counter]]] = defaultdict(
+        res: dict[str, dict[str, int | Counter]] = defaultdict(
             lambda: {
                 "total": 0,
                 "days": Counter(),

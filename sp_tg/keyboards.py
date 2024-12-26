@@ -4,7 +4,6 @@
 Они могут быть использованы всеми обработчиками бота.
 """
 
-from typing import Optional
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -121,8 +120,8 @@ def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
 # Основные клавиатуры ----------------------------------------------------------
 
 def get_other_keyboard(
-    cl: Optional[str]=None,
-    home_button: Optional[bool]=True
+    cl: str | None=None,
+    home_button: bool | None=True
 ) -> InlineKeyboardMarkup:
     """Собирает дополнительную клавиатуру.
 
@@ -174,8 +173,8 @@ def get_other_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_main_keyboard(
-    cl: Optional[str]=None,
-    relative_day: Optional[str]=None
+    cl: str | None=None,
+    relative_day: str | None=None
 ) -> InlineKeyboardMarkup:
     """Возращает главную клавиатуру бота.
 

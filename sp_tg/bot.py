@@ -7,7 +7,7 @@
 Получает обновления в первую очередь.
 Является основной платформой для работы расписания.
 
-Это главный файл с саммыми необходимыми обработчиками.
+Это главный файл с самыми необходимыми обработчиками.
 С функцией для загрузки всех дополнительных роутеров и последующего
 запуска бота.
 
@@ -19,11 +19,12 @@
 - delete_msg: Удалить сообщение или отправить главный раздел.
 """
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from os import getenv
 from pathlib import Path
 from sys import exit
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
@@ -58,7 +59,7 @@ _ADMIN_ID = getenv("ADMIN_ID")
 
 # Некоторые константные настройки бота
 _BOT_VERSION = "v2.5.1"
-_ALERT_AUTOUPDATE_AFTER_SECONDS = 3600
+_ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
 
 
 # Настройки платформы
@@ -96,7 +97,7 @@ async def user_middleware(
     handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
     event: Message | CallbackQuery | ErrorEvent,
     data: dict[str, Any],
-) -> Any:
+) -> Awaitable[Any]:
     """Добавляет экземпляр пользователя и хранилище намерений."""
     # Это выглядит как костыль, работает примерно так же
     if isinstance(event, ErrorEvent):
@@ -114,7 +115,7 @@ async def user_middleware(
 
     return await handler(event, data)
 
-# Если вы хотите отключить логгирование в боте
+# Если вы хотите отключить ведение журнала в боте
 # Закомментируйте необходимые вам декораторы
 @dp.message.middleware()
 @dp.callback_query.middleware()
@@ -122,7 +123,7 @@ async def log_middleware(
     handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
     event: Message | CallbackQuery,
     data: dict[str, Any],
-) -> Any:
+) -> Awaitable[Any]:
     """Отслеживает полученные ботом сообщения и callback query."""
     if isinstance(event, CallbackQuery):
         logger.info("[c] {}: {}", event.message.chat.id, event.data)
@@ -136,12 +137,12 @@ async def log_middleware(
 # =================
 
 def get_update_timetag(path: Path) -> int:
-    """Получает время последней удачной проверки обнолвений.
+    """Получает время последней удачной проверки обновлений.
 
     Вспомогательная функция.
-    Время успешой проверки используется для контроля скрипта обновлений.
+    Время успешной проверки используется для контроля скрипта обновлений.
     Если время последней проверки будет дольше одного часа,
-    то это повод задуматься о правильноти работы скрипта.
+    то это повод задуматься о правильности работы скрипта.
 
     :param path: Путь к файлу временной метки обновлений.
     :type path: Path
@@ -157,20 +158,20 @@ def get_update_timetag(path: Path) -> int:
 def get_status_message(
     platform: Platform, timetag_path: Path, user: User
 ) -> str:
-    """Отправляет информационно сособщение о работа бота и парсера.
+    """Отправляет информационно сообщение о работа бота и парсера.
 
-    Инфомарционно сообщения содержит некоторую вспомогательную
-    информацию относительно статуса и работаспособности бота.
+    Информационное сообщения содержит некоторую вспомогательную
+    информацию относительно статуса и работы бота.
     К примеру версия бота, время последнего обновления,
     классов и прочее.
-    Также осдержит метку последнего автоматического обновления.
-    Если давно не было автообновлений - выводит предупреждение.
+    Также содержит метку последнего автоматического обновления.
+    Если давно не было авто обновлений - выводит предупреждение.
 
     :param view: Экземпляр генератора сообщений.
     :type view: SPMessages
     :param timetag_path: Путь к файлу временной метки обновления.
     :type timetag_path: Path
-    :return: Информацинное сообщение.
+    :return: Информационное сообщение.
     :rtype: str
     """
     message = platform.status(user)
@@ -180,7 +181,7 @@ def get_status_message(
     timedelta = int(datetime.now().timestamp()) - timetag
     message += f"\n📀 Проверка была {get_str_timedelta(timedelta)} назад"
 
-    if timedelta > _ALERT_AUTOUPDATE_AFTER_SECONDS:
+    if timedelta > _ALERT_AUTO_UPDATE_AFTER_SECONDS:
         message += "\n ┗ Может что-то сломалось?.."
 
     return message
@@ -190,18 +191,22 @@ def get_status_message(
 # ==================
 
 @dp.message(Command("info"))
-async def info_handler(message: Message, platform: Platform, user: User):
-    """Статус рабты бота и платформы."""
+async def info_handler(
+    message: Message, platform: Platform, user: User
+) -> None:
+    """Статус работы бота и платформы."""
     await message.answer(
         text=get_status_message(platform, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
 
 @dp.message(Command("help", "start"))
-async def start_handler(message: Message, user: User, platform: Platform):
-    """Отправляет домашнее сообщенеи и главную клавиатуру.
+async def start_handler(
+    message: Message, user: User, platform: Platform
+) -> None:
+    """Отправляет домашнее сообщение и главную клавиатуру.
 
-    Если класс не указан - отправляет сообщенеи смены класса.
+    Если класс не указан - отправляет сообщение смены класса.
     """
     if not user.data.set_class:
         return await message.answer(
@@ -223,7 +228,7 @@ async def start_handler(message: Message, user: User, platform: Platform):
 @dp.callback_query(F.data == "delete_msg")
 async def delete_msg_callback(
     query: CallbackQuery, user: User, platform: Platform
-):
+) -> None:
     """Удаляет сообщение пользователя.
 
     Если не удалось удалить, отправляет главное сообщение.
@@ -240,7 +245,7 @@ async def delete_msg_callback(
 @dp.callback_query(F.data == "home")
 async def home_callback(
     query: CallbackQuery, user: User, platform: Platform
-):
+) -> None:
     """Возвращает в главный раздел."""
     relative_day = platform.relative_day(user)
     await query.message.edit_text(
@@ -265,16 +270,16 @@ async def other_callback(
 # Обработка исключений
 # ====================
 
-def send_error_messsage(exception: ErrorEvent, user: User) -> str:
-    """Отпрвляет отладочное сообщние об ошибке пользователю.
+def send_error_message(exception: ErrorEvent, user: User) -> str:
+    """Отправляет отладочное сообщение об ошибке пользователю.
 
     Предоставляемые данные:
 
     - new => Когда вызвано исключение.
     - user_name => Кто вызвал исключение.
-    - user_id => Какой пользователь вызвал искючение.
+    - user_id => Какой пользователь вызвал исключение.
     - class_let => К какому класс относился пользователь.
-    - set_class => Установлене ли коасс.
+    - set_class => Установлен ли класс.
     - chat_id => Где была вызвана ошибка.
     - exception => Описание исключения.
     - action => Callback data или текст сообщение, вызвавший ошибку.
@@ -313,15 +318,14 @@ def send_error_messsage(exception: ErrorEvent, user: User) -> str:
     )
 
 @dp.errors()
-async def error_handler(exception: ErrorEvent, user: User):
+async def error_handler(exception: ErrorEvent, user: User) -> None:
     """Ловит и обрабатывает все исключения.
 
     Отправляет сообщение об ошибке пользователям.
     Некоторое исключения будут подавляться, поскольку не предоставляют
-    ничего инетерсного.
+    ничего интересного.
     """
-    if isinstance(exception.exception,
-        (TelegramBadRequest, TelegramNetworkError)
+    if isinstance(exception.exception, TelegramBadRequest | TelegramNetworkError
     ):
         return logger.error(exception)
 
@@ -336,12 +340,12 @@ async def error_handler(exception: ErrorEvent, user: User):
         return None
 
     await message.answer(
-        send_error_messsage(exception, user)
+        send_error_message(exception, user)
     )
     if not _DEBUG_MODE and _ADMIN_ID is not None:
         await message.bot.send_message(
             chat_id=_ADMIN_ID,
-            text=send_error_messsage(exception, user)
+            text=send_error_message(exception, user)
         )
 
 

@@ -16,9 +16,10 @@
 import csv
 import hashlib
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, NamedTuple, Optional, Union
+from typing import NamedTuple
 
 import requests
 from loguru import logger
@@ -99,7 +100,7 @@ def get_sc_updates(
 
 def get_index(
     sp_lessons: dict[str, list[str]],
-    lessons_mode: Optional[bool]=True
+    lessons_mode: bool | None=True
 ) -> dict[str, list[dict]]:
     """Преобразует словарь расписания уроков в индекс.
 
@@ -281,7 +282,7 @@ class Schedule:
         self._updates = None
 
         #: Полное расписание, включая метаданные, прим. время получения
-        self._schedule: dict[str, Union[int, dict, str]] | None = None
+        self._schedule: dict[str, int | dict | str] | None = None
         self.next_parse: int | None = None
         #: Расписание уроков, он же индекс классов (часто используется)
         # self.lessons: dict[str, list[str]] = self.schedule.get("lessons", {})
@@ -299,7 +300,7 @@ class Schedule:
         return self.schedule["lessons"]
 
     @property
-    def schedule(self) -> dict[str, Union[int, dict, str]]:
+    def schedule(self) -> dict[str, int | dict | str]:
         """Получает расписание уроков.
 
         Если расписание уроков пустое или таймер истёк, запускает
@@ -465,8 +466,8 @@ class Schedule:
 
     def _update_diff_file(
         self,
-        a: dict[str, Union[list, int, str]],
-        b: dict[str, Union[list, int, str]]
+        a: dict[str, list | int | str],
+        b: dict[str, list | int | str]
      ) -> None:
         """Обновляет файл списка изменений расписания.
 
@@ -573,7 +574,7 @@ class Schedule:
     # Получение данных из расписания
     # ==============================
 
-    def get_lessons(self, cl: Optional[str]=None) -> list[list[str]]:
+    def get_lessons(self, cl: str | None=None) -> list[list[str]]:
         """Получает полное расписание уроков для указанного класса.
 
         .. deprecated:: 5.8 Данный метод может быть переработан
@@ -659,7 +660,7 @@ class Schedule:
 
     def search(
         self, target: str, intent: Intent,
-        cabinets: Optional[bool]=False
+        cabinets: bool | None=False
     ) -> list[list[list[str]]]:
         """Производит поиск в расписании по индексу расписания.
 

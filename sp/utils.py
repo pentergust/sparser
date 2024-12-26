@@ -18,7 +18,6 @@
 """
 
 from pathlib import Path
-from typing import Optional, Union
 
 # В теории более быстрый, чем стандартный json
 import ujson
@@ -27,7 +26,7 @@ from loguru import logger
 # Работа с json файлами
 # =====================
 
-def save_file(path: Path, data: Union[dict, list]):
+def save_file(path: Path, data: dict | list) -> dict | list:
     """Записывает данные в json файл.
 
     Используется как обёртка для более удобной упаковки данных
@@ -55,8 +54,8 @@ def save_file(path: Path, data: Union[dict, list]):
     return data
 
 def load_file(
-    path: Path, data: Optional[Union[dict, list]]=None
-) -> Union[dict, list]:
+    path: Path, data: dict | list | None=None
+) -> dict | list:
     """Читает данные из json файла.
 
     Используется как обёртка для более удобного чтения данных из
@@ -118,7 +117,7 @@ def plural_form(n: int, v: tuple[str, str, str]) -> str:
     """
     return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]] #noqa
 
-def get_str_timedelta(s: int, hours: Optional[bool]=True) -> str:
+def get_str_timedelta(s: int, hours: bool | None=True) -> str:
     """Возвращает строковый обратный отсчёт из количества секунд.
 
     Если hours = False -> ММ:SS.
@@ -143,8 +142,8 @@ def get_str_timedelta(s: int, hours: Optional[bool]=True) -> str:
 # TODO: В надеждах когда-нибудь переписать эту страшную функцию
 # А пока работает и не трогаем, хе-хе ...
 def compact_updates( # noqa
-    updates: list[dict[str, Union[int, list[dict]]]]
-) -> dict[str, Union[int, list[dict]]]:
+    updates: list[dict[str, int | list[dict]]]
+) -> dict[str, int | list[dict]]:
     """Упаковывает несколько записей об обновлениях в одну.
 
     Используется чтобы совместить несколько записей об изменениях.
@@ -175,7 +174,7 @@ def compact_updates( # noqa
                     continue
 
                 old_lessons = res[day][cl]
-                new_lessons: list[Union[tuple, None]] = []
+                new_lessons: list[tuple | None] = []
 
                 for i, lesson in enumerate(cl_updates):
                     old_lesson = old_lessons[i]

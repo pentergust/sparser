@@ -136,7 +136,7 @@ def get_notify_message(enabled: bool, hours: list[int]) -> str:
 # ================
 
 @router.message(Command("notify"))
-async def notify_handler(message: Message, user: User):
+async def notify_handler(message: Message, user: User) -> None:
     """Переводит в меню настройки системы уведомлений."""
     enabled = user.data.notifications
     hours = user.data.hours

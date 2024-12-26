@@ -12,7 +12,8 @@
 """
 
 import sqlite3
-from typing import Iterator, NamedTuple
+from collections.abc import Iterator
+from typing import NamedTuple
 
 from loguru import logger
 
@@ -73,11 +74,11 @@ class UserIntentsStorage:
         self._check_tables()
 
     def _check_tables(self) -> None:
-        self._db.execute(("CREATE TABLE IF NOT EXISTS intent("
+        self._db.execute("CREATE TABLE IF NOT EXISTS intent("
             "user_id TEXT NOT NULL,"
             "name TEXT NOT NULL,"
             "intent TEXT NOT NULL)"
-        ))
+        )
         self._db.commit()
 
 
@@ -158,7 +159,7 @@ class UserIntentsStorage:
                 return Intent()
         return
 
-    def remove_all(self):
+    def remove_all(self) -> None:
         """Удаляет все намерение пользователя из базы данных."""
         self._db.execute("DELETE FROM intent WHERE user_id=?", (self.uid,))
         self._db.commit()
