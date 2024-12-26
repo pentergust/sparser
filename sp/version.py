@@ -148,8 +148,8 @@ class VersionInfo(NamedTuple):
 # ======================
 
 PROJECT_VERSION = VersionInfo(
-    version="v6.3",
-    build=244,
+    version="v6.4",
+    build=247,
     api_version=6
 )
 

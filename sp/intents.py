@@ -157,7 +157,7 @@ class Intent(NamedTuple):
 
     @classmethod
     def construct( # noqa
-        cls, sc: Schedule, cl: Iterable[str] | str=(),
+        cls, sc: 'Schedule', cl: Iterable[str] | str=(),
         days: Iterable[int] | int=(),
         lessons: Iterable[str] | str=(),
         cabinets: Iterable[str] | str=()
@@ -198,7 +198,7 @@ class Intent(NamedTuple):
         )
 
     @classmethod
-    def parse(cls, sc: Schedule, args: Iterable[str]) -> Self:
+    def parse(cls, sc: 'Schedule', args: Iterable[str]) -> Self:
         """Извлекает намерения из списка строковых аргументов.
 
         .. code-block:: text
@@ -279,7 +279,7 @@ class Intent(NamedTuple):
     # ============================================
 
     def reconstruct( # noqa
-        self, sc: Schedule, cl: Iterable[str] | str=(),
+        self, sc: 'Schedule', cl: Iterable[str] | str=(),
         days: Iterable[int] | int=(),
         lessons: Iterable[str] | str=(),
         cabinets: Iterable[str] | str=()

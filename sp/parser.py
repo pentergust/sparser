@@ -21,13 +21,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
 
+import openpyxl
 import requests
 from loguru import logger
 
 from .intents import Intent
 from .utils import load_file, save_file
 
-url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=csv"
+url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=xlsx"
+RAW_SC_PATH = Path("sp_data/sc.xlsx")
 SC_PATH = Path("sp_data/sc.json")
 SC_UPDATES_PATH = Path("sp_data/updates.json")
 INDEX_PATH = Path("sp_data/index.json")
@@ -150,10 +152,10 @@ def get_index(
     return index
 
 
-def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
-    """Разбирает CSV файл в словарь расписания.
+def parse_lessons() -> dict[str, list[list[str]]]:
+    """Разбирает XLSX файл в словарь расписания.
 
-    Расписание в CSV файле представлено подобным образом.
+    Расписание в XLSX файле представлено подобным образом.
 
     .. code-block:: text
 
@@ -194,32 +196,46 @@ def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
     lessons: dict[str, list] = defaultdict(lambda: [[] for x in range(6)])
     day = -1
     last_row = 8
-    reader = csv.reader(csv_file.splitlines())
+    sheet = openpyxl.load_workbook(str(RAW_SC_PATH)).active
+    row_iter = sheet.iter_rows()
+
+    # openpyxl.cell.Cell()
 
     # Получает кортеж с именем класса и индексом
     # соответствующего столбца расписания
-    next(reader)
-    cl_header = [(cl.lower(), i)
-        for i, cl in enumerate(next(reader)) if cl.strip()
+    next(row_iter)
+    cl_header = [(cl.value.lower(), i)
+        for i, cl in enumerate(next(row_iter)) if cl.value and cl.value.strip()
     ]
 
     # построчно читаем расписание уроков
-    for row in reader:
+    for row in row_iter:
         # Первый элемент строки указывает на день недели.
-        if len(row[0]) > 0:
-            logger.info("Process group {} ...", row[0])
+        if row[0].value is not None and len(row[0].value) > 0:
+            logger.info("Process group {} ...", row[0].value)
 
         # Если второй элемент в ряду указывает на номер урока
-        if row[1].isdigit():
+        if isinstance(row[1].value, int | float):
             # Если вдруг номер урока стал меньше, начался новый день
-            if int(row[1]) < last_row:
+            if row[1].value < last_row:
                 day += 1
-            last_row = int(row[1])
+            last_row = row[1].value
 
             for cl, i in cl_header:
                 # Если класса нет в расписании, то добавляем его
-                lesson = row[i].strip(" .-").lower() or None
-                cabinet = row[i+1].strip().lower() or 0
+                # А если строка зачёркнута, то также пропускаем
+                if row[i].value is None or row[i].font.strike:
+                    lesson = None
+                else:
+                    lesson = row[i].value.strip(" .-").lower() or None
+
+                # Кабинеты иногда представлены числом, иногда строкой
+                # Спасибо электронные таблицы, раньше было проще
+                if isinstance(row[i+1].value, float):
+                    cabinet = int(row[i+1].value) or 0
+                else:
+                    cabinet = str(row[i+1].value).strip().lower() or 0
+
                 lessons[cl][day].append(f"{lesson}:{cabinet}")
 
         elif day == 5: # noqa
@@ -229,21 +245,6 @@ def parse_lessons(csv_file: str) -> dict[str, list[list[str]]]:
     return {k: [
         _clear_day_lessons(x) for x in v
     ] for k, v in lessons.items()}
-
-class ScheduleFile(NamedTuple):
-    """Описывает скачанный из сети CSV файл расписания.
-
-    Данный класс используется внутри методов обновления и загрузки
-    расписания, для лучшей структуризации.
-
-    :param content: Содержимое файла расписания.
-    :type content: bytes
-    :param hash: Посчитанный хеш расписания.
-    :type hash: str
-    """
-
-    content: bytes
-    hash: str
 
 
 class Schedule:
@@ -284,8 +285,6 @@ class Schedule:
         #: Полное расписание, включая метаданные, прим. время получения
         self._schedule: dict[str, int | dict | str] | None = None
         self.next_parse: int | None = None
-        #: Расписание уроков, он же индекс классов (часто используется)
-        # self.lessons: dict[str, list[str]] = self.schedule.get("lessons", {})
 
     @property
     def lessons(self) -> dict[str, list[list[str]]]:
@@ -454,12 +453,15 @@ class Schedule:
     # Получаем расписание
     # ===================
 
-    def _load_schedule(self, url: str) -> ScheduleFile | None:
+    def _load_schedule(self, url: str) -> str:
         logger.info("Download schedule csv_file ...")
         try:
             csv_file = requests.get(url).content
-            h = hashlib.md5(csv_file).hexdigest()
-            return ScheduleFile(csv_file, h)
+            logger.debug(csv_file)
+            with RAW_SC_PATH.open("wb") as f:
+                f.write(csv_file)
+            logger.debug(csv_file)
+            return hashlib.md5(csv_file).hexdigest()
         except Exception as e:
             logger.exception(e)
             return
@@ -534,22 +536,22 @@ class Schedule:
         logger.info("Start schedule update ...")
 
         # Скачиваем файл с расписанием
-        csv_file = self._load_schedule(url)
-        if csv_file is None:
+        file_hash = self._load_schedule(url)
+        if file_hash is None:
             # Откладываем обновление на минуту
             self.next_parse = timestamp+60
             self._save_schedule(t)
             return
 
         # Сравниваем хеши расписаний
-        if t.get("hash", "") == csv_file.hash:
+        if t.get("hash", "") == file_hash:
             logger.info("Schedule is up to date")
             self.next_parse = timestamp+1800
             self._save_schedule(t)
             return
 
         try:
-            lessons = parse_lessons(csv_file.content.decode("utf-8"))
+            lessons = parse_lessons()
             self._update_index_files(lessons)
         except Exception as e:
             logger.exception(e)
@@ -561,7 +563,7 @@ class Schedule:
 
         # Собираем новое расписание уроков
         new_t = {
-            "hash": csv_file.hash,
+            "hash": file_hash,
             "lessons": lessons,
             "last_parse": timestamp,
         }
