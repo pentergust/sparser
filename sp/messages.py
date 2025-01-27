@@ -30,6 +30,8 @@ from .version import (
     check_updates,
 )
 
+from icecream import ic
+
 # Константы
 # =========
 
@@ -87,7 +89,7 @@ def seconds_to_time(now: int) -> time:
     m, s = divmod(d, 60)
     return time(h, m, s)
 
-def get_current_lesson(now: time) -> LessonTime | None:
+def get_current_lesson(now: time) -> LessonTime:
     """Возвращает текущий урок.
 
     Используется в функции сбора расписания на день.
@@ -109,7 +111,15 @@ def get_current_lesson(now: time) -> LessonTime | None:
             return LessonTime(start_time, end_time, i)
 
         l_end_time = end_time
-    return None
+
+    # Костыль номер #46
+    # Лучше возвращать начало и конец первого урока, чем вообще ничего
+    # не возвращать
+    return LessonTime(
+        time(timetable[0][0], timetable[0][1]),
+        time(timetable[0][2], timetable[0][3]),
+        index=0
+    )
 
 
 # Функции отображения списка изменений
@@ -259,39 +269,35 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
     :return: Сообщение с расписанием уроков на день.
     :rtype: str
     """
-    now = datetime.now().time()
+    # now = datetime.now().time()
+    now = time(6, 0)
     current_lesson = get_current_lesson(now)
     message = ""
 
+    ic(current_lesson)
+
     for i, x in enumerate(lessons):
-        if current_lesson is not None:
-            if current_lesson.index == i and now > current_lesson.start:
-                cursor = "🠗"
-            elif current_lesson.index == i:
-                cursor = "➜"
-            else:
-                cursor = f"{i+1}."
+        if current_lesson.index == i and now > current_lesson.start:
+            cursor = "🠗"
+        elif current_lesson.index == i:
+            cursor = "➜"
         else:
             cursor = f"{i+1}."
 
         message += f"\n{cursor}"
 
         tt = timetable[i]
-        if current_lesson is not None and current_lesson.index <= i:
+        if current_lesson.index <= i:
             message += time(tt[0], tt[1]).strftime(" %H:%M -")
 
         message += time(tt[2], tt[3]).strftime(" %H:%M")
-
-        if current_lesson is not None and current_lesson.index < i:
-            message += " │ "
-        else:
-            message += " ┃ "
+        message += " │ " if current_lesson.index < i else " ┃ "
 
         # Если несколько уроков, выводим их все по порядку
         if isinstance(x, list):
             message += "; ".join(x)
         # Если есть урок
-        elif len(x) > 0 and x.split(":")[0] not in ("None", "---"):
+        elif len(x) > 0 and x.split(":")[0] not in _EMPTY_LESSONS:
             message += x
 
     return message

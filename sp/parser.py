@@ -455,10 +455,8 @@ class Schedule:
         logger.info("Download schedule csv_file ...")
         try:
             csv_file = requests.get(url).content
-            logger.debug(csv_file)
             with RAW_SC_PATH.open("wb") as f:
                 f.write(csv_file)
-            logger.debug(csv_file)
             return hashlib.md5(csv_file).hexdigest()
         except Exception as e:
             logger.exception(e)
