@@ -13,13 +13,11 @@
 - Класс Schedule для работы с расписанием и его сохранением.
 """
 
-import csv
 import hashlib
 from collections import defaultdict, deque
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import NamedTuple
 
 import openpyxl
 import requests
