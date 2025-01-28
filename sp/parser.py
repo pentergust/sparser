@@ -231,7 +231,9 @@ def parse_lessons() -> dict[str, list[list[str]]]:  # noqa: PLR0912
 
                 # Кабинеты иногда представлены числом, иногда строкой
                 # Спасибо электронные таблицы, раньше было проще
-                if isinstance(row[i+1].value, float):
+                if row[i+1].value is None:
+                    cabinet = "None"
+                elif isinstance(row[i+1].value, float):
                     cabinet = int(row[i+1].value)
                 elif isinstance(row[i+1].value, str):
                     cabinet = str(row[i+1].value).strip().lower() or "0"
