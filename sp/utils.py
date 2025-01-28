@@ -18,15 +18,21 @@
 """
 
 from pathlib import Path
+from typing import TypeVar
 
 # В теории более быстрый, чем стандартный json
 import ujson
 from loguru import logger
 
+from sp.parser import UpdateData
+
 # Работа с json файлами
 # =====================
 
-def save_file(path: Path, data: dict | list) -> dict | list:
+LoadData = dict | list
+_T = TypeVar("_T", bound=LoadData)
+
+def save_file(path: Path, data: _T) -> _T:
     """Записывает данные в json файл.
 
     Используется как обёртка для более удобной упаковки данных
@@ -53,9 +59,7 @@ def save_file(path: Path, data: dict | list) -> dict | list:
         f.write(ujson.dumps(data, indent=4, ensure_ascii=False))
     return data
 
-def load_file(
-    path: Path, data: dict | list | None=None
-) -> dict | list:
+def load_file(path: Path, data: _T | None=None) -> _T:
     """Читает данные из json файла.
 
     Используется как обёртка для более удобного чтения данных из
@@ -86,10 +90,10 @@ def load_file(
             return data
         else:
             logger.error("File not found {}", path)
-            return {}
+            return []
     except Exception as e:
         logger.exception(e)
-        return {}
+        return []
 
 
 # Прочие утилиты
@@ -141,9 +145,7 @@ def get_str_timedelta(s: int, hours: bool | None=True) -> str:
 
 # TODO: В надеждах когда-нибудь переписать эту страшную функцию
 # А пока работает и не трогаем, хе-хе ...
-def compact_updates( # noqa
-    updates: list[dict[str, int | list[dict]]]
-) -> dict[str, int | list[dict]]:
+def compact_updates(updates: list[UpdateData]) -> UpdateData:  # noqa: PLR0912
     """Упаковывает несколько записей об обновлениях в одну.
 
     Используется чтобы совместить несколько записей об изменениях.
@@ -163,7 +165,7 @@ def compact_updates( # noqa
     :return: Новая упакованная запись об обновлённом расписании.
     :rtype: dict[str, Union[int, list[dict]]]
     """
-    res: dict[str, list[dict]] = updates[0]["updates"].copy()
+    res: list[dict[str, list[dict]]] = updates[0]["updates"].copy()
 
     # Просматриваем все последующии записи об обновлениях
     for update_data in updates[1:]:
