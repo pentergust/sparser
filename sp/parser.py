@@ -18,6 +18,7 @@ from collections import defaultdict, deque
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
+from typing import TypeAlias, TypedDict
 
 import openpyxl
 import requests
@@ -99,7 +100,7 @@ def get_sc_updates(
     return updates
 
 def get_index(
-    sp_lessons: dict[str, list[str]],
+    sp_lessons: dict[str, list[list[str]]],
     lessons_mode: bool | None=True
 ) -> dict[str, list[dict]]:
     """Преобразует словарь расписания уроков в индекс.
@@ -150,7 +151,7 @@ def get_index(
     return index
 
 
-def parse_lessons() -> dict[str, list[list[str]]]:
+def parse_lessons() -> dict[str, list[list[str]]]:  # noqa: PLR0912
     """Разбирает XLSX файл в словарь расписания.
 
     Расписание в XLSX файле представлено подобным образом.
@@ -195,21 +196,22 @@ def parse_lessons() -> dict[str, list[list[str]]]:
     day = -1
     last_row = 8
     sheet = openpyxl.load_workbook(str(RAW_SC_PATH)).active
+    if sheet is None:
+        raise ValueError("Loaded Schedule active tab is wrong")
     row_iter = sheet.iter_rows()
-
-    # openpyxl.cell.Cell()
 
     # Получает кортеж с именем класса и индексом
     # соответствующего столбца расписания
     next(row_iter)
-    cl_header = [(cl.value.lower(), i)
-        for i, cl in enumerate(next(row_iter)) if cl.value and cl.value.strip()
-    ]
+    cl_header: list[tuple[str, int]] = []
+    for i, cl in enumerate(next(row_iter)):
+        if isinstance(cl.value, str) and cl.value.strip():
+            cl_header.append((cl.value.lower(), i))
 
     # построчно читаем расписание уроков
     for row in row_iter:
         # Первый элемент строки указывает на день недели.
-        if row[0].value is not None and len(row[0].value) > 0:
+        if isinstance(row[0].value, str) and len(row[0].value) > 0:
             logger.info("Process group {} ...", row[0].value)
 
         # Если второй элемент в ряду указывает на номер урока
@@ -217,7 +219,7 @@ def parse_lessons() -> dict[str, list[list[str]]]:
             # Если вдруг номер урока стал меньше, начался новый день
             if row[1].value < last_row:
                 day += 1
-            last_row = row[1].value
+            last_row = int(row[1].value)
 
             for cl, i in cl_header:
                 # Если класса нет в расписании, то добавляем его
@@ -225,14 +227,16 @@ def parse_lessons() -> dict[str, list[list[str]]]:
                 if row[i].value is None or row[i].font.strike:
                     lesson = None
                 else:
-                    lesson = row[i].value.strip(" .-").lower() or None
+                    lesson = str(row[i].value).strip(" .-").lower() or None
 
                 # Кабинеты иногда представлены числом, иногда строкой
                 # Спасибо электронные таблицы, раньше было проще
                 if isinstance(row[i+1].value, float):
-                    cabinet = int(row[i+1].value) or 0
+                    cabinet = int(row[i+1].value)
+                elif isinstance(row[i+1].value, str):
+                    cabinet = str(row[i+1].value).strip().lower() or "0"
                 else:
-                    cabinet = str(row[i+1].value).strip().lower() or 0
+                    raise ValueError(f"Invalid cabinet format: {row[i+1]}")
 
                 lessons[cl][day].append(f"{lesson}:{cabinet}")
 
@@ -244,6 +248,27 @@ def parse_lessons() -> dict[str, list[list[str]]]:
         _clear_day_lessons(x) for x in v
     ] for k, v in lessons.items()}
 
+
+# Дополнительные типы данных
+# ==========================
+
+class ScheduleDict(TypedDict):
+    """Описывает что собой представляет словарь расписание."""
+
+    hash: str
+    last_parse: int
+    lessons: dict[str, list[list[str]]]
+
+class UpdateData(TypedDict):
+    """Что представляет собой запись об обновлении расписания."""
+
+    start_time: int
+    end_time: int
+    updates: list[dict[str, list]]
+
+LessonIndex: TypeAlias = dict[str, list[dict[str, dict[str, int]]]]
+ClassIndex: TypeAlias = dict[str, list[dict[str, dict[str, int]]]]
+SearchRes: TypeAlias = list[list[list[str]]]
 
 class Schedule:
     """Предоставляет доступ к расписанию уроков.
@@ -276,12 +301,12 @@ class Schedule:
         self.index_path = Path(index_path)
 
         # Определение индексов расписания.
-        self._l_index: dict[str, list[dict]] = None
-        self._c_index: dict[str, list[dict]] = None
-        self._updates = None
+        self._l_index: LessonIndex | None = None
+        self._c_index: ClassIndex | None = None
+        self._updates: list[UpdateData] | None = None
 
         #: Полное расписание, включая метаданные, прим. время получения
-        self._schedule: dict[str, int | dict | str] | None = None
+        self._schedule: ScheduleDict | None = None
         self.next_parse: int | None = None
 
     @property
@@ -297,7 +322,7 @@ class Schedule:
         return self.schedule["lessons"]
 
     @property
-    def schedule(self) -> dict[str, int | dict | str]:
+    def schedule(self) -> ScheduleDict:
         """Получает расписание уроков.
 
         Если расписание уроков пустое или таймер истёк, запускает
@@ -331,7 +356,7 @@ class Schedule:
         return self._schedule
 
     @property
-    def l_index(self) -> dict[str, list[dict]]:
+    def l_index(self) -> LessonIndex:
         """Индекс уроков.
 
         Загружает индекс уроков из файла.
@@ -360,14 +385,14 @@ class Schedule:
             }
 
         :return: Полный индекс уроков.
-        :rtype: dict[str, list[dict]]
+        :rtype: LessonIndex
         """
         if self._l_index is None:
             self._l_index = load_file(self.index_path)[0]
         return self._l_index
 
     @property
-    def c_index(self) -> dict[str, list[dict]]:
+    def c_index(self) -> ClassIndex:
         """Индекс кабинетов.
 
         Загружает индекс кабинетов из файла.
@@ -396,14 +421,14 @@ class Schedule:
             }
 
         :return: Полный индекс уроков.
-        :rtype: dict[str, list[dict]]
+        :rtype: ClassIndex
         """
         if not self._c_index:
             self._c_index = load_file(self.index_path)[1]
         return self._c_index
 
     @property
-    def updates(self) -> list[dict[str, int | list[dict]]] | None:
+    def updates(self) -> list[UpdateData] | None:
         """Список изменений в расписании.
 
         Загружает полный список изменений из файла.
@@ -441,10 +466,13 @@ class Schedule:
             }
 
         :return: Полный список изменений в расписании.
-        :rtype: list[dict[str, int | list[dict]]] | None
+        :rtype: list[UpdateData] | None
         """
         if self._updates is None:
-            self._updates = load_file(self.updates_path)
+            file_data = load_file(self.updates_path)
+            if not isinstance(file_data, list):
+                raise ValueError("Incorrect updates list")
+            self._updates = file_data
         return self._updates
 
 
@@ -460,12 +488,13 @@ class Schedule:
             return hashlib.md5(csv_file).hexdigest()
         except Exception as e:
             logger.exception(e)
-            return
+            raise ValueError("Failed to load schedule") from e
+
 
     def _update_diff_file(
         self,
-        a: dict[str, list | int | str],
-        b: dict[str, list | int | str]
+        a: ScheduleDict,
+        b: ScheduleDict
      ) -> None:
         """Обновляет файл списка изменений расписания.
 
@@ -474,9 +503,9 @@ class Schedule:
         добавляет её в файл списка изменений.
 
         :param a: Исходное полное расписание.
-        :type a: dict[str, Union[list, int, str]]
+        :type a: ScheduleDict
         :param b: Новое полное расписание уроков.
-        :type b: dict[str, Union[list, int, str]]
+        :type b: ScheduleDict
         """
         logger.info("Update diff file ...")
         sc_changes = deque(load_file(self.updates_path, []), 30)
@@ -494,25 +523,19 @@ class Schedule:
             )
             save_file(self.updates_path, list(sc_changes))
 
-    def _update_index_files(self, sp_lessons: dict[str, list]) -> None:
+    def _update_index_files(self, lessons: dict[str, list[list[str]]]) -> None:
         logger.info("Update index files...")
         save_file(self.index_path,
-            [get_index(sp_lessons), get_index(sp_lessons, False)]
+            [get_index(lessons), get_index(lessons, False)]
         )
 
-    def _save_schedule(self, t: dict[str, dict | int | str],
-        overwrite: bool=False
-    ) -> None:
+    def _save_schedule(self, t: ScheduleDict, overwrite: bool=False) -> None:
         if overwrite or self._schedule is None:
             self._schedule = t
-            save_file(self.sc_path, t)
+            save_file(self.sc_path, dict(t))
 
 
-    def _process_update(
-        self,
-        t: dict[str, dict | int | str],
-        timestamp: int
-    ) -> None:
+    def _process_update(self, t: ScheduleDict, timestamp: int) -> None:
         """Полное обновление расписания, индексов, файла обновлений.
 
         Производит полное обновление расписания уроков.
@@ -525,7 +548,7 @@ class Schedule:
         изменений.
 
         :param t: Текущее расписание уроков.
-        :type t: dict[str, Union[list, int, str]]
+        :type t: ScheduleDict
         :param timestamp: Текущее время в UNIX формате
         :type timestamp: int
         """
@@ -558,7 +581,7 @@ class Schedule:
             return
 
         # Собираем новое расписание уроков
-        new_t = {
+        new_t: ScheduleDict = {
             "hash": file_hash,
             "lessons": lessons,
             "last_parse": timestamp,
@@ -597,7 +620,7 @@ class Schedule:
         return self.lessons.get(cl, [[], [], [], [], [], []])
 
     def get_updates(self, intent: Intent, offset: int | None=None
-    ) -> list[list[dict[str, int | list[dict]]]]:
+    ) -> list[UpdateData]:
         """Получает список изменений расписания.
 
         Это более продвинутый метод получения записей об изменениях
@@ -621,9 +644,12 @@ class Schedule:
         :param offset: С какой временной метки обновления начать.
         :type offset: int | None
         :return: Список обновлений расписания.
-        :rtype: list[list[dict[str, int | list[dict]]]]
+        :rtype: list[UpdateData]
         """
-        updates = []
+        updates: list[UpdateData] = []
+
+        if self.updates is None:
+            raise ValueError("Updates list is None. Updates file broken?")
 
         # Пробегаемся по списку обновлений
         for update in self.updates:
@@ -635,7 +661,7 @@ class Schedule:
                 continue
 
             # Собираем новый список изменений, используя намерения
-            new_update = [{} for x in range(6)]
+            new_update: list[dict[str, list[str]]] = [{} for x in range(6)]
             for day, day_updates in enumerate(update["updates"]):
                 if intent.days and day not in intent.days:
                     continue
@@ -659,7 +685,7 @@ class Schedule:
     def search(
         self, target: str, intent: Intent,
         cabinets: bool | None=False
-    ) -> list[list[list[str]]]:
+    ) -> SearchRes:
         """Производит поиск в расписании по индексу расписания.
 
         Сама же цель - название кабинета/урока.
@@ -711,15 +737,13 @@ class Schedule:
         :param cabinets: Что ищем, урок или кабинет. Обычно урок.
         :type cabinets: bool
         :return: Результаты поиска в расписании
-        :rtype: list[list[list[str]]]
+        :rtype: SearchRes
         """
-        res = [[[] for x in range(8)] for x in range(6)]
+        res: SearchRes = [[[] for x in range(8)] for x in range(6)]
 
         # Определяем какой индекс использовать
-        if cabinets:
-            index = self.c_index.get(target, {})
-        else:
-            index = self.l_index.get(target, {})
+        target_index = self.c_index if cabinets else self.l_index
+        index: list[dict] = target_index.get(target, [])
 
         # Пробегаемся по индексу
         for day, objs in enumerate(index):
