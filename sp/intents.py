@@ -23,8 +23,7 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 def _ensure_list(a: _T) -> _T | tuple[str | int]:
-    if a is not None:
-        return (a,) if isinstance(a, str | int) else a
+    return (a,) if isinstance(a, str | int) else a
 
 
 # Класс намерений
@@ -94,16 +93,14 @@ class Intent(NamedTuple):
         :return: Запакованное намерение.
         :rtype: str
         """
-        return ":".join(
-            [",".join(map(str, x)) for x in self]
-        )
+        return ":".join([",".join(map(str, x)) for x in self])
 
 
     # Создание нового экземпляра намерений
     # ====================================
 
     @classmethod
-    def from_str(cls, s: str) -> "Intent":
+    def from_str(cls, s: str) -> Self:
         """Распаковывает намерение из строки.
 
         Получает экземпляр намерение, которое ранее было упаковано
@@ -141,18 +138,19 @@ class Intent(NamedTuple):
         :return: Новое распакованное намерение.
         :rtype: Intent
         """
-        res: list[set[str | int]] = []
+        res: list[set[str]] = []
+        days = set[int] = set()
         for i, part in enumerate(s.split(":")):
             # Если это пустая строка, добавляем пустое множество
             if part == "":
                 res.append(set())
             # Если это список дней, переводим в числа
             elif i == 1:
-                res.append({int(x) for x in part.split(",")})
+                days = {int(x) for x in part.split(",")}
             else:
                 res.append({x for x in part.split(",")})
 
-        return Intent(*res)
+        return cls(res[0], days, res[1], res[2])
 
 
     @classmethod
@@ -190,11 +188,11 @@ class Intent(NamedTuple):
         :return: Проверенное намерение из переданных аргументов
         :rtype: Intent
         """
-        return Intent(
-            {x for x in _ensure_list(cl) if x in sc.lessons},
-            {x for x in _ensure_list(days) if x < 6}, # noqa: PLR2004
-            {x for x in _ensure_list(lessons) if x in sc.l_index},
-            {x for x in _ensure_list(cabinets) if x in sc.c_index},
+        return cls(
+            {str(x) for x in _ensure_list(cl) if x in sc.lessons},
+            {int(x) for x in _ensure_list(days) if int(x) < 6}, # noqa: PLR2004
+            {str(x) for x in _ensure_list(lessons) if x in sc.l_index},
+            {str(x) for x in _ensure_list(cabinets) if x in sc.c_index},
         )
 
     @classmethod
@@ -230,10 +228,6 @@ class Intent(NamedTuple):
             # Пропускаем пустые аргументы
             if not arg:
                 continue
-
-            # Подставляем класс пользователя
-            if arg == "?" and sc.cl is not None:
-                cl.append(sc.cl)
 
             # Дни недели
             elif arg == "сегодня":
@@ -271,7 +265,7 @@ class Intent(NamedTuple):
                     if arg.startswith(k)
                 ]
 
-        return Intent(set(cl), set(days), set(lessons), set(cabinets))
+        return cls(set(cl), set(days), set(lessons), set(cabinets))
 
 
     # Создание экземпляра со значения по умолчанию
@@ -283,7 +277,7 @@ class Intent(NamedTuple):
         days: Iterable[int] | int=(),
         lessons: Iterable[str] | str=(),
         cabinets: Iterable[str] | str=()
-    ) -> Self:
+    ) -> 'Intent':
         """Собирает новый экземпляр намерений.
 
         Занимается сборкой и валидацией нового экземпляра намерений
@@ -317,14 +311,14 @@ class Intent(NamedTuple):
         :rtype: Intent
         """
         return Intent(
-            {x for x in _ensure_list(cl) if x is sc.lessons} or self.cl,
-            {x for x in _ensure_list(days) if x < 6} or self.days, # noqa: PLR2004
+            {str(x) for x in _ensure_list(cl) if x is sc.lessons} or self.cl,
+            {int(x) for x in _ensure_list(days) if int(x) < 6} or self.days, # noqa: PLR2004
             (
-                {x for x in _ensure_list(lessons) if x in sc.l_index}
+                {str(x) for x in _ensure_list(lessons) if x in sc.l_index}
                 or self.lessons
             ),
             (
-                {x for x in _ensure_list(cabinets) if x in sc.c_index}
+                {str(x) for x in _ensure_list(cabinets) if x in sc.c_index}
                 or self.cabinets
             )
         )

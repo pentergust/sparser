@@ -30,8 +30,6 @@ from .version import (
     check_updates,
 )
 
-from icecream import ic
-
 # Константы
 # =========
 
@@ -76,7 +74,7 @@ class LessonTime(NamedTuple):
 
     start: time
     end: time
-    index: int
+    lesson_index: int
 
 
 def time_to_seconds(now: time) -> int:
@@ -118,7 +116,7 @@ def get_current_lesson(now: time) -> LessonTime:
     return LessonTime(
         time(timetable[0][0], timetable[0][1]),
         time(timetable[0][2], timetable[0][3]),
-        index=0
+        lesson_index=0
     )
 
 
@@ -274,12 +272,10 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
     current_lesson = get_current_lesson(now)
     message = ""
 
-    ic(current_lesson)
-
     for i, x in enumerate(lessons):
-        if current_lesson.index == i and now > current_lesson.start:
+        if current_lesson.lesson_index == i and now > current_lesson.start:
             cursor = "🠗"
-        elif current_lesson.index == i:
+        elif current_lesson.lesson_index == i:
             cursor = "➜"
         else:
             cursor = f"{i+1}."
@@ -287,11 +283,11 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
         message += f"\n{cursor}"
 
         tt = timetable[i]
-        if current_lesson.index <= i:
+        if current_lesson.lesson_index <= i:
             message += time(tt[0], tt[1]).strftime(" %H:%M -")
 
         message += time(tt[2], tt[3]).strftime(" %H:%M")
-        message += " │ " if current_lesson.index < i else " ┃ "
+        message += " │ " if current_lesson.lesson_index < i else " ┃ "
 
         # Если несколько уроков, выводим их все по порядку
         if isinstance(x, list):
@@ -353,30 +349,30 @@ def _get_next_update_str(time: datetime, now: datetime | None=None) -> str:
 
     return res
 
-def _get_cl_counter_str(cl_counter: Counter) -> str:
+def _get_cl_counter_str(cl_counter: Counter[str]) -> str:
     groups = defaultdict(list)
     for k, v in cl_counter.items():
-        groups[v].append(k)
+        groups[v].append(str(k))
 
-    res = ""
+    res = []
     for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
-        res += f" 🔹{k} ({', '.join(sorted(map(str, v)))})"
+        res.append(f" 🔹{k} ({', '.join(v)})")
 
-    return res
+    return ''.join(res)
 
-def _get_hour_counter_str(hour_counter: Counter) -> str | None:
-    groups = defaultdict(list)
+def _get_hour_counter_str(hour_counter: Counter[int]) -> str:
+    groups: dict[int, list[str]] = defaultdict(list)
     for k, v in hour_counter.items():
-        groups[v].append(k)
+        groups[v].append(str(k))
 
-    res = ""
-    for k, v in sorted(groups.items(), key=lambda x: x[0]):
+    res = []
+    for k, v in groups.items():
         if k == 1:
-            res += f" 🔸{', '.join(map(str, sorted(v)))}"
+            res.append(f" 🔸{', '.join(v)}")
         else:
-            res += f" 🔹{k} ({', '.join(map(str, sorted(v)))})"
+            res.append(f" 🔹{k} ({', '.join(v)})")
 
-    return res
+    return ''.join(res)
 
 def _get_ver_str(cur_ver: VersionInfo, dest_url: str) -> str:
     res = cur_ver.full
@@ -441,6 +437,7 @@ class SPMessages:
             next_update = now
         else:
             next_update = datetime.fromtimestamp(float(self.sc.next_parse))
+
         last_parse = datetime.fromtimestamp(
             float(self.sc.schedule["last_parse"])
         )

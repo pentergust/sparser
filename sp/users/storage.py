@@ -21,7 +21,7 @@ from loguru import logger
 
 from sp.intents import Intent
 from sp.parser import Schedule
-from sp.utils import compact_updates
+from sp.updates import compact_updates
 
 # Вспомогательные контейнеры
 # ==========================

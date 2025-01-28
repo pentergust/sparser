@@ -223,7 +223,7 @@ class Platform:
         """
         return self.view.get_current_day(self._get_user_intent(user, intent))
 
-    def _get_day_str(self, today: int, relative_day: str) -> str:
+    def _get_day_str(self, today: int, relative_day: int) -> str:
         if relative_day == today:
             return "Сегодня"
         elif relative_day == today+1:

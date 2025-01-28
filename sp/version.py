@@ -35,7 +35,7 @@ class VersionInfo(NamedTuple):
     # Методы сравнения версий по номеру сборки
     # ========================================
 
-    def __lt__(self, other: Self) -> bool:
+    def __lt__(self, other: object) -> bool:
         """Проверяет что версия меньше требуемой.
 
         Можно сравнивать с другим экземпляром, а также напрямую с
@@ -53,7 +53,7 @@ class VersionInfo(NamedTuple):
         else:
             raise ValueError("Version must be VersionInfo or integer to check")
 
-    def __le__(self, other: Self) -> bool:
+    def __le__(self, other: object) -> bool:
         """Проверяет что версия меньше требуемой или соответствует.
 
         Можно сравнивать с другим экземпляром, а также напрямую с
@@ -71,7 +71,7 @@ class VersionInfo(NamedTuple):
         else:
             raise ValueError("Version must be VersionInfo or integer to check")
 
-    def __eq__(self, other: Self) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Проверяет что версия соответствует требуемой.
 
         Можно сравнивать с другим экземпляром, а также напрямую с
@@ -89,7 +89,7 @@ class VersionInfo(NamedTuple):
         else:
             raise ValueError("Version must be VersionInfo or integer to check")
 
-    def __ne__(self, other: Self) -> bool:
+    def __ne__(self, other: object) -> bool:
         """Проверяет что версия НЕ соответствует требуемой.
 
         Можно сравнивать с другим экземпляром, а также напрямую с
@@ -107,7 +107,7 @@ class VersionInfo(NamedTuple):
         else:
             raise ValueError("Version must be VersionInfo or integer to check")
 
-    def __gt__(self, other: Self) -> bool:
+    def __gt__(self, other: object) -> bool:
         """Проверяет что версия больше требуемой.
 
         Можно сравнивать с другим экземпляром, а также напрямую с
@@ -125,7 +125,7 @@ class VersionInfo(NamedTuple):
         else:
             raise ValueError("Version must be VersionInfo or integer to check")
 
-    def __ge__(self, other: Self) -> bool:
+    def __ge__(self, other: object) -> bool:
         """Проверяет что версия больше требуемой или соответствует.
 
         Можно сравнивать с другим экземпляром, а также напрямую с
@@ -148,8 +148,8 @@ class VersionInfo(NamedTuple):
 # ======================
 
 PROJECT_VERSION = VersionInfo(
-    version="v6.4",
-    build=247,
+    version="v6.4.3",
+    build=252,
     api_version=6
 )
 
@@ -176,7 +176,7 @@ class VersionStatus(NamedTuple):
     git_ver: VersionInfo
 
 
-def check_updates(cur_ver: str, dest_url: str) -> VersionStatus:
+def check_updates(cur_ver: VersionInfo, dest_url: str) -> VersionStatus:
     """Проверяет наличие обновлений в удалённом сервере.
 
     Производит проверку с текущей версией проекта.
