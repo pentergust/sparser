@@ -7,7 +7,6 @@
 в расписании.
 """
 
-
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -63,6 +62,7 @@ def process_request(
 # Обработка команд
 # ================
 
+
 @router.message(Command("sc"))
 async def sc_handler(
     message: Message, command: CommandObject, user: User, platform: Platform
@@ -79,7 +79,7 @@ async def sc_handler(
         else:
             await message.answer(text="👀 Кажется это пустой запрос...")
 
-    elif user.data.set_class:
+    elif user.data.cl is not None:
         await message.answer(
             text=platform.today_lessons(user),
             reply_markup=get_week_keyboard(user.data.cl),
@@ -88,6 +88,7 @@ async def sc_handler(
         await message.answer(
             text="⚠️ Для быстрого получения расписания вам нужно указать класс."
         )
+
 
 @router.message()
 async def main_handler(
@@ -120,7 +121,7 @@ async def main_handler(
         relative_day = platform.relative_day(user)
         await message.answer(
             text=get_home_message(user.data.cl),
-            reply_markup=get_main_keyboard(user.data.cl, relative_day)
+            reply_markup=get_main_keyboard(user.data.cl, relative_day),
         )
 
     # Отправляем список классов, в личные сообщения.

@@ -58,7 +58,7 @@ _DEBUG_MODE = getenv("DEBUG_MODE")
 _ADMIN_ID = getenv("ADMIN_ID")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.5.1"
+_BOT_VERSION = "v2.5.2"
 _ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
 
 
@@ -66,7 +66,7 @@ _ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
 # ===================
 
 platform = Platform(
-    pid=1, # RESERVED FOR TELEGRAM
+    pid=1,  # RESERVED FOR TELEGRAM
     name="Telegram",
     version=VersionInfo(_BOT_VERSION, 0, 6),
 )
@@ -81,14 +81,12 @@ except ViewCompatibleError as e:
 # Настраиваем диспетчер бота
 # ==========================
 
-dp = Dispatcher(
-    platform=platform,
-    sp=platform.view
-)
+dp = Dispatcher(platform=platform, sp=platform.view)
 
 
 # Добавление Middleware
 # =====================
+
 
 @dp.message.middleware()
 @dp.callback_query.middleware()
@@ -115,6 +113,7 @@ async def user_middleware(
 
     return await handler(event, data)
 
+
 # Если вы хотите отключить ведение журнала в боте
 # Закомментируйте необходимые вам декораторы
 @dp.message.middleware()
@@ -136,6 +135,7 @@ async def log_middleware(
 # Сообщение статуса
 # =================
 
+
 def get_update_timetag(path: Path) -> int:
     """Получает время последней удачной проверки обновлений.
 
@@ -154,6 +154,7 @@ def get_update_timetag(path: Path) -> int:
             return int(f.read())
     except (ValueError, FileNotFoundError):
         return 0
+
 
 def get_status_message(
     platform: Platform, timetag_path: Path, user: User
@@ -190,6 +191,7 @@ def get_status_message(
 # Обработчики команд
 # ==================
 
+
 @dp.message(Command("info"))
 async def info_handler(
     message: Message, platform: Platform, user: User
@@ -199,6 +201,7 @@ async def info_handler(
         text=get_status_message(platform, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.data.cl),
     )
+
 
 @dp.message(Command("help", "start"))
 async def start_handler(
@@ -210,8 +213,7 @@ async def start_handler(
     """
     if not user.data.set_class:
         return await message.answer(
-            SET_CLASS_MESSAGE,
-            reply_markup=PASS_SET_CL_MARKUP
+            SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
         )
 
     await message.delete()
@@ -224,6 +226,7 @@ async def start_handler(
 
 # Обработчик Callback запросов
 # ============================
+
 
 @dp.callback_query(F.data == "delete_msg")
 async def delete_msg_callback(
@@ -239,8 +242,9 @@ async def delete_msg_callback(
         relative_day = platform.relative_day(user)
         await query.message.edit_text(
             text=get_home_message(user.data.cl),
-            reply_markup=get_main_keyboard(user.data.cl, relative_day)
-    )
+            reply_markup=get_main_keyboard(user.data.cl, relative_day),
+        )
+
 
 @dp.callback_query(F.data == "home")
 async def home_callback(
@@ -250,8 +254,9 @@ async def home_callback(
     relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=get_home_message(user.data.cl),
-        reply_markup=get_main_keyboard(user.data.cl, relative_day)
+        reply_markup=get_main_keyboard(user.data.cl, relative_day),
     )
+
 
 @dp.callback_query(F.data == "other")
 async def other_callback(
@@ -269,6 +274,7 @@ async def other_callback(
 
 # Обработка исключений
 # ====================
+
 
 def send_error_message(exception: ErrorEvent, user: User) -> str:
     """Отправляет отладочное сообщение об ошибке пользователю.
@@ -300,10 +306,13 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
 
     user_name = message.from_user.first_name
     chat_id = message.chat.id
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # 2024-08-23 21:12:40.383
+    now = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )  # 2024-08-23 21:12:40.383
     set_class_flag = "да" if user.data.set_class else "нет"
 
-    return ("⚠️ Произошла ошибка в работе бота."
+    return (
+        "⚠️ Произошла ошибка в работе бота."
         f"\n-- Версия: {_BOT_VERSION}"
         f"\n-- Время: {now}"
         "\n\n👤 Пользователь"
@@ -317,6 +326,7 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
         "\nЭто очень поможет сделать бота стабильнее."
     )
 
+
 @dp.errors()
 async def error_handler(exception: ErrorEvent, user: User) -> None:
     """Ловит и обрабатывает все исключения.
@@ -325,7 +335,8 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
     Некоторое исключения будут подавляться, поскольку не предоставляют
     ничего интересного.
     """
-    if isinstance(exception.exception, TelegramBadRequest | TelegramNetworkError
+    if isinstance(
+        exception.exception, TelegramBadRequest | TelegramNetworkError
     ):
         return logger.error(exception)
 
@@ -339,18 +350,16 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
     if message is None:
         return None
 
-    await message.answer(
-        send_error_message(exception, user)
-    )
+    await message.answer(send_error_message(exception, user))
     if not _DEBUG_MODE and _ADMIN_ID is not None:
         await message.bot.send_message(
-            chat_id=_ADMIN_ID,
-            text=send_error_message(exception, user)
+            chat_id=_ADMIN_ID, text=send_error_message(exception, user)
         )
 
 
 # Запуск бота
 # ===========
+
 
 async def main() -> None:
     """Главная функция запуска бота.

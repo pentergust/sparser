@@ -6,7 +6,7 @@
 """
 
 from enum import IntEnum
-from typing import NamedTuple, Self
+from typing import NamedTuple
 
 import requests
 import tomllib
