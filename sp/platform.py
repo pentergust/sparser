@@ -18,7 +18,6 @@ from sp.enums import WeekDay
 from sp.exceptions import ViewCompatibleError, ViewSelectedError
 from sp.intents import Intent
 from sp.messages import SPMessages
-from sp.users.intents import UserIntentsStorage
 from sp.users.storage import FileUserStorage, User
 from sp.version import VersionInfo
 
@@ -116,17 +115,6 @@ class Platform:
         платформы.
         """
         return User(self.users, uid)
-
-    def get_intents(self, uid: int) -> UserIntentsStorage:
-        """Возвращает экземпляр хранилища намерений пользователя.
-
-        Подобно получения пользователя платформы, получает намерения.
-        Добавлять именные намерения, изменять и удалять их.
-        Пользовательские намерения вскоре заменят класс по умолчанию.
-        Постепенно у вас появится больше возможностей по выбору
-        намерений в рамках одной платформы.
-        """
-        return UserIntentsStorage(self._db_path, uid)
 
     # Сокращения для методов класса представления
     # ===========================================

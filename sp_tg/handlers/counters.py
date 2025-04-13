@@ -1,9 +1,8 @@
 """Предоставляет доступ к счётчикам расписания.
 
-Счётчики позволяют подсчитать определённео колическо объектов
+Счётчики позволяют подсчитать определённое количество объектов
 в расписании.
 """
-
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -16,15 +15,17 @@ from aiogram.types import (
 )
 
 from sp.counter import CounterTarget, CurrentCounter
+from sp.db import User, UserIntent
 from sp.intents import Intent
 from sp.platform import Platform
-from sp.users.intents import UserIntentsStorage
-from sp.users.storage import User
+
+# FIXME: Заменить пользователя
+# from sp.users.storage import User
 from sp_tg.messages import get_intent_status
 
 router = Router(name=__name__)
 
-# Основные типы счётчиков расписнаия
+# Основные типы счётчиков расписания
 _COUNTERS = (
     ("cl", "По классам"),
     ("days", "По дням"),
@@ -58,19 +59,17 @@ class CounterCallback(CallbackData, prefix="count"):
     target (str): Цль для отображения счётчика.
     intent (str): Имя пользовательского намерения.
 
-    .. table::
-
-        +----------+-------------------------+
-        |counter   | Targets                 |
-        +==========+=========================+
-        | cl       | days, lessons. cabinets |
-        +----------+-------------------------+
-        | days     | cl, lessons. cabinets   |
-        +----------+-------------------------+
-        | lessons  | cl, days, main          |
-        +----------+                         |
-        | cabinets |                         |
-        +----------+-------------------------+
+    +----------+-------------------------+
+    |counter   | Targets                 |
+    +==========+=========================+
+    | cl       | days, lessons. cabinets |
+    +----------+-------------------------+
+    | days     | cl, lessons. cabinets   |
+    +----------+-------------------------+
+    | lessons  | cl, days, main          |
+    +----------+                         |
+    | cabinets |                         |
+    +----------+-------------------------+
     """
 
     counter: str
@@ -81,8 +80,12 @@ class CounterCallback(CallbackData, prefix="count"):
 # Вспомогательные функции
 # =======================
 
-def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
-    intents: UserIntentsStorage, intent_name: str | None=""
+
+async def get_counter_keyboard(
+    user: User,
+    counter: str,
+    target: CounterTarget,
+    active_intent: str | None = None,
 ) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для просмотра счётчиков расписания.
 
@@ -90,30 +93,15 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
     Более подробно про работу счётчиков можно прочитать в классе
     CurrentCounter.
 
-    Исользуется клавиатуру для выбрра намерений.
-    Чтобы уточнить результаты подсчётов.
-
     Buttons:
 
     - home => Вернуться к главному сообщению бота.
     - count:{counter}:{target} => Переключиться на нужный счётчик.
-
-    :param cl: Класс для подстановки в коавиатуру.
-    :type cl: str
-    :param counter: Текущий тип просмотра счётчика.
-    :type counter: str
-    :param target: Текущий тип просмотра счётчика.
-    :type target: Optional[CounterTarget]
-    :param intents: Экземпляр хранилища намерений пользователя.
-    :type intent: UserIntentsStorage
-    :param intent_name: Текущее выбранное имя намерения пользователя.
-    :type intent_name: Optional[str]
-    :return: Клавиатура для просмотра счётчиков расписания.
-    :rtype: InlineKeyboardMarkup
     """
-    inline_keyboard = [[
-        InlineKeyboardButton(text="◁", callback_data="home")
-    ], []]
+    inline_keyboard = [
+        [InlineKeyboardButton(text="◁", callback_data="home")],
+        [],
+    ]
 
     # Добавляем типы счётчиков расписания
     for k, v in _COUNTERS:
@@ -121,21 +109,22 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
         if k in (counter, target.value):
             continue
 
-        # Добавляем кнопку выбора группы счётчка в первый ряд клавиатуры
+        # Добавляем кнопку выбора группы счётчик в первый ряд клавиатуры
         inline_keyboard[0].append(
             InlineKeyboardButton(
                 text=v,
-                callback_data=f"count:{k}:{target.value}:{intent_name}"
-        ))
+                callback_data=f"count:{k}:{target.value}:{active_intent}",
+            )
+        )
 
     # Добавляем подгруппы счётчиков
     for k, v in _TARGETS:
-        # Пропускаем повторяющиеся подгруппы с текущим типом счётчка
+        # Пропускаем повторяющиеся подгруппы с текущим типом счётчика
         # а также с текущей подгруппой
         if k in (target.value, counter):
             continue
 
-        # Проускаем main подгруппу для НЕ index счётчика
+        # Пропускаем main подгруппу для НЕ index счётчика
         if k == "main" and counter not in ("lessons", "cabinets"):
             continue
 
@@ -146,60 +135,51 @@ def get_counter_keyboard(cl: str, counter: str, target: CounterTarget,
         # Если у пользователя не указан класс пропускаем счётчика
         # cl/lessons т.к. его вывод слишком большой без фильтрации
         # по классам в расписании
-        if counter == "cl" and k == "lessons" and not cl:
+        if counter == "cl" and k == "lessons" and user.cl is None:
             continue
 
         inline_keyboard[1].append(
             InlineKeyboardButton(
-                text=v,
-                callback_data=f"count:{counter}:{k}:{intent_name}"
-        ))
+                text=v, callback_data=f"count:{counter}:{k}:{active_intent}"
+            )
+        )
 
     # Добавляем клавиатуру выбора намерений пользователя
-    for i, x in enumerate(intents.get()):
+    for i, x in enumerate(user.intents.all()):
         if i % 3 == 0:
             inline_keyboard.append([])
 
-        if x.name == intent_name:
+        if x.name == active_intent:
             inline_keyboard[-1].append(
                 InlineKeyboardButton(
                     text=f"✅ {x.name}",
-                    callback_data=f"count:{counter}:{target.value}:"
-            ))
+                    callback_data=f"count:{counter}:{target.value}:",
+                )
+            )
         else:
             inline_keyboard[-1].append(
                 InlineKeyboardButton(
                     text=f"⚙️ {x.name}",
-                    callback_data=f"count:{counter}:{target.value}:{x.name}"
-            ))
+                    callback_data=f"count:{counter}:{target.value}:{x.name}",
+                )
+            )
 
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
+
+# FIXME: Всё сломалось
 def get_counter_message(
     platform: Platform,
     user: User,
     counter: str,
-    target: CounterTarget | None=None,
-    intent: Intent | None=None
+    target: CounterTarget | None = None,
+    intent: UserIntent | None = None,
 ) -> str:
     """Собирает сообщение с результатами работы счётчиков.
 
     В зависимости от выбранного счётчика использует соответствующую
     функцию счётчика.
     Более подробно о работе счётчиков смотрите в классе CurrentCounter.
-
-    :param platform: Экземпляр платформы для отображения счётчиков.
-    :type platform: Platform
-    :param user: Пользователь, запрашивающий счётчик.
-    :type user: User
-    :param counter: Выбранный тип счётчка
-    :type counter: str
-    :param target: Выбранная подгруппа счётчика, для просмотра.
-    :typw target: Optional[CounterTarget]
-    :param intent: Намерение, для уточнения результатов счётчиков.
-    :type intent: Optional[Intent]
-    :return: Сообщение с результатов работы счётчиков.
-    :rtype: str
     """
     # Шапка сообщения
     # Добавляем описание намерения, если оно имеется
@@ -221,8 +201,7 @@ def get_counter_message(
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
             cur_counter.intent = intent.reconstruct(
-                platform.view.sc,
-                cl=user.data.cl
+                platform.view.sc, cl=user.cl
             )
         groups = cur_counter.cl()
 
@@ -243,56 +222,54 @@ def get_counter_message(
 # Обработчики команд
 # ==================
 
+
 @router.message(Command("counter"))
 async def counter_handler(
-    message: Message,
-    intents: UserIntentsStorage, user: User, platform: Platform
+    message: Message, user: User, platform: Platform
 ) -> None:
     """Переводит в меню просмотра счётчиков расписания."""
     await message.answer(
-        text=get_counter_message(
-            platform, user, "lessons", CounterTarget.MAIN
-        ),
-        reply_markup=get_counter_keyboard(
-            cl=user.data.cl,
-            counter="lessons",
-            target=CounterTarget.MAIN,
-            intents=intents
+        text=get_counter_message(platform, user, "lessons", CounterTarget.MAIN),
+        reply_markup=await get_counter_keyboard(
+            user=user, counter="lessons", target=CounterTarget.MAIN
         ),
     )
 
+
 @router.callback_query(CounterCallback.filter())
 async def counter_callback(
-    query: CallbackQuery, callback_data: CounterCallback,
-    intents: UserIntentsStorage, user: User, platform: Platform
+    query: CallbackQuery,
+    callback_data: CounterCallback,
+    intents: UserIntent,
+    user: User,
+    platform: Platform,
 ) -> None:
-    """Клавитура для переключения счётчиков расписания."""
+    """Клавиатура для переключения счётчиков расписания."""
     counter = callback_data.counter
-    if callback_data.target is None or callback_data.target in  ("", "none"):
-        target = None
+    if callback_data.target is None or callback_data.target in ("", "none"):
+        target = CounterTarget.NONE
     else:
         target = callback_data.target
 
         # Если счётчик равен подгруппу, обнуляем подгруппу
         if counter == target.value:
-            target = None
+            target = CounterTarget.NONE
 
         # Если установлен счётчик по классам, а подгруппа по урокам
-        # Сбрасыфваем подгруппу, если класс не указан
-        if counter == "cl" and target == "lessons" and not user.data.set_class:
-            target = None
+        # Сбрасываем подгруппу, если класс не указан
+        if counter == "cl" and target == "lessons" and user.cl is None:
+            target = CounterTarget.NONE
 
     # Загружаем намерения из хранилища пользователей
-    intent = intents.get_intent(callback_data.intent)
+    intent = await UserIntent.get(user=user, name=callback_data.intent)
 
     # Отправляем сообщение пользователю
     await query.message.edit_text(
         text=get_counter_message(platform, user, counter, target, intent),
-        reply_markup=get_counter_keyboard(
-            cl=user.data.cl,
+        reply_markup=await get_counter_keyboard(
+            user=user,
             counter=counter,
             target=target,
-            intents=intents,
-            intent_name=callback_data.intent
-        )
+            active_intent=callback_data.intent,
+        ),
     )

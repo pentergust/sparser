@@ -109,8 +109,6 @@ async def user_middleware(
         uid = event.chat.id
 
     data["user"] = platform.get_user(str(uid))
-    data["intents"] = platform.get_intents(uid)
-
     return await handler(event, data)
 
 
