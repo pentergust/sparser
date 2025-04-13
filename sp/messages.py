@@ -57,19 +57,13 @@ timetable = [
 # Вспомогательные функции отображения
 # ===================================
 
+
 class LessonTime(NamedTuple):
     """Описывает время начала и конца урока.
 
     Этот фрагмент должен был стать частью будущего обновления.
     Данные фрагмент будет переписан со временем.
     Используется для детального отображения указателя на текущий урок.
-
-    :param start: Время начала урока.
-    :type start: time
-    :param end: Время окончания урока.
-    :type end: time
-    :param index: Порядковый номер текущего урока.
-    :type index: int
     """
 
     start: time
@@ -81,11 +75,13 @@ def time_to_seconds(now: time) -> int:
     """Переводит datetime.time в полное количество секунд этого дня."""
     return now.hour * 3600 + now.minute * 60 + now.second
 
+
 def seconds_to_time(now: int) -> time:
     """Переводит полное количество секунд в datetime.time."""
     h, d = divmod(now, 3600)
     m, s = divmod(d, 60)
     return time(h, m, s)
+
 
 def get_current_lesson(now: time) -> LessonTime:
     """Возвращает текущий урок.
@@ -94,9 +90,6 @@ def get_current_lesson(now: time) -> LessonTime:
     Чтобы можно было показать указатель на текущий урок.
 
     Если уроки ещё не начались или уже кончились -> None.
-
-    :return: Текущий урок, если он есть.
-    :rtype: LessonTime | None
     """
     l_end_time = None
     for i, lesson in enumerate(timetable):
@@ -116,16 +109,15 @@ def get_current_lesson(now: time) -> LessonTime:
     return LessonTime(
         time(timetable[0][0], timetable[0][1]),
         time(timetable[0][2], timetable[0][3]),
-        lesson_index=0
+        lesson_index=0,
     )
 
 
 # Функции отображения списка изменений
 # ====================================
 
-def _send_cl_updates(
-    cl_updates: list[list[str] | None]
-) -> str:
+
+def _send_cl_updates(cl_updates: list[list[str] | None]) -> str:
     """Возвращает сообщение списка изменений для класса.
 
     В зависимости от типа изменений вид сообщений немного отличается.
@@ -144,11 +136,6 @@ def _send_cl_updates(
     - `{ol} -> {l}:{c}` - Если сменился только урок, без кабинета.
     - `{l}:({oc} -> {c})` - Если сменился только кабинет, без урока.
     - `{ol}:{oc} -> {l}:{c}` - Изменилось всё (прочий случай).
-
-    :param cl_updates: Список изменений для класса.
-    :type cl_updates: list[Optional[list[str]]]
-    :return: Сообщение со списком изменений класса.
-    :rtype: str
     """
     message = ""
     for i, u in enumerate(cl_updates):
@@ -157,12 +144,12 @@ def _send_cl_updates(
 
         # Если урок не был выбран
         if str(u[0]) == "None":
-            message += f"{i+1}: ++{u[1]}\n"
+            message += f"{i + 1}: ++{u[1]}\n"
             continue
 
-        message += f"{i+1}: "
-        ol, oc = str(u[0]).split(':')
-        l, c = str(u[1]).split(':') # noqa: E741
+        message += f"{i + 1}: "
+        ol, oc = str(u[0]).split(":")
+        l, c = str(u[1]).split(":")  # noqa: E741
 
         # Если добавился урок в расписание
         if ol in _EMPTY_LESSONS:
@@ -181,9 +168,9 @@ def _send_cl_updates(
 
     return message
 
+
 def _get_update_header(
-    update: dict[str, int | list[dict]],
-    extend_info: bool | None=True
+    update: dict[str, int | list[dict]], extend_info: bool | None = True
 ) -> str:
     """Возвращает заголовок списка изменений.
 
@@ -206,13 +193,6 @@ def _get_update_header(
 
     полное время временного окна, а также время прошедшее с
     момента записи являются расширенными опциональными параметрами.
-
-    :param update: Словарь данными записи.
-    :type update: dict[str, Union[int, dict]]
-    :param extend_info: Показывать ли дополнительны информацию в шапке.
-    :type extend_info: Optional[bool]
-    :return: Заголовок списка изменений.
-    :rtype: str
     """
     # Получаем timestamp обновления
     end_timestamp = update.get("end_time", 0)
@@ -250,6 +230,7 @@ def _get_update_header(
 # Вспомогательные функции отображения
 # ===================================
 
+
 def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
     """Собирает сообщение с расписанием уроков на день.
 
@@ -261,11 +242,6 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
     Также можно передавать несколько уроков в рамках одного времени.
     Это может использоваться в отображении результатов поиска в
     расписании.
-
-    :param lessons: Список уроков.
-    :type lessons: Iterable[Union[list[str], str]]
-    :return: Сообщение с расписанием уроков на день.
-    :rtype: str
     """
     # now = datetime.now().time()
     now = time(6, 0)
@@ -278,7 +254,7 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
         elif current_lesson.lesson_index == i:
             cursor = "➜"
         else:
-            cursor = f"{i+1}."
+            cursor = f"{i + 1}."
 
         message += f"\n{cursor}"
 
@@ -298,6 +274,7 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
 
     return message
 
+
 def send_search_res(intent: Intent, res: list) -> str:
     """Собирает сообщение с результатами поиска в расписании.
 
@@ -306,13 +283,6 @@ def send_search_res(intent: Intent, res: list) -> str:
     поиска.
     Передайте сюда намерение, которое использовалось при поиске.
     Поскольку оно будет использовано также для сборки заголовка.
-
-    :param intent: Намерения для уточнения результатов поиска.
-    :type intent: Intent
-    :param res: Результаты поиска в расписании.
-    :type res: list[list[list[str]]]
-    :return: Сообщение с результатами поиска в расписании.
-    :rtype: str
     """
     message = "🔎 Поиск "
     if intent.cabinets:
@@ -338,7 +308,8 @@ def send_search_res(intent: Intent, res: list) -> str:
 # Вспомогательные функции для сообщения статуса парсера
 # =====================================================
 
-def _get_next_update_str(time: datetime, now: datetime | None=None) -> str:
+
+def _get_next_update_str(time: datetime, now: datetime | None = None) -> str:
     if now is None:
         now = datetime.now()
 
@@ -349,6 +320,7 @@ def _get_next_update_str(time: datetime, now: datetime | None=None) -> str:
 
     return res
 
+
 def _get_cl_counter_str(cl_counter: Counter[str]) -> str:
     groups = defaultdict(list)
     for k, v in cl_counter.items():
@@ -358,7 +330,8 @@ def _get_cl_counter_str(cl_counter: Counter[str]) -> str:
     for k, v in sorted(groups.items(), key=lambda x: int(x[0])):
         res.append(f" 🔹{k} ({', '.join(v)})")
 
-    return ''.join(res)
+    return "".join(res)
+
 
 def _get_hour_counter_str(hour_counter: Counter[int]) -> str:
     groups: dict[int, list[str]] = defaultdict(list)
@@ -372,7 +345,8 @@ def _get_hour_counter_str(hour_counter: Counter[int]) -> str:
         else:
             res.append(f" 🔹{k} ({', '.join(v)})")
 
-    return ''.join(res)
+    return "".join(res)
+
 
 def _get_ver_str(cur_ver: VersionInfo, dest_url: str) -> str:
     res = cur_ver.full
@@ -411,25 +385,17 @@ class SPMessages:
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
-    def send_status(self,
+    def send_status(
+        self,
         storage_users: CountedUsers,
         user: User,
-        platform_version: VersionInfo
+        platform_version: VersionInfo,
     ) -> str:
         """Возвращает информацию о платформе.
 
         Эта статистическая информация, о работа парсера, времени
         последней проверки и обновления и прочих параметрах, связанных
         с поставщиком и пользователями платформы.
-
-        :param storage_user: Подсчитанные пользователя расписания.
-        :type storage_users: CountedUsers
-        :param user: Какой пользователь запрашивает информацию.
-        :type user: User
-        :param platform_version: На какой платформе запущено приложение.
-        :type  platform_version: VersionInfo
-        :return: Статус парсера и хранилища пользователей.
-        :rtype: str
         """
         now = datetime.now()
         # На случай если это первый раз когда мы получаем расписание
@@ -446,15 +412,14 @@ class SPMessages:
         lp_str = _get_next_update_str(last_parse, now)
 
         nu_delta = get_str_timedelta(
-            int((next_update - now).total_seconds()),
-            hours=False
+            int((next_update - now).total_seconds()), hours=False
         )
         lp_delta = get_str_timedelta(int((now - last_parse).total_seconds()))
 
         # При первом запуске из консоли у нас ещё нет пользователей
         if storage_users.total > 0:
             active_pr = round(
-                (storage_users.active / storage_users.total)*100, 2
+                (storage_users.active / storage_users.total) * 100, 2
             )
         else:
             active_pr = 0
@@ -481,7 +446,6 @@ class SPMessages:
 
         return res
 
-
     # Отображение расписания
     # ======================
 
@@ -491,11 +455,6 @@ class SPMessages:
         Обёртка над методом класса Schedule для получения расписания.
         Принимает намерения, для уточнения форматов расписание.
         Форматирует сообщений с помощью send_day_lessons.
-
-        :param intent: Намерения для уточнения параметров расписания.
-        :type intent: Intent
-        :return: Сообщение с расписанием уроков.
-        :rtype: str
         """
         lessons = {x: self.sc.get_lessons(x) for x in intent.cl}
         message = ""
@@ -516,24 +475,19 @@ class SPMessages:
         Также автоматически происходит сдвиг на понедельник, если нужно.
         это используется при умном получении расписания на сегодня
         или завтра в зависимости от времени.
-
-        :param intent: Намерение для получения расписания
-        :type intent: Intent
-        :return: Номер дня недели, для которого получать расписание
-        :rtype: int
         """
         now = datetime.now()
         today = now.weekday()
 
         # Если сегодня воскресенье, получаем уроки на понедельник
         # В воскресение же нету уроков?
-        if today == WeekDay.SATURDAY+1:
+        if today == WeekDay.SATURDAY + 1:
             return 0
 
         if len(intent.cl) == 0:
             raise ValueError("Intent must contain at least one class let")
         max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), intent.cl))
-        hour = timetable[max_lessons-1][2]
+        hour = timetable[max_lessons - 1][2]
 
         if now.hour >= hour:
             today += 1
@@ -552,22 +506,16 @@ class SPMessages:
         Использует намерения для уточнения расписания.
         Однако будет игнорировать указанные дни в намерении.
         Иначе используйте метод send_lessons.
-
-        :param intent: Намерения для уточнения расписания.
-        :type intent: Intent
-        :return: Расписание уроков на сегодня/завтра.
-        :rtype: str
         """
-        return self.send_lessons(intent.reconstruct(
-            self.sc, days=self.get_current_day(intent)
-        ))
-
+        return self.send_lessons(
+            intent.reconstruct(self.sc, days=self.get_current_day(intent))
+        )
 
     # Методы для работы с расписанием
     # ===============================
 
     def search(
-        self, target: str, intent: Intent, cabinets: bool=False
+        self, target: str, intent: Intent, cabinets: bool = False
     ) -> str:
         """Поиск по имена урока/кабинета в расписании.
 
@@ -576,33 +524,18 @@ class SPMessages:
 
         Поиск немного изменяется в зависимости от режима.
 
-        .. table::
-
-            +----------+---------+---------+
-            | cabinets | obj     | another |
-            +==========+=========+=========+
-            | false    | lesson  | cabinet |
-            +----------+---------+---------+
-            | true     | cabinet | lesson  |
-            +----------+---------+---------+
-
-        :param target: Цель для поиска, урок или кабинет.
-        :type target: str
-        :param intent: Намерения для уточнения результатов поиска.
-        :type intent: Intent
-        :param cabinets: Что ищем, урок или кабинет. Обычно урок.
-        :type cabinets: bool
-        :return: Результаты поиска в расписании.
-        :rtype: str
+        +----------+---------+---------+
+        | cabinets | obj     | another |
+        +==========+=========+=========+
+        | false    | lesson  | cabinet |
+        +----------+---------+---------+
+        | true     | cabinet | lesson  |
+        +----------+---------+---------+
         """
-        return send_search_res(
-            intent, self.sc.search(target, intent, cabinets)
-        )
+        return send_search_res(intent, self.sc.search(target, intent, cabinets))
 
     def send_update(
-        self,
-        update: dict[str, int | list[dict]],
-        hide_cl: str | None=None
+        self, update: dict[str, int | list[dict]], hide_cl: str | None = None
     ) -> str:
         """Собирает сообщение со списком изменений в расписании.
 
@@ -616,27 +549,20 @@ class SPMessages:
 
         Пример сообщения со списком изменений:
 
-        .. code-block:: text
+        ```
+        📀 21.05 16:00 ➜ 05.06 18:47
+        🔷 На четверг
+        🔸 Для 5б:
+        2: --физкульт:330
+        ```
 
-            📀 21.05 16:00 ➜ 05.06 18:47
-            🔷 На четверг
-            🔸 Для 5б:
-            2: --физкульт:330
+        Если `hide_cl="5б"`:
 
-        Если ``hide_cl="5б"``:
-
-        .. code-block:: text
-
-            📀 21.05 16:00 ➜ 05.06 18:47
-            🔷 На четверг
-            2: --физкульт:330
-
-        :param update: Необработанная запись об изменении в расписании.
-        :type update: dict[str, Union[int, list[dict]]]
-        :param hide_cl: Упоминание какого класса опускать в заголовке.
-        :type hide_cl: Optional[str]
-        :return: Сообщение со списком изменений в расписании.
-        :rtype: str
+        ```
+        📀 21.05 16:00 ➜ 05.06 18:47
+        🔷 На четверг
+        2: --физкульт:330
+        ```
         """
         message = _get_update_header(update)
         updates = update.get("updates", [])
@@ -661,11 +587,6 @@ class SPMessages:
 
         Если изменения есть, добавляет заголовок и отображает
         сжатую запись со всеми изменениями в расписании.
-
-        :param user: Для какого пользователя проверить обновления.
-        :type user: User
-        :returns: Сообщение со списком изменений или None, если нету.
-        :rtype: str | None
         """
         update = user.get_updates(self.sc)
         if update is None:
@@ -676,12 +597,11 @@ class SPMessages:
             f"{self.send_update(update, user.data.cl)}"
         )
 
-
-    def send_counter( # noqa: PLR0912
+    def send_counter(  # noqa: PLR0912
         self,
         groups: dict[int, dict[str, dict]],
-        target: CounterTarget | None=None,
-        days_counter: bool=False
+        target: CounterTarget | None = None,
+        days_counter: bool = False,
     ) -> str:
         """Возвращает сообщение с результатами работы счётчика.
 
@@ -690,22 +610,11 @@ class SPMessages:
         к меньшему.
         Если указана подгруппу (target), то она также буде включена в
         результаты счётчика.
-
-        :param groups: Сгруппированные результаты работы счётчика.
-        :type groups: dict[int, dict[str, dict]]
-        :param target: Режим просмотра расписания.
-        :type target: CounterTarget | None
-        :param days_counter: Заменять имена групп на названия дней недели.
-        :type days_counter: bool
-        :return: Сообщение с результатами работы счётчиков.
-        :rtype: str
         """
         message = ""
 
         for group, res in sorted(
-            groups.items(),
-            key=lambda x: x[0],
-            reverse=True
+            groups.items(), key=lambda x: x[0], reverse=True
         ):
             group_plural_form = plural_form(group, ("раз", "раза", "раз"))
             message += f"\n🔘 {group} {group_plural_form}:"
@@ -725,8 +634,9 @@ class SPMessages:
 
                     cnt_groups = reverse_counter(cnt.get(target.value, {}))
 
-                    for cnt_group, k in sorted(cnt_groups.items(),
-                                        key=lambda x: x[0], reverse=True):
+                    for cnt_group, k in sorted(
+                        cnt_groups.items(), key=lambda x: x[0], reverse=True
+                    ):
                         # Заменяем числа на дни недели в подгруппу счётчика
                         if target == CounterTarget.DAYS:
                             count_items = " ".join(
@@ -746,7 +656,9 @@ class SPMessages:
 
             # Заменяем числа на название дней недели для счётчика по дням
             elif days_counter:
-                message += f" {', '.join([SHORT_DAY_NAMES[int(x)] for x in res])}" # noqa: E501
+                message += (
+                    f" {', '.join([SHORT_DAY_NAMES[int(x)] for x in res])}"  # noqa: E501
+                )
             else:
                 message += f" {', '.join(res)}"
 

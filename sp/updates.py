@@ -19,11 +19,6 @@ def compact_updates(updates: list[UpdateData]) -> UpdateData:  # noqa: PLR0912
     - Если Урок A, сменился на B, а после снова на A -> удаляем урок.
     - Если A -> B, B -> C, то A => C.
     - Иначе добавить запись.
-
-    :param updates: Список записей об обновлениях расписания.
-    :type updates: list[dict[str, Union[int, list[dict]]]]
-    :return: Новая упакованная запись об обновлённом расписании.
-    :rtype: dict[str, Union[int, list[dict]]]
     """
     res: list[dict[str, list[dict]]] = updates[0]["updates"].copy()
 
@@ -76,5 +71,5 @@ def compact_updates(updates: list[UpdateData]) -> UpdateData:  # noqa: PLR0912
     return {
         "start_time": updates[0]["start_time"],
         "end_time": updates[-1]["end_time"],
-        "updates": res
+        "updates": res,
     }

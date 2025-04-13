@@ -22,12 +22,15 @@ if TYPE_CHECKING:
 # =======================
 
 _T = TypeVar("_T")
+
+
 def _ensure_list(a: _T) -> _T | tuple[str | int]:
     return (a,) if isinstance(a, str | int) else a
 
 
 # Класс намерений
 # ===============
+
 
 class Intent(NamedTuple):
     """Вспомогательный класс, хранящий в себе намерение.
@@ -76,7 +79,6 @@ class Intent(NamedTuple):
     #: Кабинеты расписания, например 328 (ссылка на индекс 3)
     cabinets: set[str] = set()
 
-
     def to_str(self) -> str:
         """Запаковывает намерение в строку.
 
@@ -89,12 +91,8 @@ class Intent(NamedTuple):
         - ``:::`` - Пустое намерение.
         - ``9в::матем:`` - Намерение с классом "9в" и "уроком математика".
         - ``:1,2::`` - Намерение с несколькими значениями (тут днями).
-
-        :return: Запакованное намерение.
-        :rtype: str
         """
         return ":".join([",".join(map(str, x)) for x in self])
-
 
     # Создание нового экземпляра намерений
     # ====================================
@@ -131,12 +129,6 @@ class Intent(NamedTuple):
             ``cl,...:day,...:lessons,...:cabinets,cabinets2,cabinetsN``
 
         - "9в:1,2::" -> `Intent(cl=["9в"], days=[1, 2])`
-
-        :param s: Строка с упакованным намерение.
-        :type s: str
-
-        :return: Новое распакованное намерение.
-        :rtype: Intent
         """
         res: list[set[str]] = []
         days = set[int] = set()
@@ -152,13 +144,14 @@ class Intent(NamedTuple):
 
         return cls(res[0], days, res[1], res[2])
 
-
     @classmethod
-    def construct( # noqa
-        cls, sc: 'Schedule', cl: Iterable[str] | str=(),
-        days: Iterable[int] | int=(),
-        lessons: Iterable[str] | str=(),
-        cabinets: Iterable[str] | str=()
+    def construct(  # noqa
+        cls,
+        sc: "Schedule",
+        cl: Iterable[str] | str = (),
+        days: Iterable[int] | int = (),
+        lessons: Iterable[str] | str = (),
+        cabinets: Iterable[str] | str = (),
     ) -> Self:
         """Собирает новый экземпляр намерений.
 
@@ -174,29 +167,16 @@ class Intent(NamedTuple):
 
         Экземпляр Schedule используется для валидации параметров
         относительно текущего расписания.
-
-        :param sc: Экземпляр расписания уроков для валидации аргументов.
-        :type sc: Schedule
-        :param cl: Какие классы расписания добавить в намерение
-        :type cl: Union[Iterable[str], str]
-        :param days: Какие дни добавить в намерение (0-5)
-        :type days: Union[Iterable[int], int]
-        :param lessons: Какие уроки добавить в намерение (из l_index).
-        :type lessons: Union[Iterable[str], str]
-        :param cabinets: Какие кабинеты добавить в намерение (c_index).
-        :type cabinets: Union[Iterable[str], str]
-        :return: Проверенное намерение из переданных аргументов
-        :rtype: Intent
         """
         return cls(
             {str(x) for x in _ensure_list(cl) if x in sc.lessons},
-            {int(x) for x in _ensure_list(days) if int(x) < 6}, # noqa: PLR2004
+            {int(x) for x in _ensure_list(days) if int(x) < 6},  # noqa: PLR2004
             {str(x) for x in _ensure_list(lessons) if x in sc.l_index},
             {str(x) for x in _ensure_list(cabinets) if x in sc.c_index},
         )
 
     @classmethod
-    def parse(cls, sc: 'Schedule', args: Iterable[str]) -> Self:
+    def parse(cls, sc: "Schedule", args: Iterable[str]) -> Self:
         """Извлекает намерения из списка строковых аргументов.
 
         .. code-block:: text
@@ -209,13 +189,6 @@ class Intent(NamedTuple):
 
         Также занимается валидацией параметров, использую класс
         Schedule относительно текущего расписания.
-
-        :param sc: Экземпляр расписания уроков для валидации аргументов.
-        :type sc: Schedule
-        :param args: Аргументы сборки намерения.
-        :type args: Iterable[str]
-        :return: Готовое намерение из строковых аргументов.
-        :rtype: Intent
         """
         weekday = datetime.today().weekday()
         cl: list[str] = []
@@ -234,8 +207,8 @@ class Intent(NamedTuple):
                 days.append(weekday)
 
             elif arg == "завтра":
-                today = weekday+1
-                if today > 5: # noqa: PLR2004
+                today = weekday + 1
+                if today > 5:  # noqa: PLR2004
                     today = 0
 
                 days.append(today)
@@ -261,23 +234,25 @@ class Intent(NamedTuple):
                     i for i, k in enumerate(DAY_NAMES) if arg.startswith(k)
                 ]
                 days += [
-                    i for i, k in enumerate(SHORT_DAY_NAMES)
+                    i
+                    for i, k in enumerate(SHORT_DAY_NAMES)
                     if arg.startswith(k)
                 ]
 
         return cls(set(cl), set(days), set(lessons), set(cabinets))
 
-
     # Создание экземпляра со значения по умолчанию
     # TODO: Прощайте методы реконструкции!
     # ============================================
 
-    def reconstruct( # noqa
-        self, sc: 'Schedule', cl: Iterable[str] | str=(),
-        days: Iterable[int] | int=(),
-        lessons: Iterable[str] | str=(),
-        cabinets: Iterable[str] | str=()
-    ) -> 'Intent':
+    def reconstruct(  # noqa
+        self,
+        sc: "Schedule",
+        cl: Iterable[str] | str = (),
+        days: Iterable[int] | int = (),
+        lessons: Iterable[str] | str = (),
+        cabinets: Iterable[str] | str = (),
+    ) -> "Intent":
         """Собирает новый экземпляр намерений.
 
         Занимается сборкой и валидацией нового экземпляра намерений
@@ -296,23 +271,10 @@ class Intent(NamedTuple):
 
         Экземпляр Schedule используется для валидации параметров
         относительно текущего расписания.
-
-        :param sc: Экземпляр расписания уроков для валидации аргументов.
-        :type sc: Schedule
-        :param cl: Какие классы расписания добавить в намерение
-        :type cl: Union[Iterable[str], str]
-        :param days: Какие дни добавить в намерение (0-5)
-        :type days: Union[Iterable[int], int]
-        :param lessons: Какие уроки добавить в намерение (из l_index).
-        :type lessons: Union[Iterable[str], str]
-        :param cabinets: Какие кабинеты добавить в намерение (c_index).
-        :type cabinets: Union[Iterable[str], str]
-        :return: Собранное намерение из переданных аргументов
-        :rtype: Intent
         """
         return Intent(
             {str(x) for x in _ensure_list(cl) if x is sc.lessons} or self.cl,
-            {int(x) for x in _ensure_list(days) if int(x) < 6} or self.days, # noqa: PLR2004
+            {int(x) for x in _ensure_list(days) if int(x) < 6} or self.days,  # noqa: PLR2004
             (
                 {str(x) for x in _ensure_list(lessons) if x in sc.l_index}
                 or self.lessons
@@ -320,5 +282,5 @@ class Intent(NamedTuple):
             (
                 {str(x) for x in _ensure_list(cabinets) if x in sc.c_index}
                 or self.cabinets
-            )
+            ),
         )

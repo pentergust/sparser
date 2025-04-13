@@ -8,12 +8,6 @@
 Обратите внимание, что счётчики возвращают "сырой" результат.
 Который вы может в последствии самостоятельно обработать
 в необходимый вам формат.
-
-.. warning:: Новый класс счётчика.
-
-    Поскольку появился новый класс счётчика ``CurrentCounter``,
-    более нет необходимости использовать ``TextCounter``, от чего
-    последний был удалён.
 """
 
 from collections import Counter, defaultdict
@@ -26,6 +20,7 @@ from .parser import Schedule
 # Вспомогательные типы данных
 # ===========================
 
+
 class ClCounterData(TypedDict):
     """Результаты подсчётов счётчика классов."""
 
@@ -33,6 +28,7 @@ class ClCounterData(TypedDict):
     days: Counter
     lessons: Counter
     cabinets: Counter
+
 
 class DayCounterData(TypedDict):
     """Результат подсчёта счётчика дней."""
@@ -42,6 +38,7 @@ class DayCounterData(TypedDict):
     lessons: Counter
     cabinets: Counter
 
+
 class IndexCounterData(TypedDict):
     """Результаты подсчёта счётчика индексов."""
 
@@ -50,18 +47,19 @@ class IndexCounterData(TypedDict):
     days: Counter
     main: Counter
 
+
 class CounterTarget(Enum):
     """Описывает все доступные подгруппы счётчиков.
 
     Пример использования с CurrentCounter:
 
-    .. code-block:: python
-
+    ```py
         counter = CurrentCounter(sc, Intent())
         message = platform.counter(
             counter.cl()
             target=CounterTarget.CL
         )
+    ```
 
     - `NONE`: То же самое что и None, без цели отображения.
     - `CL`: По классам в расписании.
@@ -87,28 +85,24 @@ class CounterTarget(Enum):
 _R = TypeVar("_R", ClCounterData, DayCounterData, IndexCounterData)
 CounterRes: TypeAlias = dict[str, _R]
 
+
 def _group_counter_res(counter_res: CounterRes) -> dict[int, CounterRes]:
     """Группирует результат работы счётчиков по total ключу.
 
     Формат вывода:
 
-    .. code-block:: python
-
-        {
-            2: { # Общее количество ("total" счётчика)
-                "8в" { # Некоторые счётчики, не обязательно класс.
-                    # ...
-                },
-                "...", {
-                    # ...
-                }
+    ```py
+    {
+        2: { # Общее количество ("total" счётчика)
+            "8в" { # Некоторые счётчики, не обязательно класс.
+                # ...
+            },
+            "...", {
+                # ...
             }
         }
-
-    :param counter_res: Результаты работы счётчика расписания.
-    :type counter_res: CounterRes
-    :return: Сгруппированные результаты работы счётчика.
-    :rtype: dict[int, CounterRes]
+    }
+    ```
     """
     groups: defaultdict[int, CounterRes] = defaultdict(dict)
     for k, v in counter_res.items():
@@ -120,6 +114,7 @@ def _group_counter_res(counter_res: CounterRes) -> dict[int, CounterRes]:
 
     return groups
 
+
 def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
     """Меняет ключ и значение ``collections.Counter`` местами.
 
@@ -127,11 +122,6 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
     Используется в группировке результатов работы счётчиков по
     количеству.
     Также будет пропускать пустые значения при подсчёте.
-
-    :param cnt: Счётчик элементов расписания.
-    :type cnt: Counter
-    :return: Перевёрнутый счётчик расписания.
-    :rtype: dict[int, list[str]]
     """
     res = defaultdict(list)
     for k, v in cnt.items():
@@ -145,24 +135,21 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
 # Класс счётчика
 # ==============
 
+
 class CurrentCounter:
     """Счётчик элементов текущего расписания.
 
     Предоставляет методы для подсчёта элементов текущего расписания.
     Возвращает сырые результаты, которое после можно обработать через
     класс представления.
-
-    :param sc: Расписание, для которого будет производиться подсчёт.
-    :type sc: Schedule
-    :param intent: Уточняющее намерение при подсчёте элементов.
-    :type intent: Intent
     """
 
     def __init__(self, sc: Schedule, intent: Intent) -> None:
         self.sc = sc
         self.intent = intent
 
-    def cl(self, intent: Intent | None=None
+    def cl(
+        self, intent: Intent | None = None
     ) -> dict[int, dict[str, ClCounterData]]:
         """Счётчик по классам с использованием sp.lessons.
 
@@ -171,21 +158,16 @@ class CurrentCounter:
 
         Пример результатов работы счетчика:
 
-        .. code-block:: python
-
-            {
-                "7а": { # Классы
-                    "total": 12, # Общее количество элементов.
-                    "days": Counter(), # Количество элементов по дням.
-                    "lessons": Counter(), # Количество элементов по урокам.
-                    "cabinets": Counter(), # Элементы по кабинетам.
-                }
+        ```py
+        {
+            "7а": { # Классы
+                "total": 12, # Общее количество элементов.
+                "days": Counter(), # Количество элементов по дням.
+                "lessons": Counter(), # Количество элементов по урокам.
+                "cabinets": Counter(), # Элементы по кабинетам.
             }
-
-        :param intent: Намерения для уточнения результатов подсчёта.
-        :type intent: Intent | None
-        :return: Подсчитанные элементы расписания по классам.
-        :rtype: dict[int, dict[str, ClCounterData]]
+        }
+        ```
         """
         res: dict[str, ClCounterData] = {}
         intent = intent or self.intent
@@ -212,13 +194,16 @@ class CurrentCounter:
 
                 day_counter[str(day)] = len(lessons)
 
-            res[cl] = {"total": sum(day_counter.values()),
-                    "days": day_counter,
-                    "lessons": lessons_counter,
-                    "cabinets": cabinets_counter}
+            res[cl] = {
+                "total": sum(day_counter.values()),
+                "days": day_counter,
+                "lessons": lessons_counter,
+                "cabinets": cabinets_counter,
+            }
         return _group_counter_res(res)
 
-    def days(self, intent: Intent | None = None
+    def days(
+        self, intent: Intent | None = None
     ) -> dict[int, dict[str, DayCounterData]]:
         """Счётчик по дням с использованием sc.lessons.
 
@@ -227,28 +212,27 @@ class CurrentCounter:
 
         Пример результатов работы счётчика:
 
-        .. code-block:: python
 
-            {
-                "1": { # День недели (0 - понедельник, 5 - суббота).
-                    "total": 12 # Общее количество элементов расписания.
-                    "cl": Counter() # Количество элементов по классам.
-                    "lessons": Counter() # Элементов по урокам.
-                    "cabinets": Counter() # Элементов по кабинетам.
-                }
+        ```py
+        {
+            "1": { # День недели (0 - понедельник, 5 - суббота).
+                "total": 12 # Общее количество элементов расписания.
+                "cl": Counter() # Количество элементов по классам.
+                "lessons": Counter() # Элементов по урокам.
+                "cabinets": Counter() # Элементов по кабинетам.
             }
-
-        :param intent: Намерения для уточнения результатов подсчёта.
-        :type intent: Optional[Intent]
-        :return: Подсчитанные элементы расписания по дням.
-        :rtype: dict[int, dict[str, DayCounterData]]
+        }
+        ```
         """
-        res: dict[str, DayCounterData] = {str(x): {
-            "cl": Counter(),
-            "total": 0,
-            "lessons": Counter(),
-            "cabinets": Counter()
-        } for x in range(6)}
+        res: dict[str, DayCounterData] = {
+            str(x): {
+                "cl": Counter(),
+                "total": 0,
+                "lessons": Counter(),
+                "cabinets": Counter(),
+            }
+            for x in range(6)
+        }
         intent = intent or self.intent
 
         for cl, days in self.sc.lessons.items():
@@ -260,7 +244,7 @@ class CurrentCounter:
                     continue
 
                 for lesson in lessons:
-                    lesson_cabinet: list[str] = lesson.split(":") # noqa
+                    lesson_cabinet: list[str] = lesson.split(":")  # noqa
                     res[str(day)]["cl"][cl] += 1
                     res[str(day)]["lessons"][lesson_cabinet[0]] += 1
                     res[str(day)]["total"] += 1
@@ -271,9 +255,7 @@ class CurrentCounter:
         return _group_counter_res(res)
 
     def index(
-        self,
-        intent: Intent | None = None,
-        cabinets_mode: bool = False
+        self, intent: Intent | None = None, cabinets_mode: bool = False
     ) -> dict[int, dict[str, IndexCounterData]]:
         """Счётчик уроков/кабинетов с использованием индексов.
 
@@ -297,30 +279,23 @@ class CurrentCounter:
                 | true     | cabinet | lesson  |
                 +----------+---------+---------+
 
-        .. code-block:: python
-
-            {
-                "obj": { # урок или кабинет в зависимости от режима.
-                    "total": 12 # Общее количество элементов расписания.
-                    "cl": Counter() # Количество элементов по классам.
-                    "days": Counter() # Элементов по дням.
-                    "main": Counter() # Элементов по `another`.
-                }
+        ```py
+        {
+            "obj": { # урок или кабинет в зависимости от режима.
+                "total": 12 # Общее количество элементов расписания.
+                "cl": Counter() # Количество элементов по классам.
+                "days": Counter() # Элементов по дням.
+                "main": Counter() # Элементов по `another`.
             }
-
-        :param intent: Намерение для уточнения результатов подсчёта.
-        :type intent: Intent | None
-        :param cabinets_mode: Делать ли подсчёты по кабинетам (c_index).
-        :type cabinets_mode: bool
-        :return: Подсчитанные элементы расписания по урокам/кабинетам.
-        :rtype: dict[int, dict[str, IndexCounterData]]
+        }
+        ```
         """
         res: dict[str, IndexCounterData] = defaultdict(
             lambda: {
                 "total": 0,
                 "days": Counter(),
                 "cl": Counter(),
-                "main": Counter()
+                "main": Counter(),
             }
         )
         if intent is None:

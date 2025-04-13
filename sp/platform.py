@@ -25,6 +25,7 @@ from sp.version import VersionInfo
 # Главный класс платформы
 # =======================
 
+
 class Platform:
     """Платформа для предоставления расписания.
 
@@ -37,13 +38,9 @@ class Platform:
     Название платформы будет использоваться в пути к хранилищам.
 
     :param pid: Уникальный id платформы.
-    :type pid: int
     :param name: Название платформы.
-    :type name: str
     :param version: Строковое описание версии платформы.
-    :type version: str
     :param api_version: Поддерживаемая версия API представления.
-    :type api_version: int
     """
 
     def __init__(self, pid: int, name: str, version: VersionInfo) -> None:
@@ -56,7 +53,6 @@ class Platform:
         #: Экземпляр хранилища пользователей платформы
         self.users = FileUserStorage(self._file_path)
         self._view: SPMessages | None = None
-
 
     # Работа с классом просмотра
     # ==========================
@@ -95,10 +91,6 @@ class Platform:
             на выходе мы получаем ``SPMessages``.
             Это связано с тем, что сейчас SPMessages являются
             родоначальником будущих классов представления.
-
-        :raises ViewSelectedError: Если класс представления не установлен.
-        :return: Текущий класс представления платформы.
-        :rtype: SPMessages | None
         """
         if self._view is not None:
             return self._view
@@ -112,7 +104,6 @@ class Platform:
         self._check_api_version(view.version.api_version)
         self._view = view
 
-
     # Получение хранилищ пользователей
     # ================================
 
@@ -123,11 +114,6 @@ class Platform:
         внутреннего хранилища платформы.
         Пользователь платформы достаточно часто используется в методах
         платформы.
-
-        :param uid: ID пользователя в рамках платформы.
-        :type uid: str
-        :return: Конкретный пользователь из хранилища.
-        :rtype: User
         """
         return User(self.users, uid)
 
@@ -139,11 +125,6 @@ class Platform:
         Пользовательские намерения вскоре заменят класс по умолчанию.
         Постепенно у вас появится больше возможностей по выбору
         намерений в рамках одной платформы.
-
-        :param uid: ID пользователя в рамках платформы.
-        :type uid: int
-        :return: Класс пользовательского хранилища намерений.
-        :rtype: UserIntentsStorage
         """
         return UserIntentsStorage(self._db_path, uid)
 
@@ -151,9 +132,7 @@ class Platform:
     # ===========================================
 
     def _get_user_intent(
-        self,
-        user: User,
-        intent: Intent | None=None
+        self, user: User, intent: Intent | None = None
     ) -> Intent:
         if intent is None:
             if user.data.cl is None:
@@ -161,24 +140,17 @@ class Platform:
             return self.view.sc.construct_intent(cl=user.data.cl)
         return intent
 
-    def lessons(self, user: User, intent: Intent | None=None) -> str:
+    def lessons(self, user: User, intent: Intent | None = None) -> str:
         """Отправляет расписание уроков.
 
         Является сокращение для метода ``SPMessages.send_lessons()``.
         Принимает пользователя, желающего получить расписание, а также
         Намерения для уточнения результата.
         Если намерение не было передано, будет взят класс пользователя.
-
-        :param user: Кто хочет получить расписание уроков.
-        :type user: User
-        :param intent: Намерения для уточнения параметров расписания.
-        :type intent: Optional[Intent]
-        :return: Результат работы метода в зависимости от платформы.
-        :rtype: str
         """
         return self.view.send_lessons(self._get_user_intent(user, intent))
 
-    def today_lessons(self, user: User, intent: Intent | None=None) -> str:
+    def today_lessons(self, user: User, intent: Intent | None = None) -> str:
         """Расписание уроков на сегодня/завтра.
 
         Сокращение для метода ``SPMessages.send_today_lessons()``.
@@ -192,16 +164,8 @@ class Platform:
         Использует намерения для уточнения расписания.
         Однако будет игнорировать указанные дни в намерении.
         Иначе используйте метод send_lessons.
-
-        :param intent: Намерения для уточнения расписания.
-        :type intent: Intent
-        :param user: Кто хочет получить расписание уроков.
-        :type user: User
-        :return: Результат в зависимости от класса представления.
-        :rtype: str
         """
         return self.view.send_today_lessons(self._get_user_intent(user, intent))
-
 
     def current_day(self, user: User, intent: Intent | None = None) -> int:
         """Получает текущий день в расписании.
@@ -213,20 +177,13 @@ class Platform:
         Передаётся пользователь, а также намерение для получения
         расписания.
         Если намерение не было передано то получает класс пользователя.
-
-        :param user: Какой пользователь захотел получить текущий день.
-        :type user: User
-        :param intent: Намерение для уточнения расписания (классы).
-        :type intent: Intent | None
-        :return: Текущий день недели для расписания.
-        :rtype: int
         """
         return self.view.get_current_day(self._get_user_intent(user, intent))
 
     def _get_day_str(self, today: int, relative_day: int) -> str:
         if relative_day == today:
             return "Сегодня"
-        elif relative_day == today+1:
+        elif relative_day == today + 1:
             return "Завтра"
         else:
             return WeekDay(relative_day).to_short_str()
@@ -240,11 +197,6 @@ class Platform:
 
         Не принимает намерение, получает день только для
         переданного пользователя.
-
-        :param user: Для какого пользователя получаем расписание.
-        :type User: User
-        :return: Сегодня/Завтра/день недели.
-        :rtype: str
         """
         today = date.today().weekday()
         tomorrow = today + 1
@@ -259,12 +211,8 @@ class Platform:
         )
         return self._get_day_str(today, current_day)
 
-
     def search(
-        self,
-        target: str,
-        intent: Intent,
-        cabinets: bool = False
+        self, target: str, intent: Intent, cabinets: bool = False
     ) -> str:
         """Поиск в расписании по уроку/кабинету.
 
@@ -273,32 +221,21 @@ class Platform:
 
         Поиск немного изменяется в зависимости от режима.
 
-        .. table::
-
-            +----------+---------+---------+
-            | cabinets | obj     | another |
-            +==========+=========+=========+
-            | false    | lesson  | cabinet |
-            +----------+---------+---------+
-            | true     | cabinet | lesson  |
-            +----------+---------+---------+
-
-        :param target: Цель для поиска, название урока/кабинета.
-        :type target: str
-        :param intent: Намерение для уточнения результатов поиска.
-        :type intent: Intent
-        :param cabinets: Что ищем, урок или кабинет. (урок).
-        :type cabinets: bool
-        :return: Результаты поиска в зависимости от платформы.
-        :rtype: str
+        +----------+---------+---------+
+        | cabinets | obj     | another |
+        +==========+=========+=========+
+        | false    | lesson  | cabinet |
+        +----------+---------+---------+
+        | true     | cabinet | lesson  |
+        +----------+---------+---------+
         """
         return self.view.search(target, intent, cabinets)
 
     def counter(
         self,
         groups: dict[int, dict[str, dict]],
-        target: CounterTarget | None=None,
-        days_counter: bool=False
+        target: CounterTarget | None = None,
+        days_counter: bool = False,
     ) -> str:
         """Получает результаты работы счётчика.
 
@@ -306,42 +243,27 @@ class Platform:
         Используется чтобы преобразовать результаты счётчика к удобному
         формату отображения.
 
-        .. code-block:: python
+        ```py
+        from sp.parser import Schedule
+        from sp.counter import CurrentCounter, CounterTarget
 
-            from sp.parser import Schedule
-            from sp.counter import CurrentCounter, CounterTarget
-
-            sc = Schedule()
-            cc = CurrentCounter(sc, sc.construct_intent())
-            message = platform.send_counter(
-                cc.cl(),
-                CounterTarget.DAYS,
-                days_counter=True # Поскольку присутствуют дни недели
-            )
-
-        :param groups: Результаты работы счётчика.
-        :type groups: dict[int, dict[str, dict]]
-        :param target: Цель отображения расписания.
-        :type target: CounterTarget | None
-        :param days_counter: Следует ли заменять число на дни недели.
-        :type days_counter: bool
+        sc = Schedule()
+        cc = CurrentCounter(sc, sc.construct_intent())
+        message = platform.send_counter(
+            cc.cl(),
+            CounterTarget.DAYS,
+            days_counter=True # Поскольку присутствуют дни недели
+        )
+        ```
         """
         return self.view.send_counter(groups, target, days_counter)
 
-    def updates(self,
-        update: dict[str, int | list[dict]],
-        hide_cl: str | None=None
+    def updates(
+        self, update: dict[str, int | list[dict]], hide_cl: str | None = None
     ) -> str:
         """Собирает сообщение со списком изменений.
 
         Сокращение для: ``SPMessages.send_update()``.
-
-        :param update: Запись об изменениях в расписании.
-        :type update: dict[str, int  |  list[dict]]
-        :param hide_cl: Какой заголовок класса прятать.
-        :type hide_cl: Optional[str], optional
-        :return: Запись с информации об изменениях в расписании.
-        :rtype: str
         """
         return self.view.send_update(update, hide_cl)
 
@@ -351,11 +273,6 @@ class Platform:
         Сокращение для: ``SPMessages.check_update()``.
         Отправляет сжатую запись об изменениях в расписании, или None,
         если новых изменений нет.
-
-        :param user: Для какого пользователя проверить обновления.
-        :type user: User
-        :return: Сжатая запись об изменениях или None, если их нет.
-        :rtype: str | None
         """
         return self.view.check_updates(user)
 
@@ -363,11 +280,6 @@ class Platform:
         """Отправляет статус работы платформы.
 
         Сокращение для: ``SPMessages.send_status()``.
-
-        :param user: Для какого пользователя получить статистику.
-        :type user: User
-        :return: Информация о работе платформы.
-        :rtype: str
         """
         count_result = self.users.count_users(self.view.sc)
         return self.view.send_status(count_result, user, self.version)

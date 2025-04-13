@@ -12,6 +12,7 @@
 # View
 # ====
 
+
 class ViewCompatibleError(Exception):
     """Если версии API не совпадают.
 
@@ -23,7 +24,6 @@ class ViewCompatibleError(Exception):
     API представления.
     """
 
-    pass
 
 class ViewSelectedError(Exception):
     """Если вы захотели использовать view, но она не была настроена.
@@ -35,5 +35,3 @@ class ViewSelectedError(Exception):
     Но если класс представления не был установлен и ыв захотели его
     использовать, то получите данное исключение.
     """
-
-    pass

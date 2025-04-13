@@ -30,6 +30,7 @@ from loguru import logger
 LoadData = dict | list
 _T = TypeVar("_T", bound=LoadData)
 
+
 def save_file(path: Path, data: _T) -> _T:
     """Записывает данные в json файл.
 
@@ -40,24 +41,18 @@ def save_file(path: Path, data: _T) -> _T:
     .. deprecated:: 6.1
         В скором времени проект откажется от использования json.
         Данные методы будут перемещены.
-
-    :param path: Путь к файлу для записи данных.
-    :type path: Path
-    :param data: Данные для записи в файл.
-    :type data: Union[dict, list]
-    :return: Ваши данные для записи.
-    :rtype: dict
     """
     logger.info("Write file {} ...", path)
     if not path.exists():
         path.parents[0].mkdir(parents=True, exist_ok=True)
         logger.info("Created not exists dirs")
 
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         f.write(ujson.dumps(data, indent=4, ensure_ascii=False))
     return data
 
-def load_file(path: Path, data: _T | None=None) -> _T:
+
+def load_file(path: Path, data: _T | None = None) -> _T:
     """Читает данные из json файла.
 
     Используется как обёртка для более удобного чтения данных из
@@ -70,13 +65,6 @@ def load_file(path: Path, data: _T | None=None) -> _T:
     .. deprecated:: 6.1
         В скором времени проект откажется от использования json.
         Данные методы будут перемещены.
-
-    :param path: Путь к файлу для чтения.
-    :type path: Path
-    :param data: Данные для записи, по умолчанию не указаны.
-    :type data: Optional[dict], optional
-    :return: Распакованные данные из файла.
-    :rtype: Union[dict, list]
     """
     try:
         with open(path) as f:
@@ -97,6 +85,7 @@ def load_file(path: Path, data: _T | None=None) -> _T:
 # Прочие утилиты
 # ==============
 
+
 def plural_form(n: int, v: tuple[str, str, str]) -> str:
     """Возвращает склонённое значение в зависимости от числа.
 
@@ -109,28 +98,15 @@ def plural_form(n: int, v: tuple[str, str, str]) -> str:
         # days = 1 -> день
         # days = 32 -> дня
         # days = 65 -> дней
-
-    :param n: Некоторое число, используемое в склонении.
-    :type n: int
-    :param v: Варианты слова (для 1, для 2, для 5).
-    :type v: tuple[str]
-    :return: Склонённое слово в зависимости от числа.
-    :rtype: str
     """
-    return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]] #noqa
+    return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]]  # noqa
 
-def get_str_timedelta(s: int, hours: bool | None=True) -> str:
+
+def get_str_timedelta(s: int, hours: bool | None = True) -> str:
     """Возвращает строковый обратный отсчёт из количества секунд.
 
     Если hours = False -> ММ:SS.
     Если hours = True -> HH:MM:SS.
-
-    :param s: Количество секунд для обратного отсчёта.
-    :type s: int
-    :param hours: Использовать ли часы, по умолчанию да.
-    :type hours: Optional[bool], optional
-    :return: Строковый обратный отсчёт.
-    :rtype: str
     """
     if hours:
         h, r = divmod(s, 3600)
@@ -139,4 +115,3 @@ def get_str_timedelta(s: int, hours: bool | None=True) -> str:
     else:
         m, s = divmod(s, 60)
         return f"{m:02}:{s:02}"
-

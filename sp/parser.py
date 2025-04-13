@@ -37,8 +37,10 @@ INDEX_PATH = Path("sp_data/index.json")
 # Вспомогательные функции
 # =======================
 
+
 def _get_day_hash(day_lessons: list) -> str:
     return hashlib.md5(("".join(day_lessons)).encode()).hexdigest()
+
 
 def _clear_day_lessons(day_lessons: list[str]) -> list[str]:
     """Удаляет все пустые уроки с конца списка."""
@@ -59,8 +61,7 @@ def get_sc_updates(
     Делает полное построчное сравнение старого и нового расписания.
     Возвращает все найденные изменения в формате.
 
-    .. code-block:: json
-
+    ```py
         [
             // дни ...
             {
@@ -72,13 +73,7 @@ def get_sc_updates(
                 ]
             }
         ]
-
-    :param a: Исходное расписание для сравнения.
-    :type a: dict[str, list]
-    :param b: Другое расписание для сравнения с исходным.
-    :type b: dict[str, list]
-    :return: Результаты поиска изменения в расписании.
-    :rtype: list[dict[str, list]]
+    ```
     """
     updates: list[dict] = [defaultdict(lambda: [None] * 8) for x in range(6)]
     # Проходимся по классам в новом расписании
@@ -94,14 +89,14 @@ def get_sc_updates(
 
             a_lessons = av[day]
             for i, lesson in enumerate(lessons):
-                al = a_lessons[i] if i <= len(a_lessons)-1 else None
+                al = a_lessons[i] if i <= len(a_lessons) - 1 else None
                 if lesson != al:
                     updates[day][k][i] = (al, lesson)
     return updates
 
+
 def get_index(
-    sp_lessons: dict[str, list[list[str]]],
-    lessons_mode: bool | None=True
+    sp_lessons: dict[str, list[list[str]]], lessons_mode: bool | None = True
 ) -> dict[str, list[dict]]:
     """Преобразует словарь расписания уроков в индекс.
 
@@ -117,28 +112,18 @@ def get_index(
     - Расписание: `[Класс][День][Уроки]`
     - l_mode True: `[Урок][День][Кабинет][Класс][Номер урока]`
     - l_mode False: `[Кабинет][День][Урок][Класс][Номер урока]`
-
-    :param sp_lessons: Словарь расписания уроков.
-    :type sp_lessons: dict[str, list[str]]
-    :param lessons_mode: Режим получения индекса уроков. (уроки).
-    :type lessons_mode: Optional[bool]
-    :return: Индекс уроков или кабинетов.
-    :rtype: dict[str, list]
     """
     logger.info("Get {}_index", "l" if lessons_mode else "c")
     index: dict[str, list[dict]] = defaultdict(
-        lambda: [defaultdict(
-            lambda: defaultdict(list)
-        ) for x in range(6)]
+        lambda: [defaultdict(lambda: defaultdict(list)) for x in range(6)]
     )
 
-    # res = {}
     for cl, v in sp_lessons.items():
         for day, lessons in enumerate(v):
             for n, lesson_data in enumerate(lessons):
                 lesson, cabinet = lesson_data.lower().split(":")
                 lesson = lesson.strip(" .")
-                for old, new in [('-', '='), (' ', '-'), (".-", '.')]:
+                for old, new in [("-", "="), (" ", "-"), (".-", ".")]:
                     lesson = lesson.replace(old, new)
 
                 # Obj - Первичный ключ индекса, урок или кабинет.
@@ -156,38 +141,32 @@ def parse_lessons() -> dict[str, list[list[str]]]:  # noqa: PLR0912
 
     Расписание в XLSX файле представлено подобным образом.
 
-    .. code-block:: text
-
-        +--+-------+---------+
-        |  | класс |         | <- Шапка с классами в расписание
-        +--+-------+---------+
-        | 1| урок  | кабинет | <- Первый урок понедельника.
-        | n| ...   | ...     |
-        +--+-------+---------+
-        | 1| урок  | кабинет | <- Первый урок вторника.
-        | n| ...   | ...     |
-        +--+-------+---------+
+    +--+-------+---------+
+    |  | класс |         | <- Шапка с классами в расписание
+    +--+-------+---------+
+    | 1| урок  | кабинет | <- Первый урок понедельника.
+    | n| ...   | ...     |
+    +--+-------+---------+
+    | 1| урок  | кабинет | <- Первый урок вторника.
+    | n| ...   | ...     |
+    +--+-------+---------+
 
     Задача этой функции преобразовать таблицу выше в словарь расписания
     уроков формата:
 
-    .. code-block:: json
 
-        {
-            // Классы
-            "класс" {
-                // Дни
-                [
-                    // Уроки в днях
-                    "урок:кабинет"
-                ]
-            }
+    ```py
+    {
+        // Классы
+        "класс" {
+            // Дни
+            [
+                // Уроки в днях
+                "урок:кабинет"
+            ]
         }
-
-    :param csv_file: Данные CSV файла расписания.
-    :type csv_file: bytes
-    :return: Словарь расписания уроков.
-    :rtype: dict[str, list[str]]
+    }
+    ```
     """
     logger.info("Start parse lessons...")
 
@@ -231,28 +210,27 @@ def parse_lessons() -> dict[str, list[list[str]]]:  # noqa: PLR0912
 
                 # Кабинеты иногда представлены числом, иногда строкой
                 # Спасибо электронные таблицы, раньше было проще
-                if row[i+1].value is None:
+                if row[i + 1].value is None:
                     cabinet = "None"
-                elif isinstance(row[i+1].value, float):
-                    cabinet = int(row[i+1].value)
-                elif isinstance(row[i+1].value, str):
-                    cabinet = str(row[i+1].value).strip().lower() or "0"
+                elif isinstance(row[i + 1].value, float):
+                    cabinet = str(row[i + 1].value)
+                elif isinstance(row[i + 1].value, str):
+                    cabinet = str(row[i + 1].value).strip().lower() or "0"
                 else:
-                    raise ValueError(f"Invalid cabinet format: {row[i+1]}")
+                    raise ValueError(f"Invalid cabinet format: {row[i + 1]}")
 
                 lessons[cl][day].append(f"{lesson}:{cabinet}")
 
-        elif day == 5: # noqa
+        elif day == 5:  # noqa
             logger.info("CSV file reading completed")
             break
 
-    return {k: [
-        _clear_day_lessons(x) for x in v
-    ] for k, v in lessons.items()}
+    return {k: [_clear_day_lessons(x) for x in v] for k, v in lessons.items()}
 
 
 # Дополнительные типы данных
 # ==========================
+
 
 class ScheduleDict(TypedDict):
     """Описывает что собой представляет словарь расписание."""
@@ -261,6 +239,7 @@ class ScheduleDict(TypedDict):
     last_parse: int
     lessons: dict[str, list[list[str]]]
 
+
 class UpdateData(TypedDict):
     """Что представляет собой запись об обновлении расписания."""
 
@@ -268,9 +247,12 @@ class UpdateData(TypedDict):
     end_time: int
     updates: list[dict[str, list]]
 
+
+# Определение полезных типов
 LessonIndex: TypeAlias = dict[str, list[dict[str, dict[str, int]]]]
 ClassIndex: TypeAlias = dict[str, list[dict[str, dict[str, int]]]]
 SearchRes: TypeAlias = list[list[list[str]]]
+
 
 class Schedule:
     """Предоставляет доступ к расписанию уроков.
@@ -282,16 +264,10 @@ class Schedule:
     получить список изменений в расписании, также с возможностью
     отфильтровать результаты поиска.
     Также предоставляет доступ к индексам расписания.
-
-    :param sc_path: Ваш путь к файлу расписания.
-    :type sc_path: Path | str
-    :param updates_path: Ваш путь к файлу списка изменений расписания.
-    :type updates_path: Path | str
-    :param index_path: Ваш путь для сохранения индексов расписания.
-    :type index_path: Path | str
     """
 
-    def __init__(self,
+    def __init__(
+        self,
         sc_path: Path | str = SC_PATH,
         updates_path: Path | str = SC_UPDATES_PATH,
         index_path: Path | str = INDEX_PATH,
@@ -317,9 +293,6 @@ class Schedule:
 
         При получении расписания также автоматически будет проводить
         проверку обновлений.
-
-        :return: Расписание уроков по классам.
-        :rtype: dict[str, list[list[str]]]
         """
         return self.schedule["lessons"]
 
@@ -347,13 +320,10 @@ class Schedule:
         - ``last_parse``: UnixTime последней проверки расписания.
         - ``next_parse``: UnixTime следующей проверки расписания.
         - ``lessons``: Сам словарь расписаний уроков по классам.
-
-        :return: Словарь данных расписания уроков.
-        :rtype: dict[str, Union[int, dict, str]]
         """
         now = int(datetime.timestamp(datetime.now()))
         if self.next_parse is None or self.next_parse < now:
-            t = load_file(self.sc_path)
+            t: ScheduleDict = load_file(self.sc_path)
             self._process_update(t, now)
         return self._schedule
 
@@ -369,8 +339,7 @@ class Schedule:
         К примеру если быстро нужно найти урок и посмотреть где, когда
         и для кого он проводится.
 
-        .. code-block:: json
-
+        ```json
             {
                 "матем": [ // Урок ...
                     { // Понедельник ...
@@ -385,9 +354,7 @@ class Schedule:
                     // ...
                 ]
             }
-
-        :return: Полный индекс уроков.
-        :rtype: LessonIndex
+        ```
         """
         if self._l_index is None:
             self._l_index = load_file(self.index_path)[0]
@@ -405,28 +372,25 @@ class Schedule:
         Какой урок, когда, для кого проходит в том или ином кабинете.
         Используется в функции поиска информации по кабинетам.
 
-        .. code-block:: json
-
-            {
-                "204": [ // Кабинет
-                    { // Понедельник ...
-                        "матем" { // Какой урок проходит
-                            "8в" [ // класс для которого проходит
-                                3 // Номер урока в расписании
-                            ]
-                        }
-                    },
-                    {}, // Вторник ...
-                    {}, // Среда ...
-                    // ...
-                ]
-            }
-
-        :return: Полный индекс уроков.
-        :rtype: ClassIndex
+        ```json
+        {
+            "204": [ // Кабинет
+                { // Понедельник ...
+                    "матем" { // Какой урок проходит
+                        "8в" [ // класс для которого проходит
+                            3 // Номер урока в расписании
+                        ]
+                    }
+                },
+                {}, // Вторник ...
+                {}, // Среда ...
+                // ...
+            ]
+        }
+        ```
         """
         if not self._c_index:
-            self._c_index = load_file(self.index_path)[1]
+            self._c_index: ClassIndex = load_file(self.index_path)[1]
         return self._c_index
 
     @property
@@ -445,38 +409,34 @@ class Schedule:
 
         Пример одной из записей:
 
-        .. code-block:: json
-
-            {
-                "start_time": 1703479133.752195,
-                "end_time": 1703486843.468643,
-                "updates": [ // Дни недели
-                    {
-                        "5а": [ // Классы ...
-                            [ // Изменение в расписании
-                                "тфк:110", // Старый урок:класс
-                                "None:110" // Новый урок:класс
-                            ],
-                            null, // Если уроки не изменились
-                            // И так далее...
+        ```json
+        {
+            "start_time": 1703479133.752195,
+            "end_time": 1703486843.468643,
+            "updates": [ // Дни недели
+                {
+                    "5а": [ // Классы ...
+                        [ // Изменение в расписании
+                            "тфк:110", // Старый урок:класс
+                            "None:110" // Новый урок:класс
                         ],
-                    },
-                    {}, // Вторник ...
-                    {}, // Среда ...
-                    // ...
-                ]
-            }
-
-        :return: Полный список изменений в расписании.
-        :rtype: list[UpdateData] | None
+                        null, // Если уроки не изменились
+                        // И так далее...
+                    ],
+                },
+                {}, // Вторник ...
+                {}, // Среда ...
+                // ...
+            ]
+        }
+        ```
         """
         if self._updates is None:
-            file_data = load_file(self.updates_path)
+            file_data: list[UpdateData] = load_file(self.updates_path)
             if not isinstance(file_data, list):
                 raise ValueError("Incorrect updates list")
             self._updates = file_data
         return self._updates
-
 
     # Получаем расписание
     # ===================
@@ -492,25 +452,17 @@ class Schedule:
             logger.exception(e)
             raise ValueError("Failed to load schedule") from e
 
-
-    def _update_diff_file(
-        self,
-        a: ScheduleDict,
-        b: ScheduleDict
-     ) -> None:
+    def _update_diff_file(self, a: ScheduleDict, b: ScheduleDict) -> None:
         """Обновляет файл списка изменений расписания.
 
         Производит полное сравнение старого и нового расписания.
         После сравнения создаёт новую запись о найденных изменениях и
         добавляет её в файл списка изменений.
-
-        :param a: Исходное полное расписание.
-        :type a: ScheduleDict
-        :param b: Новое полное расписание уроков.
-        :type b: ScheduleDict
         """
         logger.info("Update diff file ...")
-        sc_changes = deque(load_file(self.updates_path, []), 30)
+        sc_changes: deque[UpdateData] = deque(
+            load_file(self.updates_path, []), 30
+        )
         updates = get_sc_updates(a.get("lessons", {}), b["lessons"])
         if sum(map(len, updates)):
             if len(sc_changes):
@@ -518,24 +470,25 @@ class Schedule:
             else:
                 start_time = b["last_parse"]
 
-            sc_changes.append({
-                "start_time": start_time,
-                "end_time": b["last_parse"],
-                "updates": updates}
+            sc_changes.append(
+                {
+                    "start_time": start_time,
+                    "end_time": b["last_parse"],
+                    "updates": updates,
+                }
             )
             save_file(self.updates_path, list(sc_changes))
 
     def _update_index_files(self, lessons: dict[str, list[list[str]]]) -> None:
         logger.info("Update index files...")
-        save_file(self.index_path,
-            [get_index(lessons), get_index(lessons, False)]
+        save_file(
+            self.index_path, [get_index(lessons), get_index(lessons, False)]
         )
 
-    def _save_schedule(self, t: ScheduleDict, overwrite: bool=False) -> None:
+    def _save_schedule(self, t: ScheduleDict, overwrite: bool = False) -> None:
         if overwrite or self._schedule is None:
             self._schedule = t
             save_file(self.sc_path, dict(t))
-
 
     def _process_update(self, t: ScheduleDict, timestamp: int) -> None:
         """Полное обновление расписания, индексов, файла обновлений.
@@ -548,11 +501,6 @@ class Schedule:
         Если расписание изменилось, собираем новое расписание из
         csv файла, получаем файл индексов и обновляем список
         изменений.
-
-        :param t: Текущее расписание уроков.
-        :type t: ScheduleDict
-        :param timestamp: Текущее время в UNIX формате
-        :type timestamp: int
         """
         logger.info("Start schedule update ...")
 
@@ -560,14 +508,14 @@ class Schedule:
         file_hash = self._load_schedule(url)
         if file_hash is None:
             # Откладываем обновление на минуту
-            self.next_parse = timestamp+60
+            self.next_parse = timestamp + 60
             self._save_schedule(t)
             return
 
         # Сравниваем хеши расписаний
         if t.get("hash", "") == file_hash:
             logger.info("Schedule is up to date")
-            self.next_parse = timestamp+1800
+            self.next_parse = timestamp + 1800
             self._save_schedule(t)
             return
 
@@ -578,7 +526,7 @@ class Schedule:
             logger.exception(e)
 
             # Откладываем обновление на минуту
-            self.next_parse = timestamp+60
+            self.next_parse = timestamp + 60
             self._save_schedule(t)
             return
 
@@ -589,15 +537,14 @@ class Schedule:
             "last_parse": timestamp,
         }
 
-        self.next_parse = timestamp+1800
+        self.next_parse = timestamp + 1800
         self._update_diff_file(t, new_t)
         self._save_schedule(new_t, overwrite=True)
-
 
     # Получение данных из расписания
     # ==============================
 
-    def get_lessons(self, cl: str | None=None) -> list[list[str]]:
+    def get_lessons(self, cl: str | None = None) -> list[list[str]]:
         """Получает полное расписание уроков для указанного класса.
 
         .. deprecated:: 5.8 Данный метод может быть переработан
@@ -611,17 +558,13 @@ class Schedule:
         расписание на неделю.
         Обратите внимание, что даже при неправильном классе результат
         вернётся корректный.
-
-        :param cl: Для какого класса получить расписание.
-        :type cl: Optional[str]
-        :return: расписание уроков на неделю для класса.
-        :rtype: list[list[str]]
         """
         if cl is None:
             raise ValueError("User class let is None")
         return self.lessons.get(cl, [[], [], [], [], [], []])
 
-    def get_updates(self, intent: Intent, offset: int | None=None
+    def get_updates(
+        self, intent: Intent, offset: int | None = None
     ) -> list[UpdateData]:
         """Получает список изменений расписания.
 
@@ -640,13 +583,6 @@ class Schedule:
 
         Ежели ваша цель - просто получить список всех изменений в
         расписании, то воспользуйтесь аттрибутом ``updates``.
-
-        :param intent: Намерения для уточнения поиска изменений.
-        :type intent: Intent
-        :param offset: С какой временной метки обновления начать.
-        :type offset: int | None
-        :return: Список обновлений расписания.
-        :rtype: list[UpdateData]
         """
         updates: list[UpdateData] = []
 
@@ -676,17 +612,18 @@ class Schedule:
 
             # Если в итоге какие-то обновления есть - добавляем
             if sum(map(len, new_update)):
-                updates.append({
-                    "start_time": update["start_time"],
-                    "end_time": update["end_time"],
-                    "updates": new_update
-                })
+                updates.append(
+                    {
+                        "start_time": update["start_time"],
+                        "end_time": update["end_time"],
+                        "updates": new_update,
+                    }
+                )
 
         return updates
 
     def search(
-        self, target: str, intent: Intent,
-        cabinets: bool | None=False
+        self, target: str, intent: Intent, cabinets: bool | None = False
     ) -> SearchRes:
         """Производит поиск в расписании по индексу расписания.
 
@@ -697,49 +634,38 @@ class Schedule:
 
         Поиск немного изменяется в зависимости от режима.
 
-        .. table::
-
-            +----------+---------+---------+
-            | cabinets | obj     | another |
-            +==========+=========+=========+
-            | false    | lesson  | cabinet |
-            +----------+---------+---------+
-            | true     | cabinet | lesson  |
-            +----------+---------+---------+
+        +----------+---------+---------+
+        | cabinets | obj     | another |
+        +==========+=========+=========+
+        | false    | lesson  | cabinet |
+        +----------+---------+---------+
+        | true     | cabinet | lesson  |
+        +----------+---------+---------+
 
         Результат поиска возвращает подобный расписанию формат.
 
-        .. code-block:: json
-
-            [ // Дни
-                [ // Уроки (по умолчанию 8)
-                    [ // Найденные результаты
-                        "{cl}",
-                        "{obj}",
-                        "{cl}:{obj}",
-                        "..."
-                    ],
-                    [], // Если список пустой - ничего не найдено
-                    // Дальше все прочие уроки.
+        ```json
+        [ // Дни
+            [ // Уроки (по умолчанию 8)
+                [ // Найденные результаты
+                    "{cl}",
+                    "{obj}",
+                    "{cl}:{obj}",
+                    "..."
                 ],
-                [], // Вторник ...
-                // Среда ...
-            ]
+                [], // Если список пустой - ничего не найдено
+                // Дальше все прочие уроки.
+            ],
+            [], // Вторник ...
+            // Среда ...
+        ]
+        ```
 
         Формат строки результата зависит от некоторых условий:
 
         - ``{cl}`` - Если в намерении 1 кабинет и указаны уроки.
         - ``{obj}`` - Если в намерении 1 класс (опускаем описание класса).
         - ``{cl}:{obj}`` - Для всех прочих случаев.
-
-        :param target: Цель для поиска, урок или кабинет.
-        :type target: str
-        :param intent: Намерения для уточнения результатов поиска.
-        :type intent: Intent
-        :param cabinets: Что ищем, урок или кабинет. Обычно урок.
-        :type cabinets: bool
-        :return: Результаты поиска в расписании
-        :rtype: SearchRes
         """
         res: SearchRes = [[[] for x in range(8)] for x in range(6)]
 
@@ -772,11 +698,12 @@ class Schedule:
     # Работа с намерениями
     # ====================
 
-    def construct_intent(self,
+    def construct_intent(
+        self,
         cl: Iterable[str] | str = (),
         days: Iterable[int] | int = (),
         lessons: Iterable[str] | str = (),
-        cabinets: Iterable[str] | str = ()
+        cabinets: Iterable[str] | str = (),
     ) -> Intent:
         """Создаёт новое намерение для текущего расписания.
 
@@ -787,17 +714,6 @@ class Schedule:
             # Можно использовать любой вариант
             i = Intent.construct(sc, ...)
             i = sc.construct_intent(...)
-
-        :param cl: Какие классы расписания добавить в намерение
-        :type cl: Iterable[str] | str
-        :param days: Какие дни добавить в намерение (0-5)
-        :type days: Iterable[int] | int
-        :param lessons: Какие уроки добавить в намерение (из l_index).
-        :type lessons: Iterable[str] | str
-        :param cabinets: Какие кабинеты добавить в намерение (c_index).
-        :type cabinets: Iterable[str] | str
-        :return: Проверенное намерение из переданных аргументов
-        :rtype: Intent
         """
         return Intent.construct(self, cl, days, lessons, cabinets)
 
@@ -811,10 +727,5 @@ class Schedule:
             # Можно использовать любой вариант
             i = Intent.parse(sc, args)
             i = sc.parse_intent(args)
-
-        :param args: Аргументы дя сборки намерений.
-        :type args: Iterable[str]
-        :return: Готовое намерение из строковых аргументов.
-        :rtype: Intent
         """
         return Intent.parse(self, args)

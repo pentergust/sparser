@@ -12,7 +12,10 @@ import requests
 import tomllib
 
 # Откуда получать сведения об обновлениях в репозитории
-UPDATES_URL = "https://codeberg.org/Salormoon/sparser/raw/branch/main/pyproject.toml"
+UPDATES_URL = (
+    "https://codeberg.org/Salormoon/sparser/raw/branch/main/pyproject.toml"
+)
+
 
 class VersionInfo(NamedTuple):
     """Описание версии продукта.
@@ -45,8 +48,7 @@ class VersionInfo(NamedTuple):
         """
         if isinstance(other, VersionInfo):
             return (
-                self.build < other.build
-                or self.api_version < other.api_version
+                self.build < other.build or self.api_version < other.api_version
             )
         elif isinstance(other, int):
             return self.build < other
@@ -117,8 +119,7 @@ class VersionInfo(NamedTuple):
         """
         if isinstance(other, VersionInfo):
             return (
-                self.build > other.build
-                or self.api_version > other.api_version
+                self.build > other.build or self.api_version > other.api_version
             )
         elif isinstance(other, int):
             return self.build > other
@@ -147,15 +148,12 @@ class VersionInfo(NamedTuple):
 # Текущая версия проекта
 # ======================
 
-PROJECT_VERSION = VersionInfo(
-    version="v6.4.3",
-    build=252,
-    api_version=6
-)
+PROJECT_VERSION = VersionInfo(version="v6.4.3", build=252, api_version=6)
 
 
 # Вспомогательные функции
 # =======================
+
 
 class VersionOrd(IntEnum):
     """Статус сравнения нескольких версий.
@@ -166,6 +164,7 @@ class VersionOrd(IntEnum):
     LT = 0
     EQ = 1
     GT = 2
+
 
 class VersionStatus(NamedTuple):
     """Сведения о сравнении нескольких версий."""
@@ -188,9 +187,9 @@ def check_updates(cur_ver: VersionInfo, dest_url: str) -> VersionStatus:
     if git_ver is None:
         raise KeyError("File has no SPVersion metadata")
     ver = VersionInfo(
-        version=git_ver['version'],
-        build=git_ver['build'],
-        api_version=git_ver["api_version"]
+        version=git_ver["version"],
+        build=git_ver["build"],
+        api_version=git_ver["api_version"],
     )
 
     # Сравниваем версии
@@ -199,14 +198,14 @@ def check_updates(cur_ver: VersionInfo, dest_url: str) -> VersionStatus:
             status=VersionOrd.LT,
             build_diff=ver.build - cur_ver.build,
             api_diff=ver.api_version - cur_ver.api_version,
-            git_ver=ver
+            git_ver=ver,
         )
     elif ver < cur_ver:
         return VersionStatus(
             status=VersionOrd.GT,
-            build_diff=cur_ver.build - ver.build ,
+            build_diff=cur_ver.build - ver.build,
             api_diff=cur_ver.api_version - ver.api_version,
-            git_ver=ver
+            git_ver=ver,
         )
 
     else:
