@@ -1,9 +1,0 @@
-# Sparser
-loguru
-requests
-ujson
-
-python-dotenv
-
-# Telegram
-aiogram
