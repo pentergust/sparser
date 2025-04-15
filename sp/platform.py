@@ -14,11 +14,12 @@ from pathlib import Path
 from loguru import logger
 
 from sp.counter import CounterTarget
+from sp.db import User
 from sp.enums import WeekDay
 from sp.exceptions import ViewCompatibleError, ViewSelectedError
 from sp.intents import Intent
 from sp.messages import SPMessages
-from sp.users.storage import FileUserStorage, User
+from sp.parser import UpdateData
 from sp.version import VersionInfo
 
 # Главный класс платформы
@@ -49,8 +50,6 @@ class Platform:
 
         self._file_path = Path(f"sp_data/users/{pid}.json")
         self._db_path = Path(f"sp_data/users/{pid}.db")
-        #: Экземпляр хранилища пользователей платформы
-        self.users = FileUserStorage(self._file_path)
         self._view: SPMessages | None = None
 
     # Работа с классом просмотра
@@ -103,19 +102,6 @@ class Platform:
         self._check_api_version(view.version.api_version)
         self._view = view
 
-    # Получение хранилищ пользователей
-    # ================================
-
-    def get_user(self, uid: str) -> User:
-        """Получает пользователя из хранилища пользователей.
-
-        Позволяет быстро получить класс для управления пользователем
-        внутреннего хранилища платформы.
-        Пользователь платформы достаточно часто используется в методах
-        платформы.
-        """
-        return User(self.users, uid)
-
     # Сокращения для методов класса представления
     # ===========================================
 
@@ -123,9 +109,9 @@ class Platform:
         self, user: User, intent: Intent | None = None
     ) -> Intent:
         if intent is None:
-            if user.data.cl is None:
+            if user.cl == "":
                 raise ValueError("User class is None")
-            return self.view.sc.construct_intent(cl=user.data.cl)
+            return self.view.sc.construct_intent(cl=user.cl)
         return intent
 
     def lessons(self, user: User, intent: Intent | None = None) -> str:
@@ -191,11 +177,11 @@ class Platform:
         if tomorrow > WeekDay.SATURDAY:
             tomorrow = 0
 
-        if user.data.cl is None:
+        if user.cl == "":
             return "Сегодня"
 
         current_day = self.view.get_current_day(
-            intent=self.view.sc.construct_intent(cl=user.data.cl, days=today)
+            intent=self.view.sc.construct_intent(cl=user.cl, days=today)
         )
         return self._get_day_str(today, current_day)
 
@@ -246,28 +232,26 @@ class Platform:
         """
         return self.view.send_counter(groups, target, days_counter)
 
-    def updates(
-        self, update: dict[str, int | list[dict]], hide_cl: str | None = None
-    ) -> str:
+    def updates(self, update: UpdateData, hide_cl: str | None = None) -> str:
         """Собирает сообщение со списком изменений.
 
         Сокращение для: ``SPMessages.send_update()``.
         """
         return self.view.send_update(update, hide_cl)
 
-    def check_updates(self, user: User) -> str | None:
+    async def check_updates(self, user: User) -> str | None:
         """Проверяет, нет ли у пользователей обновления расписания.
 
         Сокращение для: ``SPMessages.check_update()``.
         Отправляет сжатую запись об изменениях в расписании, или None,
         если новых изменений нет.
         """
-        return self.view.check_updates(user)
+        return await self.view.check_updates(user)
 
-    def status(self, user: User) -> str:
+    async def status(self, user: User) -> str:
         """Отправляет статус работы платформы.
 
         Сокращение для: ``SPMessages.send_status()``.
         """
-        count_result = self.users.count_users(self.view.sc)
+        count_result = await User.get_stats(self.view.sc)
         return self.view.send_status(count_result, user, self.version)

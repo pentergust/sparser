@@ -389,8 +389,8 @@ class Schedule:
         }
         ```
         """
-        if not self._c_index:
-            self._c_index: ClassIndex = load_file(self.index_path)[1]
+        if self._c_index is None:
+            self._c_index = load_file(self.index_path)[1]
         return self._c_index
 
     @property

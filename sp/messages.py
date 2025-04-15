@@ -15,14 +15,13 @@ from typing import NamedTuple
 
 from loguru import logger
 
+from sp.counter import CounterTarget, reverse_counter
+from sp.db import CountedUsers, User
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
-
-from .counter import CounterTarget, reverse_counter
-from .intents import Intent
-from .parser import Schedule
-from .users.storage import CountedUsers, User
-from .utils import get_str_timedelta, plural_form
-from .version import (
+from sp.intents import Intent
+from sp.parser import Schedule, UpdateData
+from sp.utils import get_str_timedelta, plural_form
+from sp.version import (
     PROJECT_VERSION,
     UPDATES_URL,
     VersionInfo,
@@ -170,7 +169,7 @@ def _send_cl_updates(cl_updates: list[list[str] | None]) -> str:
 
 
 def _get_update_header(
-    update: dict[str, int | list[dict]], extend_info: bool | None = True
+    update: UpdateData, extend_info: bool | None = True
 ) -> str:
     """Возвращает заголовок списка изменений.
 
@@ -385,6 +384,8 @@ class SPMessages:
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
+    # FIXME: Надо что-то попроще сделать с этой функцией.
+    # FIXME: Проводим подсчёты пользователей прямо внутри.
     def send_status(
         self,
         storage_users: CountedUsers,
@@ -430,7 +431,7 @@ class SPMessages:
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"
-            f"\n🌳 {user.data.cl} класс"
+            f"\n🌳 {user.cl} класс"
             f"\n🌳 ~{len(self.sc.l_index)} пр. ~{len(self.sc.c_index)} каб."
             f"\n🌳 {storage_users.total} участников ({storage_users.notify}🔔)"
             f"\n🌳 из них {storage_users.active} активны ({active_pr}%)"
@@ -535,7 +536,7 @@ class SPMessages:
         return send_search_res(intent, self.sc.search(target, intent, cabinets))
 
     def send_update(
-        self, update: dict[str, int | list[dict]], hide_cl: str | None = None
+        self, update: UpdateData, hide_cl: str | None = None
     ) -> str:
         """Собирает сообщение со списком изменений в расписании.
 
@@ -582,19 +583,19 @@ class SPMessages:
 
         return message
 
-    def check_updates(self, user: User) -> str | None:
+    async def check_updates(self, user: User) -> str | None:
         """Проверяет обновления пользователя в расписании.
 
         Если изменения есть, добавляет заголовок и отображает
         сжатую запись со всеми изменениями в расписании.
         """
-        update = user.get_updates(self.sc)
+        update = await user.get_updates(self.sc)
         if update is None:
             return None
 
         return (
             "🎉 У вас изменилось расписание!\n"
-            f"{self.send_update(update, user.data.cl)}"
+            f"{self.send_update(update, user.cl)}"
         )
 
     def send_counter(  # noqa: PLR0912

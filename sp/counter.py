@@ -326,8 +326,8 @@ class CurrentCounter:
                         if intent.cl and cl not in intent.cl:
                             continue
 
-                        res[k]["total"] += len(i)
-                        res[k]["cl"][cl] += len(i)
-                        res[k]["days"][str(day)] += len(i)
-                        res[k]["main"][another] += len(i)
+                        res[k]["total"] += i
+                        res[k]["cl"][cl] += i
+                        res[k]["days"][str(day)] += i
+                        res[k]["main"][another] += i
         return _group_counter_res(res)

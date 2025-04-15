@@ -131,7 +131,7 @@ class Intent(NamedTuple):
         - "9в:1,2::" -> `Intent(cl=["9в"], days=[1, 2])`
         """
         res: list[set[str]] = []
-        days = set[int] = set()
+        days: set[int] = set()
         for i, part in enumerate(s.split(":")):
             # Если это пустая строка, добавляем пустое множество
             if part == "":

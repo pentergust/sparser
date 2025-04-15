@@ -76,10 +76,10 @@ def load_file(path: Path, data: _T | None = None) -> _T:
             return data
         else:
             logger.error("File not found {}", path)
-            return []
+            return data
     except Exception as e:
         logger.exception(e)
-        return []
+        return data
 
 
 # Прочие утилиты
