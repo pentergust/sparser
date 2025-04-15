@@ -13,15 +13,15 @@ from aiogram.types import Message
 from loguru import logger
 
 from sp.db import User
-from sp.platform import Platform
+from sp.view.messages import MessagesView
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
 
 router = Router(name=__name__)
 
 
-def process_request(
-    user: User, platform: Platform, request_text: str
+async def process_request(
+    user: User, view: MessagesView, request_text: str
 ) -> str | None:
     """Обрабатывает текстовый запрос к расписанию.
 
@@ -29,21 +29,21 @@ def process_request(
     Производит поиск по урокам/кабинетам
     или получает расписание, в зависимости от намерений.
     """
-    intent = platform.view.sc.parse_intent(request_text.split())
+    intent = view.sc.parse_intent(request_text.split())
 
     # Чтобы не превращать бота в машину для спама
     # Будет использоваться последний урок/кабинет из фильтра
     if len(intent.cabinets):
-        text = platform.search(list(intent.cabinets)[-1], intent, True)
+        text = view.search(list(intent.cabinets)[-1], intent, True)
 
     elif len(intent.lessons):
-        text = platform.search(list(intent.lessons)[-1], intent, False)
+        text = view.search(list(intent.lessons)[-1], intent, False)
 
     elif intent.cl or intent.days:
         if intent.days:
-            text = platform.lessons(user, intent)
+            text = view.get_lessons(await user.intent_or(intent))
         else:
-            text = platform.today_lessons(user, intent)
+            text = view.today_lessons(await user.intent_or(intent))
     else:
         text = None
 
@@ -56,7 +56,7 @@ def process_request(
 
 @router.message(Command("sc"))
 async def sc_handler(
-    message: Message, command: CommandObject, user: User, platform: Platform
+    message: Message, command: CommandObject, user: User, view: MessagesView
 ) -> None:
     """Отправляет расписание уроков пользователю.
 
@@ -64,7 +64,7 @@ async def sc_handler(
     Отправляет предупреждение, если у пользователя не указан класс.
     """
     if command.args is not None:
-        answer = process_request(user, platform, command.args)
+        answer = await process_request(user, view, command.args)
         if answer is not None:
             await message.answer(text=answer)
         else:
@@ -72,7 +72,7 @@ async def sc_handler(
 
     elif user.cl != "":
         await message.answer(
-            text=platform.today_lessons(user),
+            text=view.today_lessons(await user.get_intent()),
             reply_markup=get_week_keyboard(user.cl),
         )
     else:
@@ -83,7 +83,7 @@ async def sc_handler(
 
 @router.message()
 async def main_handler(
-    message: Message, user: User, platform: Platform
+    message: Message, user: User, view: MessagesView
 ) -> None:
     """Главный обработчик сообщений бота.
 
@@ -98,7 +98,7 @@ async def main_handler(
 
     # Если у пользователя установлен класс -> создаём запрос
     if user.set_class:
-        answer = process_request(user, platform, text)
+        answer = await process_request(user, view, text)
 
         if answer is not None:
             await message.answer(text=answer)
@@ -106,10 +106,10 @@ async def main_handler(
             await message.answer(text="👀 Кажется это пустой запрос...")
 
     # Устанавливаем класс пользователя, если он ввёл класс
-    elif text in platform.view.sc.lessons:
+    elif text in view.sc.lessons:
         logger.info("Set class {}", text)
-        await user.set_cl(text, platform.view.sc)
-        relative_day = platform.relative_day(user)
+        await user.set_cl(text, view.sc)
+        relative_day = view.relative_day(user)
         await message.answer(
             text=get_home_message(user.cl),
             reply_markup=get_main_keyboard(user.cl, relative_day),
@@ -118,5 +118,5 @@ async def main_handler(
     # Отправляем список классов, в личные сообщения.
     elif message.chat.type == "private":
         text = "👀 Такого класса не существует."
-        text += f"\n💡 Доступные классы: {', '.join(platform.view.sc.lessons)}"
+        text += f"\n💡 Доступные классы: {', '.join(view.sc.lessons)}"
         await message.answer(text=text)

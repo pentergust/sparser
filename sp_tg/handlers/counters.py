@@ -17,7 +17,7 @@ from aiogram.types import (
 from sp.counter import CounterTarget, CurrentCounter
 from sp.db import User, UserIntent
 from sp.intents import Intent
-from sp.platform import Platform
+from sp.view.messages import MessagesView
 from sp_tg.messages import get_intent_status
 
 router = Router(name=__name__)
@@ -165,7 +165,7 @@ async def get_counter_keyboard(
 
 
 def get_counter_message(
-    platform: Platform,
+    view: MessagesView,
     user: User,
     counter: str,
     target: CounterTarget | None = None,
@@ -189,16 +189,14 @@ def get_counter_message(
     else:
         intent = Intent()
 
-    cur_counter = CurrentCounter(platform.view.sc, intent)
+    cur_counter = CurrentCounter(view.sc, intent)
 
     # Счётчик по классам
     if counter == "cl":
         # Дополнительно передаём намерение, если подгруппа по урокам
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
-            cur_counter.intent = intent.reconstruct(
-                platform.view.sc, cl=user.cl
-            )
+            cur_counter.intent = intent.reconstruct(view.sc, cl=user.cl)
         groups = cur_counter.cl()
 
     # Счётчик по дням
@@ -211,7 +209,7 @@ def get_counter_message(
     else:
         groups = cur_counter.index(cabinets_mode=True)
 
-    message += platform.counter(groups=groups, target=target)
+    message += view.counter(groups=groups, target=target)
     return message
 
 
@@ -221,11 +219,11 @@ def get_counter_message(
 
 @router.message(Command("counter"))
 async def counter_handler(
-    message: Message, user: User, platform: Platform
+    message: Message, user: User, view: MessagesView
 ) -> None:
     """Переводит в меню просмотра счётчиков расписания."""
     await message.answer(
-        text=get_counter_message(platform, user, "lessons", CounterTarget.MAIN),
+        text=get_counter_message(view, user, "lessons", CounterTarget.MAIN),
         reply_markup=await get_counter_keyboard(
             user=user, counter="lessons", target=CounterTarget.MAIN
         ),
@@ -237,7 +235,7 @@ async def counter_callback(
     query: CallbackQuery,
     callback_data: CounterCallback,
     user: User,
-    platform: Platform,
+    view: MessagesView,
 ) -> None:
     """Клавиатура для переключения счётчиков расписания."""
     counter = callback_data.counter
@@ -266,7 +264,7 @@ async def counter_callback(
 
     # Отправляем сообщение пользователю
     await query.message.edit_text(
-        text=get_counter_message(platform, user, counter, target, intent),
+        text=get_counter_message(view, user, counter, target, intent),
         reply_markup=await get_counter_keyboard(
             user=user,
             counter=counter,

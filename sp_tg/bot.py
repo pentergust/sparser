@@ -22,7 +22,6 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from os import getenv
 from pathlib import Path
-from sys import exit
 from typing import Any
 
 from aiogram import Bot, Dispatcher, F
@@ -34,8 +33,6 @@ from loguru import logger
 from tortoise import Tortoise
 
 from sp.db import User
-from sp.exceptions import ViewCompatibleError
-from sp.platform import Platform
 from sp.utils import get_str_timedelta
 from sp.version import VersionInfo
 from sp.view.messages import MessagesView
@@ -59,30 +56,14 @@ _ADMIN_ID = getenv("ADMIN_ID")
 _DB_URL = getenv("DB_URL")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.6"
+_BOT_VERSION = VersionInfo("v2.7", 0, 7)
 _ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
-
-
-# Настройки платформы
-# ===================
-
-platform = Platform(
-    pid=1,  # RESERVED FOR TELEGRAM
-    name="Telegram",
-    version=VersionInfo(_BOT_VERSION, 0, 6),
-)
-
-try:
-    platform.view = MessagesView()
-except ViewCompatibleError as e:
-    logger.exception(e)
-    exit()
 
 
 # Настраиваем диспетчер бота
 # ==========================
 
-dp = Dispatcher(platform=platform, sp=platform.view)
+dp = Dispatcher(view=MessagesView())
 
 
 # Добавление Middleware
@@ -154,7 +135,7 @@ def get_update_timetag(path: Path) -> int:
 
 
 async def get_status_message(
-    platform: Platform, timetag_path: Path, user: User
+    view: MessagesView, timetag_path: Path, user: User
 ) -> str:
     """Отправляет информационно сообщение о работа бота и парсера.
 
@@ -165,7 +146,7 @@ async def get_status_message(
     Также содержит метку последнего автоматического обновления.
     Если давно не было авто обновлений - выводит предупреждение.
     """
-    message = await platform.status(user)
+    message = await view.get_status(user, _BOT_VERSION)
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @micronuri"
 
     timetag = get_update_timetag(timetag_path)
@@ -184,18 +165,18 @@ async def get_status_message(
 
 @dp.message(Command("info"))
 async def info_handler(
-    message: Message, platform: Platform, user: User
+    message: Message, view: MessagesView, user: User
 ) -> None:
     """Статус работы бота и платформы."""
     await message.answer(
-        text=await get_status_message(platform, _TIMETAG_PATH, user),
+        text=await get_status_message(view, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.cl),
     )
 
 
 @dp.message(Command("help", "start"))
 async def start_handler(
-    message: Message, user: User, platform: Platform
+    message: Message, user: User, view: MessagesView
 ) -> None:
     """Отправляет домашнее сообщение и главную клавиатуру.
 
@@ -206,10 +187,9 @@ async def start_handler(
         return
 
     await message.delete()
-    relative_day = platform.relative_day(user)
     await message.answer(
         text=get_home_message(user.cl),
-        reply_markup=get_main_keyboard(user.cl, relative_day),
+        reply_markup=get_main_keyboard(user.cl, view.relative_day(user)),
     )
 
 
@@ -219,7 +199,7 @@ async def start_handler(
 
 @dp.callback_query(F.data == "delete_msg")
 async def delete_msg_callback(
-    query: CallbackQuery, user: User, platform: Platform
+    query: CallbackQuery, user: User, view: MessagesView
 ) -> None:
     """Удаляет сообщение пользователя.
 
@@ -228,35 +208,33 @@ async def delete_msg_callback(
     try:
         await query.message.delete()
     except TelegramBadRequest:
-        relative_day = platform.relative_day(user)
         await query.message.edit_text(
             text=get_home_message(user.cl),
-            reply_markup=get_main_keyboard(user.cl, relative_day),
+            reply_markup=get_main_keyboard(user.cl, view.relative_day(user)),
         )
 
 
 @dp.callback_query(F.data == "home")
 async def home_callback(
-    query: CallbackQuery, user: User, platform: Platform
+    query: CallbackQuery, user: User, view: MessagesView
 ) -> None:
     """Возвращает в главный раздел."""
-    relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=get_home_message(user.cl),
-        reply_markup=get_main_keyboard(user.cl, relative_day),
+        reply_markup=get_main_keyboard(user.cl, view.relative_day(user)),
     )
 
 
 @dp.callback_query(F.data == "other")
 async def other_callback(
-    query: CallbackQuery, platform: Platform, user: User
+    query: CallbackQuery, view: MessagesView, user: User
 ) -> None:
     """Сообщение о статусе бота и платформы.
 
     Также предоставляет клавиатуру с менее используемыми разделами.
     """
     await query.message.edit_text(
-        text=await get_status_message(platform, _TIMETAG_PATH, user),
+        text=await get_status_message(view, _TIMETAG_PATH, user),
         reply_markup=get_other_keyboard(user.cl),
     )
 

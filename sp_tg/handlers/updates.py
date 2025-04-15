@@ -19,7 +19,7 @@ from aiogram.types import (
 from sp.db import User
 from sp.intents import Intent
 from sp.parser import UpdateData
-from sp.platform import Platform
+from sp.view.messages import MessagesView
 from sp_tg.messages import get_intent_status
 
 router = Router(name=__name__)
@@ -116,7 +116,7 @@ async def get_updates_keyboard(
 
 
 def get_updates_message(
-    platform: Platform,
+    view: MessagesView,
     update: UpdateData | None = None,
     cl: str | None = None,
     intent: Intent | None = None,
@@ -134,7 +134,7 @@ def get_updates_message(
         message += f"⚙️ {get_intent_status(intent)}\n"
 
     if update is not None:
-        update_text = platform.updates(update, hide_cl=cl)
+        update_text = view.get_update(update, hide_cl=cl)
 
         if len(update_text) > _MAX_UPDATE_MESSAGE_LENGTH:
             message += "\n📚 Слишком много изменений."
@@ -152,20 +152,18 @@ def get_updates_message(
 
 @router.message(Command("updates"))
 async def updates_handler(
-    message: Message, platform: Platform, user: User
+    message: Message, view: MessagesView, user: User
 ) -> None:
     """Отправляет последнюю страницу списка изменений в расписании.
 
     А также вернёт клавиатуру для управления просмотром
     списка изменений.
     """
-    updates = platform.view.sc.updates
+    updates = view.sc.updates
     if updates is None:
         raise ValueError("Schedule updates is None")
     await message.answer(
-        text=get_updates_message(
-            platform, updates[-1] if len(updates) else None
-        ),
+        text=get_updates_message(view, updates[-1] if len(updates) else None),
         reply_markup=await get_updates_keyboard(
             max(len(updates) - 1, 0), updates, user
         ),
@@ -179,7 +177,7 @@ async def updates_handler(
 @router.callback_query(UpdatesCallback.filter())
 async def updates_call(
     query: CallbackQuery,
-    platform: Platform,
+    view: MessagesView,
     callback_data: UpdatesCallback,
     user: User,
 ) -> None:
@@ -208,16 +206,16 @@ async def updates_call(
     # Заменяем намерения на просмотр для класса по умолчанию
     if cl is not None and user.cl is not None:
         if intent is not None:
-            intent = intent.reconstruct(platform.view.sc, cl=cl)
+            intent = intent.reconstruct(view.sc, cl=cl)
         else:
-            intent = platform.view.sc.construct_intent(cl=cl)
+            intent = view.sc.construct_intent(cl=cl)
 
     # Если намерение не указано. получаем полный список изменений
     if intent is None:
-        updates = platform.view.sc.updates
+        updates = view.sc.updates
     # Если намерение указан, фильтруем результаты поиска
     else:
-        updates = platform.view.sc.get_updates(intent)
+        updates = view.sc.get_updates(intent)
     i = max(min(int(callback_data.page), len(updates) - 1), 0)
 
     # Если в результате есть записи об изменениях
@@ -240,7 +238,7 @@ async def updates_call(
 
     # Отправляем результат пользователю
     await query.message.edit_text(
-        text=get_updates_message(platform, update, cl, intent),
+        text=get_updates_message(view, update, cl, intent),
         reply_markup=await get_updates_keyboard(
             i, updates, user, callback_data.intent
         ),

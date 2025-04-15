@@ -16,7 +16,6 @@ from aiogram.types import (
 )
 
 from sp.db import User
-from sp.platform import Platform
 from sp.view.messages import MessagesView
 from sp_tg.filters import IsAdmin
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
@@ -67,7 +66,7 @@ async def set_class_command(
     sp: MessagesView,
     user: User,
     command: CommandObject,
-    platform: Platform,
+    view: MessagesView,
 ) -> None:
     """Изменяет класс или удаляет данные о пользователе.
 
@@ -80,10 +79,11 @@ async def set_class_command(
     # Если указали класс в команде
     if command.args is not None:
         if await user.set_cl(command.args, sp.sc):
-            relative_day = platform.relative_day(user)
             await message.answer(
                 text=get_home_message(command.args),
-                reply_markup=get_main_keyboard(command.args, relative_day),
+                reply_markup=get_main_keyboard(
+                    command.args, view.relative_day(user)
+                ),
             )
         # Если такого класса не существует
         else:
@@ -118,7 +118,7 @@ async def pass_handler(message: Message, sp: MessagesView, user: User) -> None:
 
 
 @router.callback_query(F.data == "cl_features")
-async def cl_features_callback(query: CallbackData) -> None:
+async def cl_features_callback(query: CallbackQuery) -> None:
     """Отправляет сообщения с преимуществами указанного класса."""
     await query.message.edit_text(
         text=CL_FEATURES_MESSAGE, reply_markup=BACK_SET_CL_MARKUP
@@ -140,7 +140,7 @@ async def set_class_callback(query: CallbackQuery, user: User) -> None:
 
 @router.callback_query(F.data == "pass", IsAdmin())
 async def pass_class_callback(
-    query: CallbackData, sp: MessagesView, user: User
+    query: CallbackQuery, sp: MessagesView, user: User
 ) -> None:
     """Отвязывает пользователя от класса.
 

@@ -10,7 +10,7 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, Message
 
 from sp.db import User
-from sp.platform import Platform
+from sp.view.messages import MessagesView
 from sp_tg.keyboards import (
     get_sc_keyboard,
     get_select_day_keyboard,
@@ -51,18 +51,16 @@ class SelectDayCallback(CallbackData, prefix="select_day"):
 
 @router.message(Command("week"))
 async def week_sc_command(
-    message: Message, user: User, platform: Platform
+    message: Message, user: User, view: MessagesView
 ) -> None:
     """Расписание уроков на неделю."""
-    relative_day = platform.relative_day(user)
     await message.answer(
-        text=platform.lessons(
-            user,
-            platform.view.sc.construct_intent(
-                days=[0, 1, 2, 3, 4, 5], cl=user.cl
+        text=view.get_lessons(
+            await user.intent_or(
+                view.sc.construct_intent(days=[0, 1, 2, 3, 4, 5], cl=user.cl)
             ),
         ),
-        reply_markup=get_sc_keyboard(user.cl, relative_day),
+        reply_markup=get_sc_keyboard(user.cl, view.relative_day(user)),
     )
 
 
@@ -75,33 +73,33 @@ async def sc_callback(
     query: CallbackQuery,
     callback_data: ScCallback,
     user: User,
-    platform: Platform,
+    view: MessagesView,
 ) -> None:
     """Отправляет расписание уроков для класса в указанный день."""
     # Расписание на неделю
     if callback_data.day == "week":
-        text = platform.lessons(
-            user,
-            platform.view.sc.construct_intent(
-                days=[0, 1, 2, 3, 4, 5], cl=user.cl
+        text = view.get_lessons(
+            await user.intent_or(
+                view.sc.construct_intent(days=[0, 1, 2, 3, 4, 5], cl=user.cl)
             ),
         )
-        relative_day = platform.relative_day(user)
+        relative_day = view.relative_day(user)
         reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
 
     # Расписание на сегодня/завтра
     elif callback_data.day == "today":
-        text = platform.today_lessons(
-            user, platform.view.sc.construct_intent(cl=callback_data.cl)
+        text = view.today_lessons(
+            await user.intent_or(view.sc.construct_intent(cl=callback_data.cl))
         )
         reply_markup = get_week_keyboard(callback_data.cl)
 
     # Расписание на другой день недели
     else:
-        text = platform.lessons(
-            user,
-            platform.view.sc.construct_intent(
-                cl=callback_data.cl, days=int(callback_data.day)
+        text = view.get_lessons(
+            await user.intent_or(
+                view.sc.construct_intent(
+                    cl=callback_data.cl, days=int(callback_data.day)
+                )
             ),
         )
         reply_markup = get_week_keyboard(callback_data.cl)
@@ -114,11 +112,12 @@ async def select_day_callback(
     query: CallbackQuery,
     callback_data: ScCallback,
     user: User,
-    platform: Platform,
+    view: MessagesView,
 ) -> None:
     """Отображает клавиатуру для выбора дня расписания уроков."""
-    relative_day = platform.relative_day(user)
     await query.message.edit_text(
         text=f"📅 на ...\n🔶 Для {callback_data.cl}:",
-        reply_markup=get_select_day_keyboard(callback_data.cl, relative_day),
+        reply_markup=get_select_day_keyboard(
+            callback_data.cl, view.relative_day(user)
+        ),
     )
