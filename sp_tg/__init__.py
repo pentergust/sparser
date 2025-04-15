@@ -21,7 +21,7 @@ help - Главное меню
 info - Информация о боте
 
 Author: Milinuri Nirvalen
-Ver: 2.6 (sp v6.5)
+Ver: 2.7 (sp v6.5)
 """
 
-__version__ = "2.6"
+__version__ = "2.7"

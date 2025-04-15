@@ -2,8 +2,8 @@
 
 [tool.sp]
 version = "v6.5"
-build = 263
-api_version = 6
+build = 267
+api_version = 7
 
 # main -----------------------------------------------------------------
 

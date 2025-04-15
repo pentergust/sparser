@@ -148,7 +148,7 @@ class VersionInfo(NamedTuple):
 # Текущая версия проекта
 # ======================
 
-PROJECT_VERSION = VersionInfo(version="v6.5", build=263, api_version=6)
+PROJECT_VERSION = VersionInfo(version="v6.5", build=267, api_version=7)
 
 
 # Вспомогательные функции
