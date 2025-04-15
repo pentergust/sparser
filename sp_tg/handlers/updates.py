@@ -196,7 +196,9 @@ async def updates_call(
         cl = None if callback_data.cl == "None" else callback_data.cl
 
     # Загружаем намерение из базы данных
-    db_intent = await user.intents.filter(name=callback_data.intent).get()
+    db_intent = await user.intents.filter(
+        name=callback_data.intent
+    ).get_or_none()
     if db_intent is not None:
         intent = Intent.from_str(db_intent.intent)
     else:

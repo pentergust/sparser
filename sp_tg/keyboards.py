@@ -166,7 +166,7 @@ def get_other_keyboard(
 
 
 def get_main_keyboard(
-    cl: str | None = None, relative_day: str | None = None
+    cl: str, relative_day: str | None = None
 ) -> InlineKeyboardMarkup:
     """Возвращает главную клавиатуру бота.
 
@@ -182,7 +182,7 @@ def get_main_keyboard(
     - notify => Меню настройки уведомлений пользователя.
     - sc:{cl}:today => Получаем расписания на сегодня/завтра для класса.
     """
-    if cl is None:
+    if cl == "":
         return get_other_keyboard(cl, home_button=False)
 
     return InlineKeyboardMarkup(

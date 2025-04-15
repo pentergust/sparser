@@ -142,7 +142,7 @@ async def get_counter_keyboard(
         )
 
     # Добавляем клавиатуру выбора намерений пользователя
-    for i, x in enumerate(user.intents.all()):
+    for i, x in enumerate(await user.intents.all()):
         if i % 3 == 0:
             inline_keyboard.append([])
 
@@ -256,9 +256,13 @@ async def counter_callback(
             target = CounterTarget.NONE
 
     # Загружаем намерения из хранилища пользователей
-    intent = Intent.from_str(
-        (await UserIntent.get(user=user, name=callback_data.intent)).intent
+    db_intent = await UserIntent.get_or_none(
+        user=user, name=callback_data.intent
     )
+    if db_intent is not None:
+        intent = Intent.from_str(db_intent.intent)
+    else:
+        intent = None
 
     # Отправляем сообщение пользователю
     await query.message.edit_text(
