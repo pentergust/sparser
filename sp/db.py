@@ -88,9 +88,8 @@ class User(Model):
             if user.notify:
                 notify_users += 1
 
-                # FIXME: Как хранить часы?
-                # for hour in user.hours:
-                #     hour_counter[hour] += 1
+                for hour, status in user.get_hours():
+                    hour_counter[hour] += 1
 
                 if user.last_parse >= sc_last_parse:
                     active_users += 1
@@ -122,7 +121,7 @@ class User(Model):
         - Флаг установленного класса станет True.
         - Время последней проверки сравняется с временем расписания.
         """
-        if cl is None or cl in sc.lessons:
+        if cl == "" or cl in sc.lessons:
             self.cl = cl
             self.set_class = True
             self.last_parse = datetime.fromtimestamp(
