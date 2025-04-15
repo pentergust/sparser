@@ -19,7 +19,7 @@
 """
 
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from os import getenv
 from pathlib import Path
 from sys import exit
@@ -169,7 +169,7 @@ async def get_status_message(
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @micronuri"
 
     timetag = get_update_timetag(timetag_path)
-    timedelta = int(datetime.now().timestamp()) - timetag
+    timedelta = int(datetime.now(UTC).timestamp()) - timetag
     message += f"\n📀 Проверка была {get_str_timedelta(timedelta)} назад"
 
     if timedelta > _ALERT_AUTO_UPDATE_AFTER_SECONDS:
@@ -291,7 +291,7 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
 
     user_name = message.from_user.first_name
     chat_id = message.chat.id
-    now = datetime.now().strftime(
+    now = datetime.now(UTC).strftime(
         "%Y-%m-%d %H:%M:%S"
     )  # 2024-08-23 21:12:40.383
     set_class_flag = "да" if user.set_class else "нет"
@@ -354,9 +354,8 @@ async def main() -> None:
     """
     bot = Bot(TELEGRAM_TOKEN)
     logger.info("Init DB connection:")
-    await Tortoise().init(
-        db_url=_DB_URL, modules={"models": ["salorbot.models"]}
-    )
+    await Tortoise().init(db_url=_DB_URL, modules={"models": ["sp.db"]})
+    await Tortoise.generate_schemas()
 
     # Загружаем обработчики.
     for r in routers:

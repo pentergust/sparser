@@ -10,7 +10,7 @@
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from typing import NamedTuple
 
 from loguru import logger
@@ -202,8 +202,8 @@ def _get_update_header(
     if not isinstance(start_timestamp, int):
         raise ValueError("Start update timestamp value must be integer")
 
-    e_time = datetime.fromtimestamp(end_timestamp)
-    s_time = datetime.fromtimestamp(start_timestamp)
+    e_time = datetime.fromtimestamp(end_timestamp, UTC)
+    s_time = datetime.fromtimestamp(start_timestamp, UTC)
     message = f"📀 {s_time.strftime('%d.%m %H:%M')} "
 
     t = e_time.strftime("%d.%m %H:%M" if s_time.day != e_time.day else "%H:%M")
@@ -242,8 +242,7 @@ def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
     Это может использоваться в отображении результатов поиска в
     расписании.
     """
-    # now = datetime.now().time()
-    now = time(6, 0)
+    now = datetime.now(UTC).time()
     current_lesson = get_current_lesson(now)
     message = ""
 
@@ -310,7 +309,7 @@ def send_search_res(intent: Intent, res: list) -> str:
 
 def _get_next_update_str(time: datetime, now: datetime | None = None) -> str:
     if now is None:
-        now = datetime.now()
+        now = datetime.now(UTC)
 
     if now.day == time.day:
         res = time.strftime("в %H:%M")
@@ -398,15 +397,15 @@ class SPMessages:
         последней проверки и обновления и прочих параметрах, связанных
         с поставщиком и пользователями платформы.
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         # На случай если это первый раз когда мы получаем расписание
         if self.sc.next_parse is None:
             next_update = now
         else:
-            next_update = datetime.fromtimestamp(float(self.sc.next_parse))
+            next_update = datetime.fromtimestamp(float(self.sc.next_parse), UTC)
 
         last_parse = datetime.fromtimestamp(
-            float(self.sc.schedule["last_parse"])
+            float(self.sc.schedule["last_parse"]), UTC
         )
 
         nu_str = _get_next_update_str(next_update, now)
@@ -477,7 +476,7 @@ class SPMessages:
         это используется при умном получении расписания на сегодня
         или завтра в зависимости от времени.
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         today = now.weekday()
 
         # Если сегодня воскресенье, получаем уроки на понедельник

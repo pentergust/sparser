@@ -16,7 +16,7 @@
 import hashlib
 from collections import defaultdict, deque
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypeAlias, TypedDict
 
@@ -321,7 +321,7 @@ class Schedule:
         - ``next_parse``: UnixTime следующей проверки расписания.
         - ``lessons``: Сам словарь расписаний уроков по классам.
         """
-        now = int(datetime.timestamp(datetime.now()))
+        now = int(datetime.timestamp(datetime.now(UTC)))
         if self.next_parse is None or self.next_parse < now:
             t: ScheduleDict = load_file(self.sc_path)
             self._process_update(t, now)

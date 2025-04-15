@@ -3,7 +3,7 @@
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from loguru import logger
 from tortoise import Model, fields
@@ -81,7 +81,7 @@ class User(Model):
         active_users = 0
         cl_counter: Counter[str | None] = Counter()
         hour_counter: Counter[int] = Counter()
-        sc_last_parse = datetime.fromtimestamp(sc.schedule["last_parse"])
+        sc_last_parse = datetime.fromtimestamp(sc.schedule["last_parse"], UTC)
 
         for user in all_users:
             cl_counter[user.cl] += 1
@@ -125,7 +125,9 @@ class User(Model):
         if cl is None or cl in sc.lessons:
             self.cl = cl
             self.set_class = True
-            self.last_parse = datetime.fromtimestamp(sc.schedule["last_parse"])
+            self.last_parse = datetime.fromtimestamp(
+                sc.schedule["last_parse"], UTC
+            )
             await self.save()
             return True
         return False
@@ -192,7 +194,10 @@ class User(Model):
         if self.cl == "":
             return None
 
-        if datetime.fromtimestamp(sc.schedule["last_parse"]) <= self.last_parse:
+        if (
+            datetime.fromtimestamp(sc.schedule["last_parse"], UTC)
+            <= self.last_parse
+        ):
             return None
 
         logger.info("Get lessons updates")
@@ -200,7 +205,7 @@ class User(Model):
         updates = sc.get_updates(i, int(self.last_parse.timestamp()))
 
         # Обновление времени последней проверки расписания
-        self.last_parse = datetime.fromtimestamp(sc.schedule["last_parse"])
+        self.last_parse = datetime.fromtimestamp(sc.schedule["last_parse"], UTC)
         await self.save()
 
         if len(updates) != 0:
@@ -217,7 +222,7 @@ class UserIntent(Model):
     """
 
     user: fields.ForeignKeyRelation[User] = fields.ForeignKeyField(
-        "models.user", "intents"
+        "models.User", "intents"
     )
     name = fields.CharField(max_length=64)
     intent = fields.TextField()
