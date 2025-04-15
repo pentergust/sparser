@@ -1,8 +1,8 @@
 # Версия проекта -------------------------------------------------------
 
 [tool.sp]
-version = "v6.4.2"
-build = 252
+version = "v6.5"
+build = 263
 api_version = 6
 
 # main -----------------------------------------------------------------
@@ -13,7 +13,7 @@ version = "6.4"
 description = "Platform for working with class schedules."
 authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
 license = "GPL-3.0-or-later"
-readme = ["README.md", "docs/index.rst"]
+readme = "README.md"
 repository = "https://codeberg.org/Salormoon/Sparser"
 documentation = "https://sparser.readthedocs.io/ru/latest/"
 
@@ -27,10 +27,12 @@ loguru = "^0.7.3"
 ujson = "^5.10.0"
 click = "^8.1.8"
 openpyxl = "^3.1.5"
+tortoise-orm = "^0.24.2"
+asyncpg = "^0.30.0"
+
 
 
 # For dev dependencies ----------------------------------------------------
-
 [tool.poetry.group.dev]
 optional = true
 
