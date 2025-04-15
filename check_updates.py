@@ -10,11 +10,11 @@
 - Удаляет пользователей.
 
 Author: Milinuri Nirvalen
-Ver: 0.11.5 (sp v6.1.7, telegram v2.5)
+Ver: 0.12 (sp v6.5, telegram v2.7)
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from os import getenv
 from pathlib import Path
 
@@ -24,40 +24,44 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
 from loguru import logger
 
-from sp.messages import SPMessages
-from sp.platform import Platform
-from sp.users.storage import User
+from sp.db import User
+from sp.view.messages import MessagesView
 
 # Запуск платформы и TG бота
 # ==========================
 
-load_dotenv()
-TELEGRAM_TOKEN = getenv("TELEGRAM_TOKEN")
-bot = Bot(TELEGRAM_TOKEN)
-logger.add("sp_data/updates.log")
 _TIMETAG_PATH = Path("sp_data/last_update")
 # Максимальная длинна отправляемого сообщения для Telegram и Вконтакте
 _MAX_UPDATE_MESSAGE_LEN = 4000
 
 # Если данные мигрировали в следствии
 CHAT_MIGRATE_MESSAGE = (
-    "⚠️ У вашего чата сменился ID.\n"
-    "Настройки чата были перемещены."
+    "⚠️ У вашего чата сменился ID.\nНастройки чата были перемещены."
 )
 
 # Функции для сбора клавиатур
 # ===========================
+
 
 def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     """Получает клавиатуру для расписание на неделю.
 
     За подробностями обращайтесь к модулю ``sptg``.
     """
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="🏠Домой", callback_data="home"),
-        InlineKeyboardButton(text="На неделю", callback_data=f"sc:{cl}:week"),
-        InlineKeyboardButton(text="▷", callback_data=f"select_day:{cl}"),
-    ]])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+                InlineKeyboardButton(
+                    text="На неделю", callback_data=f"sc:{cl}:week"
+                ),
+                InlineKeyboardButton(
+                    text="▷", callback_data=f"select_day:{cl}"
+                ),
+            ]
+        ]
+    )
+
 
 def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
     """Клавиатура сообщения с обновлением.
@@ -71,60 +75,53 @@ def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
     - Перейти к списку изменений.
     - Получить расписание на сегодня/завтра.
     """
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="◁", callback_data="home"),
-        InlineKeyboardButton(
-            text="Изменения", callback_data=f"updates:last:0:{cl}:"
-        ),
-        InlineKeyboardButton(text="Уроки", callback_data=f"sc:{cl}:today")
-    ]])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="◁", callback_data="home"),
+                InlineKeyboardButton(
+                    text="Изменения", callback_data=f"updates:last:0:{cl}:"
+                ),
+                InlineKeyboardButton(
+                    text="Уроки", callback_data=f"sc:{cl}:today"
+                ),
+            ]
+        ]
+    )
 
 
 # Функции для обработки списка пользователей
 # ==========================================
 
+
 async def process_update(
-    bot: Bot,
-    hour: int,
-    platform: Platform,
-    user: User
+    bot: Bot, hour: int, view: MessagesView, user: User
 ) -> None:
     """Проверяет обновления для одного пользователя (или чата).
 
     Отправляет расписание на сегодня/завтра в указанный час или
     список изменений в расписании, при наличии.
-
-    :param bot: Экземпляр бота для отправки сообщений.
-    :type bot: Bot
-    :param hour: Какой сейчас час.
-    :type hour: int
-    :param platform: Экземпляр запущенной платформы.
-    :type platform: Platform
-    :param user: Какой пользователь запрашивает обновления.
-    :type user: User
     """
     # Рассылка расписания в указанные часы
-    if hour in user.data.hours:
+    if user.get_hour(hour):
         logger.info("Send schedule")
-        await bot.send_message(user.uid,
-            text=platform.today_lessons(user),
-            reply_markup=get_week_keyboard(user.data.cl)
+        await bot.send_message(
+            user.id,
+            text=view.today_lessons(await user.get_intent()),
+            reply_markup=get_week_keyboard(user.cl),
         )
 
     # Отправляем уведомления об обновлениях
-    updates = user.get_updates(platform.view.sc, save_users=False)
+    updates = await view.check_updates(user)
     if updates is None:
         return
 
     logger.info("Send compare updates message")
-    updates_message = platform.updates(updates, hide_cl=user.data.cl)
-    if len(updates_message) > _MAX_UPDATE_MESSAGE_LEN:
-        updates_message = "f\n< слишком много изменений >"
 
-    await bot.send_message(user.uid,
-        text=f"🎉 У вас изменилось расписание!\n{updates_message}",
-        reply_markup=get_updates_keyboard(user.data.cl)
+    await bot.send_message(
+        user.id, text=updates, reply_markup=get_updates_keyboard(user.cl)
     )
+
 
 def set_timetag(path: Path, timestamp: int) -> None:
     """Оставляет временную метку последней проверки обновления.
@@ -148,59 +145,46 @@ def set_timetag(path: Path, timestamp: int) -> None:
 # Главная функция скрипта
 # =======================
 
+
 async def main() -> None:
     """Запускает процесс проверки обновления.
 
     Проверяет для каждого пользователя наличие обновлений, а также
     отправляет по необходимости расписание на сегодня/завтра.
     """
-    platform = Platform(
-        pid=1, name="Telegram updater",
-        version="0.11", api_version=0
-    )
-    platform.view = SPMessages()
-    now = datetime.now()
-    remove_ids = []
+    load_dotenv()
+    bot = Bot(getenv("TELEGRAM_TOKEN"))
+    view = MessagesView()
+
+    logger.add("sp_data/updates.log")
+    now = datetime.now(UTC)
 
     logger.info("Start of the update process...")
-    for k, v in platform.users.get_users().items():
+    for user in await User.all():
         # Если у пользователя отключены уведомления или не указан
         # класс по умолчанию -> пропускаем.
-        if not v.notifications or not v.cl:
+        if not user.notify or user.cl == "":
             continue
 
-        # Получаем экземпляр генератора сообщения пользователя
-        # TODO: данные пользователя вновь загружаются из файла на
-        # каждой итерации
-        user = platform.get_user(k)
         try:
-            logger.debug("Process {}: {}", k, v)
-            await process_update(bot, now.hour, platform, user)
+            logger.debug("Process {}", user)
+            await process_update(bot, now.hour, view, user)
 
         # Если что-то произошло с пользователем:
         # Заблокировал бота, исключил из чата, исчез сам ->
-        # Удаляем пользователя (чат) из списка чатов.
+        # Удаляем пользователя (чат) из базы.
         except TelegramForbiddenError:
-            remove_ids.append(k)
+            await user.delete()
 
         # Ловим все прочие исключения и отображаем их на экран
         except Exception as e:
             logger.exception(e)
 
-    # Если данные изменились - записываем изменения в файл
-    if remove_ids:
-        platform.users.remove_users(remove_ids)
-
-    # Обновляем временную метку успешного обновления
     set_timetag(_TIMETAG_PATH, int(now.timestamp()))
-    platform.users.save_users()
 
 
 # Запуск скрипта обновлений
 # =========================
 
-if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        logger.exception(e)
+if __name__ == "__main__":
+    asyncio.run(main())
