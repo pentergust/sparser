@@ -55,7 +55,7 @@ class CounterTarget(Enum):
 
     ```py
         counter = CurrentCounter(sc, Intent())
-        message = platform.counter(
+        message = view.counter(
             counter.cl()
             target=CounterTarget.CL
         )

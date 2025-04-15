@@ -211,6 +211,23 @@ class User(Model):
             return compact_updates(updates)
         return None
 
+    async def intent_or(self, intent: Intent | None = None) -> Intent:
+        """Возвращает намерение или намерение по умолчанию."""
+        return intent if intent is not None else await self.get_intent()
+
+    async def get_intent(self, intent: Intent | None = None) -> Intent:
+        """Получает намерение пользователя по умолчанию."""
+        main_intent = await self.intents.filter(name="main").get_or_none()
+        if main_intent is None:
+            if self.cl == "":
+                raise ValueError("User not set class")
+            return Intent(
+                cl={
+                    self.cl,
+                }
+            )
+        return Intent.from_str(main_intent.intent)
+
 
 class UserIntent(Model):
     """Хранилище заготовленных намерений пользователя.

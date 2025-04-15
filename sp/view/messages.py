@@ -16,7 +16,7 @@ from typing import NamedTuple
 from loguru import logger
 
 from sp.counter import CounterTarget, reverse_counter
-from sp.db import CountedUsers, User
+from sp.db import User
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
 from sp.intents import Intent
 from sp.parser import Schedule, UpdateData
@@ -384,11 +384,8 @@ class MessagesView(BaseView[str]):
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
-    def send_status(
-        self,
-        storage_users: CountedUsers,
-        user: User,
-        platform_version: VersionInfo,
+    async def get_status(
+        self, user: User, platform_version: VersionInfo
     ) -> str:
         """Возвращает информацию о платформе.
 
@@ -396,6 +393,7 @@ class MessagesView(BaseView[str]):
         последней проверки и обновления и прочих параметрах, связанных
         с поставщиком и пользователями платформы.
         """
+        storage_users = await User.get_stats(self.sc)
         now = datetime.now(UTC)
         # На случай если это первый раз когда мы получаем расписание
         if self.sc.next_parse is None:
@@ -492,6 +490,36 @@ class MessagesView(BaseView[str]):
             today += 1
 
         return 0 if today > WeekDay.SATURDAY else today
+
+    def _get_day_str(self, today: int, relative_day: int) -> str:
+        if relative_day == today:
+            return "Сегодня"
+        elif relative_day == today + 1:
+            return "Завтра"
+        else:
+            return WeekDay(relative_day).to_short_str()
+
+    def relative_day(self, user: User) -> str:
+        """Получает строковое название текущего дня недели.
+
+        Возвращает Сегодня/Завтра/день недели, в зависимости от
+        прошедших уроков.
+
+        Не принимает намерение, получает день только для
+        переданного пользователя.
+        """
+        today = datetime.now(UTC).today().weekday()
+        tomorrow = today + 1
+        if tomorrow > WeekDay.SATURDAY:
+            tomorrow = 0
+
+        if user.cl == "":
+            return "Сегодня"
+
+        current_day = self.current_day(
+            intent=self.sc.construct_intent(cl=user.cl, days=today)
+        )
+        return self._get_day_str(today, current_day)
 
     def today_lessons(self, intent: Intent) -> str:
         """Расписание уроков на сегодня/завтра.

@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
 from sp.counter import CounterTarget
-from sp.db import CountedUsers, User
+from sp.db import User
 from sp.intents import Intent
 from sp.parser import UpdateData
 from sp.version import VersionInfo
@@ -19,11 +19,8 @@ class BaseView(Generic[_VR], ABC):
     """Базовый класс представления."""
 
     @abstractmethod
-    def send_status(
-        self,
-        storage_users: CountedUsers,
-        user: User,
-        platform_version: VersionInfo,
+    async def get_status(
+        self, user: User, platform_version: VersionInfo
     ) -> _VR:
         """Возвращает информацию о платформе."""
         pass

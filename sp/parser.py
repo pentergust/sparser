@@ -213,7 +213,7 @@ def parse_lessons() -> dict[str, list[list[str]]]:  # noqa: PLR0912
                 if row[i + 1].value is None:
                     cabinet = "None"
                 elif isinstance(row[i + 1].value, float):
-                    cabinet = str(row[i + 1].value)
+                    cabinet = str(int(row[i + 1].value))
                 elif isinstance(row[i + 1].value, str):
                     cabinet = str(row[i + 1].value).strip().lower() or "0"
                 else:
