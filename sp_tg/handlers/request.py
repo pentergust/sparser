@@ -1,9 +1,9 @@
-"""Составление запросов к расписнаию.
+"""Составление запросов к расписанию.
 
-Предоставялет обработчики для составления текстовых запросов.
+Предоставляет обработчики для составления текстовых запросов.
 Это один из основных способов получения данных из бота.
-Текстоыве запросы представляют собой намерения в чистом виде.
-Они позволяет как получать расписнаие, так и производить поиск
+Текстовые запросы представляют собой намерения в чистом виде.
+Они позволяет как получать расписание, так и производить поиск
 в расписании.
 """
 
@@ -12,8 +12,8 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from loguru import logger
 
+from sp.db import User
 from sp.platform import Platform
-from sp.users.storage import User
 from sp_tg.keyboards import get_main_keyboard, get_week_keyboard
 from sp_tg.messages import get_home_message
 
@@ -28,15 +28,6 @@ def process_request(
     Преобразует входящий текст в набор намерений или запрос.
     Производит поиск по урокам/кабинетам
     или получает расписание, в зависимости от намерений.
-
-    :param user: Кто захотел получить расписание.
-    :type user: User
-    :param platform: Экземпляр платформы расписания.
-    :type platform: Platform
-    :param request_text: Текст запроса к расписнаию.
-    :type requets_text: str
-    :return: Ответ от генератора сообщений.
-    :rtype: str | None
     """
     intent = platform.view.sc.parse_intent(request_text.split())
 
@@ -67,10 +58,10 @@ def process_request(
 async def sc_handler(
     message: Message, command: CommandObject, user: User, platform: Platform
 ) -> None:
-    """Отправляет расписание уроков пользовтелю.
+    """Отправляет расписание уроков пользователю.
 
-    Позвоялет напрямую писать запросы, после ``/sc [запрос]``.
-    Отправляет предупреждение, если у пользователя не укзаан класс.
+    Позволяет напрямую писать запросы, после ``/sc [запрос]``.
+    Отправляет предупреждение, если у пользователя не указан класс.
     """
     if command.args is not None:
         answer = process_request(user, platform, command.args)
@@ -79,10 +70,10 @@ async def sc_handler(
         else:
             await message.answer(text="👀 Кажется это пустой запрос...")
 
-    elif user.data.cl is not None:
+    elif user.cl != "":
         await message.answer(
             text=platform.today_lessons(user),
-            reply_markup=get_week_keyboard(user.data.cl),
+            reply_markup=get_week_keyboard(user.cl),
         )
     else:
         await message.answer(
@@ -105,8 +96,8 @@ async def main_handler(
 
     text = message.text.strip().lower()
 
-    # Если у пользователя установлек класс -> создаём запрос
-    if user.data.set_class:
+    # Если у пользователя установлен класс -> создаём запрос
+    if user.set_class:
         answer = process_request(user, platform, text)
 
         if answer is not None:
@@ -117,15 +108,15 @@ async def main_handler(
     # Устанавливаем класс пользователя, если он ввёл класс
     elif text in platform.view.sc.lessons:
         logger.info("Set class {}", text)
-        user.set_class(text, platform.view.sc)
+        await user.set_cl(text, platform.view.sc)
         relative_day = platform.relative_day(user)
         await message.answer(
-            text=get_home_message(user.data.cl),
-            reply_markup=get_main_keyboard(user.data.cl, relative_day),
+            text=get_home_message(user.cl),
+            reply_markup=get_main_keyboard(user.cl, relative_day),
         )
 
     # Отправляем список классов, в личные сообщения.
     elif message.chat.type == "private":
         text = "👀 Такого класса не существует."
-        text += f"\n💡 Доступныe классы: {', '.join(platform.view.sc.lessons)}"
+        text += f"\n💡 Доступные классы: {', '.join(platform.view.sc.lessons)}"
         await message.answer(text=text)

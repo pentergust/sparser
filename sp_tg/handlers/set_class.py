@@ -15,9 +15,9 @@ from aiogram.types import (
     Message,
 )
 
+from sp.db import User
 from sp.messages import SPMessages
 from sp.platform import Platform
-from sp.users.storage import User
 from sp_tg.filters import IsAdmin
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
@@ -38,11 +38,12 @@ BACK_SET_CL_MARKUP = InlineKeyboardMarkup(
 
 
 # Какие преимущества получает указавшие класс пользователь
-# Это сообщение должно побуждать пользователей укащываит свой класс
+# Это сообщение должно побуждать пользователей указывать свой класс
 # по умолчанию чтобы получать преимущества
-CL_FEATURES_MESSAGE = ("🌟 Если вы укажете класс, то сможете:"
+CL_FEATURES_MESSAGE = (
+    "🌟 Если вы укажете класс, то сможете:"
     "\n\n-- Быстро получать расписание для класса, кнопкой в главном меню."
-    "\n-- Не укзаывать ваш класс в текстовых запросах (прим. \"пн\")."
+    '\n-- Не указывать ваш класс в текстовых запросах (прим. "пн").'
     "\n-- Получать уведомления и рассылку расписания для класса."
     "\n-- Просматривать список изменений для вашего класса."
     "\n-- Использовать счётчик cl/lessons."
@@ -53,73 +54,76 @@ CL_FEATURES_MESSAGE = ("🌟 Если вы укажете класс, то см�
 # Описание команд
 # ===============
 
+
 @router.message(Command("cl_features"))
 async def restrictions_handler(message: Message) -> None:
-    """Отправляет список примуществ при указанном классе."""
+    """Отправляет список преимуществ при указанном классе."""
     await message.answer(text=CL_FEATURES_MESSAGE)
+
 
 @router.message(Command("set_class"), IsAdmin())
 async def set_class_command(
-    message: Message, sp: SPMessages, user: User,
-    command: CommandObject, platform: Platform
+    message: Message,
+    sp: SPMessages,
+    user: User,
+    command: CommandObject,
+    platform: Platform,
 ) -> None:
     """Изменяет класс или удаляет данные о пользователе.
 
     - Если такого класса не существует, показывает список доступных
       классов.
     - Указывать класс можно передавая его как аргумент.
-    - Если не укзаать класс, сбрасывает данные пользователя и
-      пепеводит его в состояние выбора класса.
+    - Если не указывать класс, сбрасывает данные пользователя и
+      переводит его в состояние выбора класса.
     """
     # Если указали класс в команде
     if command.args is not None:
-        if user.set_class(command.args, sp.sc):
+        if await user.set_cl(command.args, sp.sc):
             relative_day = platform.relative_day(user)
             await message.answer(
                 text=get_home_message(command.args),
-                reply_markup=get_main_keyboard(command.args, relative_day)
+                reply_markup=get_main_keyboard(command.args, relative_day),
             )
         # Если такого класса не существует
         else:
             text = "👀 Такого класса не существует."
-            text += f"\n💡 Доступныe классы: {', '.join(sp.sc.lessons)}"
+            text += f"\n💡 Доступные классы: {', '.join(sp.sc.lessons)}"
             await message.answer(text=text)
 
-    # Сбрасываем пользвоателя и переводим в состояние выбора класса
+    # Сбрасываем пользователя и переводим в состояние выбора класса
     else:
-        user.unset_class()
+        await user.unset_cl()
         await message.answer(
-            text=SET_CLASS_MESSAGE,
-            reply_markup=PASS_SET_CL_MARKUP
+            text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
         )
 
-@router.message(Command("pass"), IsAdmin())
-async def pass_handler(
-    message: Message, sp: SPMessages, user: User, platform: Platform
-) -> None:
-    """Отвязаывает пользователя от класса по умолчанию.
 
-    Если более конкретно, то устанавливает калсс пользователя в
+@router.message(Command("pass"), IsAdmin())
+async def pass_handler(message: Message, sp: SPMessages, user: User) -> None:
+    """Отвязывает пользователя от класса по умолчанию.
+
+    Если более конкретно, то устанавливает класс пользователя в
     None и отправляет главное сообщение и клавиатуру.
     """
-    relative_day = platform.get_relative_day(user)
-    user.set_class(None, sp.sc)
+    await user.set_cl("", sp.sc)
     await message.answer(
-        text=get_home_message(user.data.cl),
-        reply_markup=get_main_keyboard(user.data.cl, relative_day),
+        text=get_home_message(user.cl),
+        reply_markup=get_main_keyboard(user.cl, None),
     )
 
 
 # Обработчики Callback клавиатуры
 # ===============================
 
+
 @router.callback_query(F.data == "cl_features")
-async def cl_features_callback(query: CallbackData, sp: SPMessages) -> None:
+async def cl_features_callback(query: CallbackData) -> None:
     """Отправляет сообщения с преимуществами указанного класса."""
     await query.message.edit_text(
-        text=CL_FEATURES_MESSAGE,
-        reply_markup=BACK_SET_CL_MARKUP
+        text=CL_FEATURES_MESSAGE, reply_markup=BACK_SET_CL_MARKUP
     )
+
 
 @router.callback_query(F.data == "set_class", IsAdmin())
 async def set_class_callback(query: CallbackQuery, user: User) -> None:
@@ -128,23 +132,24 @@ async def set_class_callback(query: CallbackQuery, user: User) -> None:
     Сбрасывает данные пользователя и переводит в состояние выбора
     класса по умолчанию.
     """
-    user.unset_class()
+    await user.unset_cl()
     await query.message.edit_text(
         text=SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
     )
 
+
 @router.callback_query(F.data == "pass", IsAdmin())
 async def pass_class_callback(
-    query: CallbackData, sp: SPMessages, user: User, platform: Platform
+    query: CallbackData, sp: SPMessages, user: User
 ) -> None:
     """Отвязывает пользователя от класса.
 
     Как и в случае с командой /pass.
-    Просто устанавливает класс пользвотеля в None и отправляет
+    Просто устанавливает класс пользователя в None и отправляет
     главное сообщение с основной клавиатурой бота.
     """
-    user.set_class(None, sp.sc)
+    await user.set_cl("", sp.sc)
     await query.message.edit_text(
-        text=get_home_message(user.data.cl),
-        reply_markup=get_main_keyboard(user.data.cl, None)
+        text=get_home_message(user.cl),
+        reply_markup=get_main_keyboard(user.cl, None),
     )

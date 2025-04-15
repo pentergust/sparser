@@ -18,9 +18,6 @@ from sp.counter import CounterTarget, CurrentCounter
 from sp.db import User, UserIntent
 from sp.intents import Intent
 from sp.platform import Platform
-
-# FIXME: Заменить пользователя
-# from sp.users.storage import User
 from sp_tg.messages import get_intent_status
 
 router = Router(name=__name__)
@@ -135,7 +132,7 @@ async def get_counter_keyboard(
         # Если у пользователя не указан класс пропускаем счётчика
         # cl/lessons т.к. его вывод слишком большой без фильтрации
         # по классам в расписании
-        if counter == "cl" and k == "lessons" and user.cl is None:
+        if counter == "cl" and k == "lessons" and user.cl == "":
             continue
 
         inline_keyboard[1].append(
@@ -167,13 +164,12 @@ async def get_counter_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
-# FIXME: Всё сломалось
 def get_counter_message(
     platform: Platform,
     user: User,
     counter: str,
     target: CounterTarget | None = None,
-    intent: UserIntent | None = None,
+    intent: Intent | None = None,
 ) -> str:
     """Собирает сообщение с результатами работы счётчиков.
 
@@ -197,7 +193,7 @@ def get_counter_message(
 
     # Счётчик по классам
     if counter == "cl":
-        # Дополнительно передаём намерение, если подгруппа по урокамъ
+        # Дополнительно передаём намерение, если подгруппа по урокам
         # Ибо иначе результат работы будет слишком большим для бота
         if target == "lessons":
             cur_counter.intent = intent.reconstruct(
@@ -240,7 +236,6 @@ async def counter_handler(
 async def counter_callback(
     query: CallbackQuery,
     callback_data: CounterCallback,
-    intents: UserIntent,
     user: User,
     platform: Platform,
 ) -> None:
@@ -257,11 +252,13 @@ async def counter_callback(
 
         # Если установлен счётчик по классам, а подгруппа по урокам
         # Сбрасываем подгруппу, если класс не указан
-        if counter == "cl" and target == "lessons" and user.cl is None:
+        if counter == "cl" and target == "lessons" and user.cl == "":
             target = CounterTarget.NONE
 
     # Загружаем намерения из хранилища пользователей
-    intent = await UserIntent.get(user=user, name=callback_data.intent)
+    intent = Intent.from_str(
+        (await UserIntent.get(user=user, name=callback_data.intent)).intent
+    )
 
     # Отправляем сообщение пользователю
     await query.message.edit_text(

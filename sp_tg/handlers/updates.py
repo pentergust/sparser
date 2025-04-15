@@ -18,6 +18,7 @@ from aiogram.types import (
 
 from sp.db import User
 from sp.intents import Intent
+from sp.parser import UpdateData
 from sp.platform import Platform
 from sp_tg.messages import get_intent_status
 
@@ -54,7 +55,7 @@ class UpdatesCallback(CallbackData, prefix="updates"):
 
 async def get_updates_keyboard(
     page: int,
-    updates: list[dict],
+    updates: list[UpdateData],
     user: User,
     active_intent: str | None = None,
 ) -> InlineKeyboardMarkup:
@@ -116,7 +117,7 @@ async def get_updates_keyboard(
 
 def get_updates_message(
     platform: Platform,
-    update: dict[str, int | list[dict]] | None = None,
+    update: UpdateData | None = None,
     cl: str | None = None,
     intent: Intent | None = None,
 ) -> str:
@@ -176,7 +177,7 @@ async def updates_handler(
 
 
 @router.callback_query(UpdatesCallback.filter())
-async def updates_callback(
+async def updates_call(
     query: CallbackQuery,
     platform: Platform,
     callback_data: UpdatesCallback,

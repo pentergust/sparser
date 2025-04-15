@@ -28,28 +28,28 @@ class IsAdmin(BaseFilter):
     ответственные, чем общая масса участников.
     """
 
-    async def __call__(self, message: Message | CallbackQuery) -> bool:
+    async def __call__(self, event: Message | CallbackQuery) -> bool:
         """Проверяет что пользователь администратор чата."""
-        if isinstance(message, Message):
-            chat = message.chat
-        elif isinstance(message, CallbackQuery):
-            chat = message.message.chat
+        if isinstance(event, Message):
+            chat = event.chat
+        elif isinstance(event, CallbackQuery):
+            chat = event.message.chat
 
         # Есть такая вероятность, что чата не будет, тогда это странно..
         if chat is None:
-            logger.error("Chat is empty: {}", message)
+            logger.error("Chat is empty: {}", event)
             raise ValueError("Chat is empty")
 
         # В личной переписке администраторов нету
         if chat.type == "private":
             return True
 
-        member = await chat.get_member(message.from_user.id)
+        member = await chat.get_member(event.from_user.id)
         if member.status not in (
             ChatMemberStatus.CREATOR,
             ChatMemberStatus.ADMINISTRATOR,
         ):
-            await message.answer(
+            await event.answer(
                 "⚙️ Только администраторы чата могут изменять настройки бота."
             )
             return False

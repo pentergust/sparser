@@ -11,8 +11,7 @@
 С функцией для загрузки всех дополнительных роутеров и последующего
 запуска бота.
 
-Предоставляет
--------------
+Предоставляет:
 
 - /start /help (home): Главное сообщение бота.
 - /info: Статус работы платформы и бота.
@@ -32,11 +31,12 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, ErrorEvent, Message, Update
 from dotenv import load_dotenv
 from loguru import logger
+from tortoise import Tortoise
 
+from sp.db import User
 from sp.exceptions import ViewCompatibleError
 from sp.messages import SPMessages
 from sp.platform import Platform
-from sp.users.storage import User
 from sp.utils import get_str_timedelta
 from sp.version import VersionInfo
 from sp_tg.handlers import routers
@@ -56,9 +56,10 @@ _TIMETAG_PATH = Path("sp_data/last_update")
 # Используются для отладки сообщений об исключениях
 _DEBUG_MODE = getenv("DEBUG_MODE")
 _ADMIN_ID = getenv("ADMIN_ID")
+_DB_URL = getenv("DB_URL")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = "v2.5.2"
+_BOT_VERSION = "v2.6"
 _ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
 
 
@@ -93,7 +94,7 @@ dp = Dispatcher(platform=platform, sp=platform.view)
 @dp.error.middleware()
 async def user_middleware(
     handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
-    event: Message | CallbackQuery | ErrorEvent,
+    event: Update,
     data: dict[str, Any],
 ) -> Awaitable[Any]:
     """Добавляет экземпляр пользователя и хранилище намерений."""
@@ -105,10 +106,13 @@ async def user_middleware(
             uid = event.update.message.chat.id
     elif isinstance(event, CallbackQuery):
         uid = event.message.chat.id
-    else:
+    elif isinstance(event, Message):
         uid = event.chat.id
+    else:
+        raise ValueError("Unknown event type")
 
-    data["user"] = platform.get_user(str(uid))
+    user, _ = await User.get_or_create(id=uid)
+    data["user"] = user
     return await handler(event, data)
 
 
@@ -118,13 +122,13 @@ async def user_middleware(
 @dp.callback_query.middleware()
 async def log_middleware(
     handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
-    event: Message | CallbackQuery,
+    event: Update,
     data: dict[str, Any],
 ) -> Awaitable[Any]:
     """Отслеживает полученные ботом сообщения и callback query."""
     if isinstance(event, CallbackQuery):
         logger.info("[c] {}: {}", event.message.chat.id, event.data)
-    else:
+    elif isinstance(event, Message):
         logger.info("[m] {}: {}", event.chat.id, event.text)
 
     return await handler(event, data)
@@ -141,11 +145,6 @@ def get_update_timetag(path: Path) -> int:
     Время успешной проверки используется для контроля скрипта обновлений.
     Если время последней проверки будет дольше одного часа,
     то это повод задуматься о правильности работы скрипта.
-
-    :param path: Путь к файлу временной метки обновлений.
-    :type path: Path
-    :return: UNIXtime последней удачной проверки обновлений.
-    :rtype: int
     """
     try:
         with open(path) as f:
@@ -154,7 +153,7 @@ def get_update_timetag(path: Path) -> int:
         return 0
 
 
-def get_status_message(
+async def get_status_message(
     platform: Platform, timetag_path: Path, user: User
 ) -> str:
     """Отправляет информационно сообщение о работа бота и парсера.
@@ -165,15 +164,8 @@ def get_status_message(
     классов и прочее.
     Также содержит метку последнего автоматического обновления.
     Если давно не было авто обновлений - выводит предупреждение.
-
-    :param view: Экземпляр генератора сообщений.
-    :type view: SPMessages
-    :param timetag_path: Путь к файлу временной метки обновления.
-    :type timetag_path: Path
-    :return: Информационное сообщение.
-    :rtype: str
     """
-    message = platform.status(user)
+    message = await platform.status(user)
     message += f"\n⚙️ Версия бота: {_BOT_VERSION}\n🛠️ Тестер @micronuri"
 
     timetag = get_update_timetag(timetag_path)
@@ -196,8 +188,8 @@ async def info_handler(
 ) -> None:
     """Статус работы бота и платформы."""
     await message.answer(
-        text=get_status_message(platform, _TIMETAG_PATH, user),
-        reply_markup=get_other_keyboard(user.data.cl),
+        text=await get_status_message(platform, _TIMETAG_PATH, user),
+        reply_markup=get_other_keyboard(user.cl),
     )
 
 
@@ -209,16 +201,15 @@ async def start_handler(
 
     Если класс не указан - отправляет сообщение смены класса.
     """
-    if not user.data.set_class:
-        return await message.answer(
-            SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP
-        )
+    if not user.set_class:
+        await message.answer(SET_CLASS_MESSAGE, reply_markup=PASS_SET_CL_MARKUP)
+        return
 
     await message.delete()
     relative_day = platform.relative_day(user)
     await message.answer(
-        text=get_home_message(user.data.cl),
-        reply_markup=get_main_keyboard(user.data.cl, relative_day),
+        text=get_home_message(user.cl),
+        reply_markup=get_main_keyboard(user.cl, relative_day),
     )
 
 
@@ -239,8 +230,8 @@ async def delete_msg_callback(
     except TelegramBadRequest:
         relative_day = platform.relative_day(user)
         await query.message.edit_text(
-            text=get_home_message(user.data.cl),
-            reply_markup=get_main_keyboard(user.data.cl, relative_day),
+            text=get_home_message(user.cl),
+            reply_markup=get_main_keyboard(user.cl, relative_day),
         )
 
 
@@ -251,8 +242,8 @@ async def home_callback(
     """Возвращает в главный раздел."""
     relative_day = platform.relative_day(user)
     await query.message.edit_text(
-        text=get_home_message(user.data.cl),
-        reply_markup=get_main_keyboard(user.data.cl, relative_day),
+        text=get_home_message(user.cl),
+        reply_markup=get_main_keyboard(user.cl, relative_day),
     )
 
 
@@ -265,8 +256,8 @@ async def other_callback(
     Также предоставляет клавиатуру с менее используемыми разделами.
     """
     await query.message.edit_text(
-        text=get_status_message(platform, _TIMETAG_PATH, user),
-        reply_markup=get_other_keyboard(user.data.cl),
+        text=await get_status_message(platform, _TIMETAG_PATH, user),
+        reply_markup=get_other_keyboard(user.cl),
     )
 
 
@@ -287,13 +278,6 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
     - chat_id => Где была вызвана ошибка.
     - exception => Описание исключения.
     - action => Callback data или текст сообщение, вызвавший ошибку.
-
-    :param exception: Событие исключения в aiogram.
-    :type exception: ErrorEvent
-    :param sp: Экземпляр генератора сообщений пользователя.
-    :type sp: SPMessages
-    :return: Отладочное сообщение с данными об исключении в боте.
-    :rtype: str
     """
     if exception.update.callback_query is not None:
         action = f"-- Данные: {exception.update.callback_query.data}"
@@ -302,12 +286,15 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
         action = f"-- Текст: {exception.update.message.text}"
         message = exception.update.message
 
+    if message is None:
+        raise ValueError("Message is None")
+
     user_name = message.from_user.first_name
     chat_id = message.chat.id
     now = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )  # 2024-08-23 21:12:40.383
-    set_class_flag = "да" if user.data.set_class else "нет"
+    set_class_flag = "да" if user.set_class else "нет"
 
     return (
         "⚠️ Произошла ошибка в работе бота."
@@ -315,7 +302,7 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
         f"\n-- Время: {now}"
         "\n\n👤 Пользователь"
         f"\n-- Имя: {user_name}"
-        f"\n-- Класс: {user.data.cl} (установлен: {set_class_flag})"
+        f"\n-- Класс: {user.cl} (установлен: {set_class_flag})"
         f"\n-- ID: {chat_id}"
         f"\n{action}"
         f"\n\n🚫 Возникло исключение  {exception.exception.__class__.__name__}:"
@@ -366,6 +353,10 @@ async def main() -> None:
     Запускает обработку событий.
     """
     bot = Bot(TELEGRAM_TOKEN)
+    logger.info("Init DB connection:")
+    await Tortoise().init(
+        db_url=_DB_URL, modules={"models": ["salorbot.models"]}
+    )
 
     # Загружаем обработчики.
     for r in routers:

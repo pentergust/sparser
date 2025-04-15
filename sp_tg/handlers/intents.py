@@ -211,7 +211,6 @@ def get_intent_info(name: str, i: UserIntent) -> str:
     return info
 
 
-# FIXME: Mypy запутал меня с концами
 async def get_intents_message(user: User) -> str:
     """Отправляет главное сообщение редактора намерений.
 
@@ -225,7 +224,8 @@ async def get_intents_message(user: User) -> str:
         message += "\n\nУ вас пока нет намерений."
     else:
         for x in intents:
-            message += f"\n🔸 {x.name}: {get_intent_status(x.intent)}"
+            intent = Intent.from_str(x.intent)
+            message += f"\n🔸 {x.name}: {get_intent_status(intent)}"
 
     if len(intents) < _MAX_INTENTS:
         message += (
@@ -453,6 +453,6 @@ async def remove_all_call(query: CallbackQuery, user: User) -> None:
     await user.intents.all().delete()
     await user.save()
     await query.message.edit_text(
-        await get_intents_message([]),
+        await get_intents_message(user),
         reply_markup=await get_intents_keyboard(user),
     )

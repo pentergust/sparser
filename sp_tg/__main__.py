@@ -3,9 +3,9 @@
 Запускает функцию для запуска бота.
 Которая в свою очередь запускает Long polling.
 
-.. code-block:: shell
-
-    python sp_tg
+```sh
+poetry run python -m sp_tg
+```
 """
 
 import asyncio
