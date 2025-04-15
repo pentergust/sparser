@@ -28,6 +28,7 @@ from sp.version import (
     VersionOrd,
     check_updates,
 )
+from sp.view.base import BaseView
 
 # Константы
 # =========
@@ -364,7 +365,7 @@ def _get_ver_str(cur_ver: VersionInfo, dest_url: str) -> str:
     return res
 
 
-class SPMessages:
+class MessagesView(BaseView[str]):
     """Предоставляет методы для более удобной работы с расписанием.
 
     В отличие от необработанных результатов работы Schedule, данный
@@ -383,8 +384,6 @@ class SPMessages:
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
-    # FIXME: Надо что-то попроще сделать с этой функцией.
-    # FIXME: Проводим подсчёты пользователей прямо внутри.
     def send_status(
         self,
         storage_users: CountedUsers,
@@ -449,7 +448,7 @@ class SPMessages:
     # Отображение расписания
     # ======================
 
-    def send_lessons(self, intent: Intent) -> str:
+    def get_lessons(self, intent: Intent) -> str:
         """Собирает сообщение с расписанием уроков.
 
         Обёртка над методом класса Schedule для получения расписания.
@@ -466,7 +465,7 @@ class SPMessages:
             message += "\n"
         return message
 
-    def get_current_day(self, intent: Intent) -> int:
+    def current_day(self, intent: Intent) -> int:
         """Получает текущий или следующий день если уроки кончились.
 
         Работает это так, если уроки ещё не кончились,
@@ -494,10 +493,10 @@ class SPMessages:
 
         return 0 if today > WeekDay.SATURDAY else today
 
-    def send_today_lessons(self, intent: Intent) -> str:
+    def today_lessons(self, intent: Intent) -> str:
         """Расписание уроков на сегодня/завтра.
 
-        Работает как send_lessons.
+        Работает как get_lessons.
         Отправляет расписание для классов на сегодня, если уроки
         ешё идут.
         Отправляет расписание на завтра, если уроки на сегодня уже
@@ -505,10 +504,10 @@ class SPMessages:
 
         Использует намерения для уточнения расписания.
         Однако будет игнорировать указанные дни в намерении.
-        Иначе используйте метод send_lessons.
+        Иначе используйте метод get_lessons.
         """
-        return self.send_lessons(
-            intent.reconstruct(self.sc, days=self.get_current_day(intent))
+        return self.get_lessons(
+            intent.reconstruct(self.sc, days=self.current_day(intent))
         )
 
     # Методы для работы с расписанием
@@ -534,9 +533,7 @@ class SPMessages:
         """
         return send_search_res(intent, self.sc.search(target, intent, cabinets))
 
-    def send_update(
-        self, update: UpdateData, hide_cl: str | None = None
-    ) -> str:
+    def get_update(self, update: UpdateData, hide_cl: str | None = None) -> str:
         """Собирает сообщение со списком изменений в расписании.
 
         Собирает полноценное сообщение со всеми изменениями.
@@ -594,10 +591,10 @@ class SPMessages:
 
         return (
             "🎉 У вас изменилось расписание!\n"
-            f"{self.send_update(update, user.cl)}"
+            f"{self.get_update(update, user.cl)}"
         )
 
-    def send_counter(  # noqa: PLR0912
+    def counter(  # noqa: PLR0912
         self,
         groups: dict[int, dict[str, dict]],
         target: CounterTarget | None = None,
@@ -657,7 +654,7 @@ class SPMessages:
             # Заменяем числа на название дней недели для счётчика по дням
             elif days_counter:
                 message += (
-                    f" {', '.join([SHORT_DAY_NAMES[int(x)] for x in res])}"  # noqa: E501
+                    f" {', '.join([SHORT_DAY_NAMES[int(x)] for x in res])}"
                 )
             else:
                 message += f" {', '.join(res)}"

@@ -1,6 +1,6 @@
 """Главный файл Telegram бота для работы с SPlatform.
 
-Полностью реализует доступ ко всем методам SPMessages.
+Полностью реализует доступ ко всем методам MessagesView.
 Не считая некоторых ограничений в настройке "намерений" (Intents).
 Также это касается ограничения текстовых сообщений.
 
@@ -35,10 +35,10 @@ from tortoise import Tortoise
 
 from sp.db import User
 from sp.exceptions import ViewCompatibleError
-from sp.messages import SPMessages
 from sp.platform import Platform
 from sp.utils import get_str_timedelta
 from sp.version import VersionInfo
+from sp.view.messages import MessagesView
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (
     PASS_SET_CL_MARKUP,
@@ -73,7 +73,7 @@ platform = Platform(
 )
 
 try:
-    platform.view = SPMessages()
+    platform.view = MessagesView()
 except ViewCompatibleError as e:
     logger.exception(e)
     exit()

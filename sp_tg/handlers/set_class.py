@@ -16,8 +16,8 @@ from aiogram.types import (
 )
 
 from sp.db import User
-from sp.messages import SPMessages
 from sp.platform import Platform
+from sp.view.messages import MessagesView
 from sp_tg.filters import IsAdmin
 from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
 from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
@@ -64,7 +64,7 @@ async def restrictions_handler(message: Message) -> None:
 @router.message(Command("set_class"), IsAdmin())
 async def set_class_command(
     message: Message,
-    sp: SPMessages,
+    sp: MessagesView,
     user: User,
     command: CommandObject,
     platform: Platform,
@@ -100,7 +100,7 @@ async def set_class_command(
 
 
 @router.message(Command("pass"), IsAdmin())
-async def pass_handler(message: Message, sp: SPMessages, user: User) -> None:
+async def pass_handler(message: Message, sp: MessagesView, user: User) -> None:
     """Отвязывает пользователя от класса по умолчанию.
 
     Если более конкретно, то устанавливает класс пользователя в
@@ -140,7 +140,7 @@ async def set_class_callback(query: CallbackQuery, user: User) -> None:
 
 @router.callback_query(F.data == "pass", IsAdmin())
 async def pass_class_callback(
-    query: CallbackData, sp: SPMessages, user: User
+    query: CallbackData, sp: MessagesView, user: User
 ) -> None:
     """Отвязывает пользователя от класса.
 

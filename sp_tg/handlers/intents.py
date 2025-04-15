@@ -20,7 +20,7 @@ from aiogram.types import (
 from sp.db import User, UserIntent
 from sp.enums import SHORT_DAY_NAMES
 from sp.intents import Intent
-from sp.messages import SPMessages
+from sp.view.messages import MessagesView
 from sp_tg.filters import IsAdmin
 from sp_tg.messages import get_intent_status
 
@@ -353,7 +353,7 @@ async def intent_name_handler(message: Message, state: FSMContext) -> None:
 
 @router.message(EditIntentStates.parse, IsAdmin())
 async def parse_intent_handler(
-    message: Message, state: FSMContext, user: User, sp: SPMessages
+    message: Message, state: FSMContext, user: User, sp: MessagesView
 ) -> None:
     """Устанавливает парамеры намерения."""
     i = Intent.parse(sp.sc, message.text.lower().strip().split())

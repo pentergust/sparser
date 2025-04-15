@@ -1,6 +1,6 @@
 """Класс платформы.
 
-Более высокоуровневый класс, замена SPMessages.
+Более высокоуровневый класс, замена MessagesView.
 Проводником между пользователем и расписанием является некоторая
 платформа-посредник.
 Это может быть как Telegram бот, web-приложение или просто консоль.
@@ -9,7 +9,6 @@
 """
 
 from datetime import date
-from pathlib import Path
 
 from loguru import logger
 
@@ -18,9 +17,9 @@ from sp.db import User
 from sp.enums import WeekDay
 from sp.exceptions import ViewCompatibleError, ViewSelectedError
 from sp.intents import Intent
-from sp.messages import SPMessages
 from sp.parser import UpdateData
 from sp.version import VersionInfo
+from sp.view.messages import MessagesView
 
 # Главный класс платформы
 # =======================
@@ -47,10 +46,7 @@ class Platform:
         self.pid = pid
         self.name = name
         self.version = version
-
-        self._file_path = Path(f"sp_data/users/{pid}.json")
-        self._db_path = Path(f"sp_data/users/{pid}.db")
-        self._view: SPMessages | None = None
+        self._view: MessagesView | None = None
 
     # Работа с классом просмотра
     # ==========================
@@ -66,7 +62,7 @@ class Platform:
             return False
 
     @property
-    def view(self) -> SPMessages:
+    def view(self) -> MessagesView:
         """Получает текущий класс представления.
 
         Предполагается что перед тем как использовать класс представления
@@ -83,11 +79,11 @@ class Platform:
         он был задан явно, то вы получите исключение
         :py:class:`sp.exceptions.ViewSelectedError`.
 
-        .. caution:: Почему SPMessages?
+        .. caution:: Почему MessagesView?
 
             Не смотря на то, что речь идёт о классе представления,
-            на выходе мы получаем ``SPMessages``.
-            Это связано с тем, что сейчас SPMessages являются
+            на выходе мы получаем ``MessagesView``.
+            Это связано с тем, что сейчас MessagesView являются
             родоначальником будущих классов представления.
         """
         if self._view is not None:
@@ -96,9 +92,9 @@ class Platform:
             raise ViewSelectedError("Yot must set View before use it")
 
     @view.setter
-    def view(self, view: SPMessages) -> None:
-        if not isinstance(view, SPMessages):
-            raise ViewCompatibleError("View must be instance of SPMessages")
+    def view(self, view: MessagesView) -> None:
+        if not isinstance(view, MessagesView):
+            raise ViewCompatibleError("View must be instance of MessagesView")
         self._check_api_version(view.version.api_version)
         self._view = view
 
@@ -117,19 +113,19 @@ class Platform:
     def lessons(self, user: User, intent: Intent | None = None) -> str:
         """Отправляет расписание уроков.
 
-        Является сокращение для метода ``SPMessages.send_lessons()``.
+        Является сокращение для метода ``MessagesView.get_lessons()``.
         Принимает пользователя, желающего получить расписание, а также
         Намерения для уточнения результата.
         Если намерение не было передано, будет взят класс пользователя.
         """
-        return self.view.send_lessons(self._get_user_intent(user, intent))
+        return self.view.get_lessons(self._get_user_intent(user, intent))
 
     def today_lessons(self, user: User, intent: Intent | None = None) -> str:
         """Расписание уроков на сегодня/завтра.
 
-        Сокращение для метода ``SPMessages.send_today_lessons()``.
+        Сокращение для метода ``MessagesView.today_lessons()``.
 
-        Работает как send_lessons.
+        Работает как get_lessons.
         Отправляет расписание для классов на сегодня, если уроки
         ешё идут.
         Отправляет расписание на завтра, если уроки на сегодня уже
@@ -137,14 +133,14 @@ class Platform:
 
         Использует намерения для уточнения расписания.
         Однако будет игнорировать указанные дни в намерении.
-        Иначе используйте метод send_lessons.
+        Иначе используйте метод get_lessons.
         """
-        return self.view.send_today_lessons(self._get_user_intent(user, intent))
+        return self.view.today_lessons(self._get_user_intent(user, intent))
 
     def current_day(self, user: User, intent: Intent | None = None) -> int:
         """Получает текущий день в расписании.
 
-        Сокращение для: ``SPMessages.get_current_day()``.
+        Сокращение для: ``MessagesView.current_day()``.
         Если урока для указанного пользователя ещё идут, вернут сегодня,
         иначе же вернёт завтрашний день.
 
@@ -152,7 +148,7 @@ class Platform:
         расписания.
         Если намерение не было передано то получает класс пользователя.
         """
-        return self.view.get_current_day(self._get_user_intent(user, intent))
+        return self.view.current_day(self._get_user_intent(user, intent))
 
     def _get_day_str(self, today: int, relative_day: int) -> str:
         if relative_day == today:
@@ -180,7 +176,7 @@ class Platform:
         if user.cl == "":
             return "Сегодня"
 
-        current_day = self.view.get_current_day(
+        current_day = self.view.current_day(
             intent=self.view.sc.construct_intent(cl=user.cl, days=today)
         )
         return self._get_day_str(today, current_day)
@@ -190,7 +186,7 @@ class Platform:
     ) -> str:
         """Поиск в расписании по уроку/кабинету.
 
-        Является сокращением для ``SPMessages.search()``.
+        Является сокращением для ``MessagesView.search()``.
         Результаты поиска собираются в нужный формат.
 
         Поиск немного изменяется в зависимости от режима.
@@ -213,7 +209,7 @@ class Platform:
     ) -> str:
         """Получает результаты работы счётчика.
 
-        Сокращение для: ``SPMessages.send_counter()``.
+        Сокращение для: ``MessagesView.counter()``.
         Используется чтобы преобразовать результаты счётчика к удобному
         формату отображения.
 
@@ -223,26 +219,26 @@ class Platform:
 
         sc = Schedule()
         cc = CurrentCounter(sc, sc.construct_intent())
-        message = platform.send_counter(
+        message = platform.counter(
             cc.cl(),
             CounterTarget.DAYS,
             days_counter=True # Поскольку присутствуют дни недели
         )
         ```
         """
-        return self.view.send_counter(groups, target, days_counter)
+        return self.view.counter(groups, target, days_counter)
 
     def updates(self, update: UpdateData, hide_cl: str | None = None) -> str:
         """Собирает сообщение со списком изменений.
 
-        Сокращение для: ``SPMessages.send_update()``.
+        Сокращение для: ``MessagesView.get_update()``.
         """
-        return self.view.send_update(update, hide_cl)
+        return self.view.get_update(update, hide_cl)
 
     async def check_updates(self, user: User) -> str | None:
         """Проверяет, нет ли у пользователей обновления расписания.
 
-        Сокращение для: ``SPMessages.check_update()``.
+        Сокращение для: ``MessagesView.check_update()``.
         Отправляет сжатую запись об изменениях в расписании, или None,
         если новых изменений нет.
         """
@@ -251,7 +247,7 @@ class Platform:
     async def status(self, user: User) -> str:
         """Отправляет статус работы платформы.
 
-        Сокращение для: ``SPMessages.send_status()``.
+        Сокращение для: ``MessagesView.send_status()``.
         """
         count_result = await User.get_stats(self.view.sc)
         return self.view.send_status(count_result, user, self.version)
