@@ -63,7 +63,6 @@ async def restrictions_handler(message: Message) -> None:
 @router.message(Command("set_class"), IsAdmin())
 async def set_class_command(
     message: Message,
-    sp: MessagesView,
     user: User,
     command: CommandObject,
     view: MessagesView,
@@ -78,7 +77,7 @@ async def set_class_command(
     """
     # Если указали класс в команде
     if command.args is not None:
-        if await user.set_cl(command.args, sp.sc):
+        if await user.set_cl(command.args, view.sc):
             await message.answer(
                 text=get_home_message(command.args),
                 reply_markup=get_main_keyboard(
@@ -88,7 +87,7 @@ async def set_class_command(
         # Если такого класса не существует
         else:
             text = "👀 Такого класса не существует."
-            text += f"\n💡 Доступные классы: {', '.join(sp.sc.lessons)}"
+            text += f"\n💡 Доступные классы: {', '.join(view.sc.lessons)}"
             await message.answer(text=text)
 
     # Сбрасываем пользователя и переводим в состояние выбора класса
@@ -100,13 +99,15 @@ async def set_class_command(
 
 
 @router.message(Command("pass"), IsAdmin())
-async def pass_handler(message: Message, sp: MessagesView, user: User) -> None:
+async def pass_handler(
+    message: Message, view: MessagesView, user: User
+) -> None:
     """Отвязывает пользователя от класса по умолчанию.
 
     Если более конкретно, то устанавливает класс пользователя в
     None и отправляет главное сообщение и клавиатуру.
     """
-    await user.set_cl("", sp.sc)
+    await user.set_cl("", view.sc)
     await message.answer(
         text=get_home_message(user.cl),
         reply_markup=get_main_keyboard(user.cl, None),
@@ -140,7 +141,7 @@ async def set_class_callback(query: CallbackQuery, user: User) -> None:
 
 @router.callback_query(F.data == "pass", IsAdmin())
 async def pass_class_callback(
-    query: CallbackQuery, sp: MessagesView, user: User
+    query: CallbackQuery, view: MessagesView, user: User
 ) -> None:
     """Отвязывает пользователя от класса.
 
@@ -148,7 +149,7 @@ async def pass_class_callback(
     Просто устанавливает класс пользователя в None и отправляет
     главное сообщение с основной клавиатурой бота.
     """
-    await user.set_cl("", sp.sc)
+    await user.set_cl("", view.sc)
     await query.message.edit_text(
         text=get_home_message(user.cl),
         reply_markup=get_main_keyboard(user.cl, None),

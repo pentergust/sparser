@@ -353,10 +353,10 @@ async def intent_name_handler(message: Message, state: FSMContext) -> None:
 
 @router.message(EditIntentStates.parse, IsAdmin())
 async def parse_intent_handler(
-    message: Message, state: FSMContext, user: User, sp: MessagesView
+    message: Message, state: FSMContext, user: User, view: MessagesView
 ) -> None:
     """Устанавливает парамеры намерения."""
-    i = Intent.parse(sp.sc, message.text.lower().strip().split())
+    i = Intent.parse(view.sc, message.text.lower().strip().split())
     if sum(map(len, i)) == 0:
         await message.answer(
             "⚠️ Переданная строка не содержит ни одного ключа, который может "
