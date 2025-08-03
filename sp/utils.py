@@ -74,9 +74,8 @@ def load_file(path: Path, data: _T | None = None) -> _T:
             logger.warning("File not found {} -> create", path)
             save_file(path, data)
             return data
-        else:
-            logger.error("File not found {}", path)
-            return data
+        logger.error("File not found {}", path)
+        return data
     except Exception as e:
         logger.exception(e)
         return data
@@ -112,6 +111,5 @@ def get_str_timedelta(s: int, hours: bool | None = True) -> str:
         h, r = divmod(s, 3600)
         m, s = divmod(r, 60)
         return f"{h:02}:{m:02}:{s:02}"
-    else:
-        m, s = divmod(s, 60)
-        return f"{m:02}:{s:02}"
+    m, s = divmod(s, 60)
+    return f"{m:02}:{s:02}"

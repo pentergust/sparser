@@ -7,7 +7,6 @@
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
-from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,

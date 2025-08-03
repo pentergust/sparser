@@ -98,7 +98,7 @@ def get_current_lesson(now: time) -> LessonTime:
 
         if l_end_time is not None and now >= l_end_time and now < start_time:
             return LessonTime(l_end_time, start_time, i)
-        elif now >= start_time and now < end_time:
+        if now >= start_time and now < end_time:
             return LessonTime(start_time, end_time, i)
 
         l_end_time = end_time
@@ -494,10 +494,9 @@ class MessagesView(BaseView[str]):
     def _get_day_str(self, today: int, relative_day: int) -> str:
         if relative_day == today:
             return "Сегодня"
-        elif relative_day == today + 1:
+        if relative_day == today + 1:
             return "Завтра"
-        else:
-            return WeekDay(relative_day).to_short_str()
+        return WeekDay(relative_day).to_short_str()
 
     def relative_day(self, user: User) -> str:
         """Получает строковое название текущего дня недели.

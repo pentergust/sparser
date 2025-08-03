@@ -102,7 +102,7 @@ def get_notify_keyboard(
                     )
                 )
 
-        if len(hours_line):
+        if hours_line:
             inline_keyboard.append(hours_line)
 
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

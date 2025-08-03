@@ -48,8 +48,7 @@ def _clear_day_lessons(day_lessons: list[str]) -> list[str]:
         lesson = day_lessons[-1].split(":")[0]
         if lesson and lesson not in ("---", "None"):
             return day_lessons
-        else:
-            day_lessons.pop()
+        day_lessons.pop()
     return []
 
 

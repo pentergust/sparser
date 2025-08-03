@@ -203,7 +203,7 @@ class Intent(NamedTuple):
                 continue
 
             # Дни недели
-            elif arg == "сегодня":
+            if arg == "сегодня":
                 days.append(weekday)
 
             elif arg == "завтра":

@@ -49,11 +49,7 @@ def compact_updates(updates: list[UpdateData]) -> UpdateData:  # noqa: PLR0912
                         new_lessons.append(old_lesson)
 
                     # B -> A, C -> A = None
-                    elif old_lesson[1] == lesson[1]:
-                        new_lessons.append(None)
-
-                    # A -> B -> A = None
-                    elif old_lesson[0] == lesson[1]:
+                    elif old_lesson[1] == lesson[1] or old_lesson[0] == lesson[1]:
                         new_lessons.append(None)
 
                     # A -> B; B -> C = A -> C

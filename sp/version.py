@@ -50,10 +50,9 @@ class VersionInfo(NamedTuple):
             return (
                 self.build < other.build or self.api_version < other.api_version
             )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self.build < other
-        else:
-            raise ValueError("Version must be VersionInfo or integer to check")
+        raise ValueError("Version must be VersionInfo or integer to check")
 
     def __le__(self, other: object) -> bool:
         """Проверяет что версия меньше требуемой или соответствует.
@@ -68,10 +67,9 @@ class VersionInfo(NamedTuple):
                 self.build <= other.build
                 or self.api_version <= other.api_version
             )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self.build <= other
-        else:
-            raise ValueError("Version must be VersionInfo or integer to check")
+        raise ValueError("Version must be VersionInfo or integer to check")
 
     def __eq__(self, other: object) -> bool:
         """Проверяет что версия соответствует требуемой.
@@ -86,10 +84,9 @@ class VersionInfo(NamedTuple):
                 self.build == other.build
                 or self.api_version == other.api_version
             )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self.build == other
-        else:
-            raise ValueError("Version must be VersionInfo or integer to check")
+        raise ValueError("Version must be VersionInfo or integer to check")
 
     def __ne__(self, other: object) -> bool:
         """Проверяет что версия НЕ соответствует требуемой.
@@ -104,10 +101,9 @@ class VersionInfo(NamedTuple):
                 self.build != other.build
                 or self.api_version != other.api_version
             )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self.build != other
-        else:
-            raise ValueError("Version must be VersionInfo or integer to check")
+        raise ValueError("Version must be VersionInfo or integer to check")
 
     def __gt__(self, other: object) -> bool:
         """Проверяет что версия больше требуемой.
@@ -121,10 +117,9 @@ class VersionInfo(NamedTuple):
             return (
                 self.build > other.build or self.api_version > other.api_version
             )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self.build > other
-        else:
-            raise ValueError("Version must be VersionInfo or integer to check")
+        raise ValueError("Version must be VersionInfo or integer to check")
 
     def __ge__(self, other: object) -> bool:
         """Проверяет что версия больше требуемой или соответствует.
@@ -139,10 +134,9 @@ class VersionInfo(NamedTuple):
                 self.build >= other.build
                 or self.api_version >= other.api_version
             )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return self.build >= other
-        else:
-            raise ValueError("Version must be VersionInfo or integer to check")
+        raise ValueError("Version must be VersionInfo or integer to check")
 
 
 # Текущая версия проекта
@@ -200,7 +194,7 @@ def check_updates(cur_ver: VersionInfo, dest_url: str) -> VersionStatus:
             api_diff=ver.api_version - cur_ver.api_version,
             git_ver=ver,
         )
-    elif ver < cur_ver:
+    if ver < cur_ver:
         return VersionStatus(
             status=VersionOrd.GT,
             build_diff=cur_ver.build - ver.build,
@@ -208,5 +202,4 @@ def check_updates(cur_ver: VersionInfo, dest_url: str) -> VersionStatus:
             git_ver=ver,
         )
 
-    else:
-        return VersionStatus(VersionOrd.EQ, 0, 0, ver)
+    return VersionStatus(VersionOrd.EQ, 0, 0, ver)
