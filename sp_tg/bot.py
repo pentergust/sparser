@@ -33,7 +33,6 @@ from loguru import logger
 from tortoise import Tortoise
 
 from sp.db import User
-from sp.version import VersionInfo
 from sp.view.messages import MessagesView, get_str_timedelta
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (
@@ -55,7 +54,7 @@ _ADMIN_ID = getenv("ADMIN_ID")
 _DB_URL = getenv("DB_URL")
 
 # Некоторые константные настройки бота
-_BOT_VERSION = VersionInfo("v2.7", 0, 7)
+_BOT_VERSION = "v2.7"
 _ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
 
 

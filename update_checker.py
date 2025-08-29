@@ -5,13 +5,12 @@
 """
 
 import tomllib
+from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
 import requests
-
-from sp.db import dataclass
 
 UPDATES_URL = (
     "https://codeberg.org/Salormoon/sparser/raw/branch/main/pyproject.toml"

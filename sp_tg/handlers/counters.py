@@ -195,8 +195,15 @@ def get_counter_message(
     if counter == "cl":
         # Дополнительно передаём намерение, если подгруппа по урокам
         # Ибо иначе результат работы будет слишком большим для бота
-        if target == "lessons":
-            cur_counter.intent = intent.reconstruct(view.sc, cl=user.cl)
+        if target == CounterTarget.LESSONS:
+            cur_counter.intent = Intent(
+                cl=set(
+                    user.cl,
+                ),
+                days=cur_counter.intent.days,
+                lessons=cur_counter.intent.lessons,
+                cabinets=cur_counter.intent.cabinets,
+            )
         groups = cur_counter.cl()
 
     # Счётчик по дням

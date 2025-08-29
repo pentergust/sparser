@@ -206,7 +206,14 @@ async def updates_call(
     # Заменяем намерения на просмотр для класса по умолчанию
     if cl is not None and user.cl is not None:
         if intent is not None:
-            intent = intent.reconstruct(view.sc, cl=cl)
+            intent = Intent(
+                cl=set(
+                    cl,
+                ),
+                days=intent.days,
+                lessons=intent.lessons,
+                cabinets=intent.cabinets,
+            )
         else:
             intent = view.sc.construct_intent(cl=cl)
 

@@ -7,6 +7,8 @@
 
 С этой целью был создан класс намерений, который используется как
 фильтр, чтобы более точно описать что вы хотите получить от расписания.
+
+TODO: Портировать v7
 """
 
 from collections.abc import Iterable
@@ -18,8 +20,6 @@ from sp.enums import DAY_NAMES, SHORT_DAY_NAMES
 if TYPE_CHECKING:
     from sp.parser import Schedule
 
-# Вспомогательный функции
-# =======================
 
 _T = TypeVar("_T")
 
@@ -240,47 +240,3 @@ class Intent(NamedTuple):
                 ]
 
         return cls(set(cl), set(days), set(lessons), set(cabinets))
-
-    # Создание экземпляра со значения по умолчанию
-    # TODO: Прощайте методы реконструкции!
-    # ============================================
-
-    def reconstruct(  # noqa
-        self,
-        sc: "Schedule",
-        cl: Iterable[str] | str = (),
-        days: Iterable[int] | int = (),
-        lessons: Iterable[str] | str = (),
-        cabinets: Iterable[str] | str = (),
-    ) -> "Intent":
-        """Собирает новый экземпляр намерений.
-
-        Занимается сборкой и валидацией нового экземпляра намерений
-        на основе текущего экземпляра.
-        Вы можете передавать для сборки итерируемые контейнеры.
-        Если вы не указали какой-то параметр, который уже был в
-        экземпляре, он будет взят из текущего экземпляра.
-
-        .. code-block:: python
-
-            # Intent({"8а"}, set(), set(), set())
-            i = Intent.construct(sc, cl="8а")
-
-            # Intent({"8а"}, set(), {"матем"}, set())
-            new_i = i.reconstruct(sc, lessons="матем")
-
-        Экземпляр Schedule используется для валидации параметров
-        относительно текущего расписания.
-        """
-        return Intent(
-            {str(x) for x in _ensure_list(cl) if x is sc.lessons} or self.cl,
-            {int(x) for x in _ensure_list(days) if int(x) < 6} or self.days,  # noqa: PLR2004
-            (
-                {str(x) for x in _ensure_list(lessons) if x in sc.l_index}
-                or self.lessons
-            ),
-            (
-                {str(x) for x in _ensure_list(cabinets) if x in sc.c_index}
-                or self.cabinets
-            ),
-        )

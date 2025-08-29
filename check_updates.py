@@ -110,7 +110,7 @@ async def process_update(
         logger.debug("Send schedule")
         await bot.send_message(
             user.id,
-            text=view.today_lessons(await user.get_intent()),
+            text=view.today_lessons(await user.main_intent()),
             reply_markup=_week_markup(user.cl),
         )
 

@@ -72,7 +72,7 @@ async def sc_handler(
 
     elif user.cl != "":
         await message.answer(
-            text=view.today_lessons(await user.get_intent()),
+            text=view.today_lessons(await user.main_intent()),
             reply_markup=get_week_keyboard(user.cl),
         )
     else:

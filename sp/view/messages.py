@@ -472,7 +472,7 @@ class MessagesView(View[str]):
 
         if len(intent.cl) == 0:
             raise ValueError("Intent must contain at least one class let")
-        max_lessons = max(map(lambda x: len(self.sc.lessons(x)), intent.cl))
+        max_lessons = max(len(self.sc.lessons(cl)) for cl in intent.cl)
         hour = timetable[max_lessons - 1][2]
 
         if now.hour >= hour:
@@ -523,7 +523,12 @@ class MessagesView(View[str]):
         Иначе используйте метод lessons.
         """
         return self.lessons(
-            intent.reconstruct(self.sc, days=self.current_day(intent))
+            Intent(
+                cl=intent.cl,
+                days=(self.current_day(intent),),
+                lessons=intent.lessons,
+                cabinets=intent.cabinets,
+            )
         )
 
     # Методы для работы с расписанием
