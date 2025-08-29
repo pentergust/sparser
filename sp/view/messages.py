@@ -11,101 +11,22 @@
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import UTC, datetime, time
-from typing import NamedTuple
 
 from sp.counter import CounterTarget, reverse_counter
 from sp.db import User
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
 from sp.intents import Intent
 from sp.parser import Schedule
+from sp.timetable import LessonTime, Timetable
 from sp.updates import UpdateData
 from sp.view.base import View
-
-# Константы
-# =========
 
 _EMPTY_LESSONS = ("---", "None")
 
 # Максимальные отображаемый диапазон временного промежутка (2 дня)
-_UPDATE_DELTA = 172800
 # Максимально отображаемое прошедшее время обновления (24 часа)
+_UPDATE_DELTA = 172800
 _MAX_UPDATE_SINCE = 86400
-
-# Расписание уроков: начало (час, минуты), конец (час, минуты)
-# Расписание звонков с понедельника (22.01) и  до конца уч. года.
-# TODO: Написать класс для работы с расписанием звонков
-timetable = [
-    [8, 0, 8, 45],
-    [8, 55, 9, 40],
-    [10, 0, 10, 45],
-    [11, 5, 11, 50],
-    [12, 0, 12, 45],
-    [12, 55, 13, 40],
-    [13, 50, 14, 35],
-    [14, 45, 15, 30],
-]
-
-# Вспомогательные функции отображения
-# ===================================
-
-
-class LessonTime(NamedTuple):
-    """Описывает время начала и конца урока.
-
-    Этот фрагмент должен был стать частью будущего обновления.
-    Данные фрагмент будет переписан со временем.
-    Используется для детального отображения указателя на текущий урок.
-    """
-
-    start: time
-    end: time
-    lesson_index: int
-
-
-def time_to_seconds(now: time) -> int:
-    """Переводит datetime.time в полное количество секунд этого дня."""
-    return now.hour * 3600 + now.minute * 60 + now.second
-
-
-def seconds_to_time(now: int) -> time:
-    """Переводит полное количество секунд в datetime.time."""
-    h, d = divmod(now, 3600)
-    m, s = divmod(d, 60)
-    return time(h, m, s)
-
-
-def get_current_lesson(now: time) -> LessonTime:
-    """Возвращает текущий урок.
-
-    Используется в функции сбора расписания на день.
-    Чтобы можно было показать указатель на текущий урок.
-
-    Если уроки ещё не начались или уже кончились -> None.
-    """
-    l_end_time = None
-    for i, lesson in enumerate(timetable):
-        start_time = time(lesson[0], lesson[1])
-        end_time = time(lesson[2], lesson[3])
-
-        if l_end_time is not None and now >= l_end_time and now < start_time:
-            return LessonTime(l_end_time, start_time, i)
-        if now >= start_time and now < end_time:
-            return LessonTime(start_time, end_time, i)
-
-        l_end_time = end_time
-
-    # Костыль номер #46
-    # Лучше возвращать начало и конец первого урока, чем вообще ничего
-    # не возвращать
-    return LessonTime(
-        time(timetable[0][0], timetable[0][1]),
-        time(timetable[0][2], timetable[0][3]),
-        lesson_index=0,
-    )
-
-
-# Функции отображения списка изменений
-# ====================================
 
 
 def plural_form(n: int, v: tuple[str, str, str]) -> str:
@@ -241,53 +162,6 @@ def _get_update_header(
     return message
 
 
-# Вспомогательные функции отображения
-# ===================================
-
-
-def send_day_lessons(lessons: Iterable[list[str] | str]) -> str:
-    """Собирает сообщение с расписанием уроков на день.
-
-    Возвращает сообщение списка уроков на день.
-    Помимо списка уроков указывает какие уроки прошли и какие ещё
-    буду.
-    Также указывает на текущий урок, время начало и конца уроков.
-
-    Также можно передавать несколько уроков в рамках одного времени.
-    Это может использоваться в отображении результатов поиска в
-    расписании.
-    """
-    now = datetime.now(UTC).time()
-    current_lesson = get_current_lesson(now)
-    message = ""
-
-    for i, x in enumerate(lessons):
-        if current_lesson.lesson_index == i and now > current_lesson.start:
-            cursor = "🠗"
-        elif current_lesson.lesson_index == i:
-            cursor = "➜"
-        else:
-            cursor = f"{i + 1}."
-
-        message += f"\n{cursor}"
-
-        tt = timetable[i]
-        if current_lesson.lesson_index <= i:
-            message += time(tt[0], tt[1]).strftime(" %H:%M -")
-
-        message += time(tt[2], tt[3]).strftime(" %H:%M")
-        message += " │ " if current_lesson.lesson_index < i else " ┃ "
-
-        # Если несколько уроков, выводим их все по порядку
-        if isinstance(x, list):
-            message += "; ".join(x)
-        # Если есть урок
-        elif len(x) > 0 and x.split(":")[0] not in _EMPTY_LESSONS:
-            message += x
-
-    return message
-
-
 def send_search_res(intent: Intent, res: list) -> str:
     """Собирает сообщение с результатами поиска в расписании.
 
@@ -316,10 +190,6 @@ def send_search_res(intent: Intent, res: list) -> str:
         message += send_day_lessons(lessons)
 
     return message
-
-
-# Вспомогательные функции для сообщения статуса парсера
-# =====================================================
 
 
 def _get_next_update_str(time: datetime, now: datetime | None = None) -> str:
@@ -370,11 +240,21 @@ class MessagesView(View[str]):
     уже готовые текстовые сообщения.
     """
 
-    def __init__(
-        self,
-    ) -> None:
-        #: Экземпляр расписания
-        self.sc: Schedule = Schedule()
+    def __init__(self, sc: Schedule | None = None) -> None:
+        self.sc: Schedule = sc or Schedule()
+        # TODO: ПОдгружать извне
+        self.timetable = Timetable(
+            [
+                LessonTime(time(8, 0), time(8, 45)),
+                LessonTime(time(8, 55), time(9, 40)),
+                LessonTime(time(10, 0), time(10, 45)),
+                LessonTime(time(11, 5), time(11, 50)),
+                LessonTime(time(12, 0), time(12, 45)),
+                LessonTime(time(12, 55), time(13, 40)),
+                LessonTime(time(13, 50), time(14, 35)),
+                LessonTime(time(14, 45), time(15, 30)),
+            ]
+        )
 
     async def get_status(self, user: User) -> str:
         """Возвращает информацию о платформе.
@@ -432,9 +312,6 @@ class MessagesView(View[str]):
 
         return res
 
-    # Отображение расписания
-    # ======================
-
     def lessons(self, intent: Intent) -> str:
         """Собирает сообщение с расписанием уроков.
 
@@ -473,9 +350,8 @@ class MessagesView(View[str]):
         if len(intent.cl) == 0:
             raise ValueError("Intent must contain at least one class let")
         max_lessons = max(len(self.sc.lessons(cl)) for cl in intent.cl)
-        hour = timetable[max_lessons - 1][2]
-
-        if now.hour >= hour:
+        hour = self.timetable.lessons[max_lessons - 1].end
+        if now.time() >= hour:
             today += 1
 
         return 0 if today > WeekDay.SATURDAY else today
@@ -530,9 +406,6 @@ class MessagesView(View[str]):
                 cabinets=intent.cabinets,
             )
         )
-
-    # Методы для работы с расписанием
-    # ===============================
 
     def search(
         self, target: str, intent: Intent, cabinets: bool = False
@@ -614,7 +487,7 @@ class MessagesView(View[str]):
             f"🎉 У вас изменилось расписание!\n{self.update(update, user.cl)}"
         )
 
-    def counter(  # noqa: PLR0912
+    def counter(
         self,
         groups: dict[int, dict[str, dict]],
         target: CounterTarget | None = None,
@@ -678,5 +551,32 @@ class MessagesView(View[str]):
                 )
             else:
                 message += f" {', '.join(res)}"
+
+        return message
+
+    def _day_lessons(self, lessons: Iterable[list[str] | str]) -> str:
+        now = datetime.now(UTC).time()
+        cur = self.timetable.current(now)
+        message = ""
+
+        for i, lesson in enumerate(lessons):
+            if cur.index == i and now > cur.start:
+                cursor = "🠗"
+            elif cur.index == i:
+                cursor = "➜"
+            else:
+                cursor = f"{i + 1}."
+
+            message += f"\n{cursor}"
+            if cur.index < i:
+                message += cur.start.strftime(" %H:%M -")
+
+            message += cur.end.strftime(" %H:%M")
+            message += " │ " if cur.lesson_index < i else " ┃ "
+
+            if isinstance(lesson, list):
+                message += "; ".join(x)
+            elif len(lesson) > 0 and lesson.split(":")[0] not in _EMPTY_LESSONS:
+                message += lesson
 
         return message
