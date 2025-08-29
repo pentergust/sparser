@@ -34,3 +34,36 @@ api_version = 7
 dev = ["pyright>=1.1.404", "ruff>=0.12.11"]
 docs = ["sphinx>=8.2.3", "sphinx-book-theme>=1.1.4"]
 telegram = ["aiogram>=3.22.0", "python-dotenv>=1.1.1"]
+
+# Ruff linter ----------------------------------------------------------
+
+[tool.ruff]
+line-length = 80
+indent-width = 4
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D407",
+    "D107",
+    "D213",
+    "D203",
+    "RUF",
+    "COM",    # trailing commas, controlled by format
+    "EM102",  # Exception must not use an f-string literal, assign to variable first
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "INP001", # part of an implicit namespace package. Add an `__init__.py`.
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# Build system ---------------------------------------------------------
+
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
