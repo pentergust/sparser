@@ -23,6 +23,4 @@
 - version: Определение версии приложения и поиск обновлений.
 """
 
-from sp.version import PROJECT_VERSION
-
-__version__ = PROJECT_VERSION.full
+__version__ = "6.5"

@@ -13,21 +13,12 @@ from collections.abc import Iterable
 from datetime import UTC, datetime, time
 from typing import NamedTuple
 
-from loguru import logger
-
 from sp.counter import CounterTarget, reverse_counter
 from sp.db import User
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
 from sp.intents import Intent
 from sp.parser import Schedule
 from sp.updates import UpdateData
-from sp.version import (
-    PROJECT_VERSION,
-    UPDATES_URL,
-    VersionInfo,
-    VersionOrd,
-    check_updates,
-)
 from sp.view.base import View
 
 # Константы
@@ -370,24 +361,6 @@ def _get_hour_counter_str(hour_counter: Counter[int]) -> str:
     return "".join(res)
 
 
-def _get_ver_str(cur_ver: VersionInfo, dest_url: str) -> str:
-    res = cur_ver.full
-    try:
-        vs = check_updates(cur_ver, dest_url)
-    except Exception as e:
-        logger.error("Error while check updates: {}", e)
-        vs = None
-
-    if vs is None:
-        res += "\n⚠️ Не удалось проверить обновления.."
-    elif vs.status == VersionOrd.LT:
-        res += f"\n🍰 Ура ура, доступно обновление: {vs.git_ver.full}"
-    elif vs.status == VersionOrd.GT:
-        res += "\n🎩 Кажется это тестовая сборка."
-
-    return res
-
-
 class MessagesView(View[str]):
     """Предоставляет методы для более удобной работы с расписанием.
 
@@ -397,19 +370,13 @@ class MessagesView(View[str]):
     уже готовые текстовые сообщения.
     """
 
-    # Глобальное описание версии класса представления
-    # Пока что это пожалуй просто костыль, но что уж поделать
-    version = PROJECT_VERSION
-
     def __init__(
         self,
     ) -> None:
         #: Экземпляр расписания
         self.sc: Schedule = Schedule()
 
-    async def get_status(
-        self, user: User, platform_version: VersionInfo
-    ) -> str:
+    async def get_status(self, user: User) -> str:
         """Возвращает информацию о платформе.
 
         Эта статистическая информация, о работа парсера, времени
@@ -445,8 +412,7 @@ class MessagesView(View[str]):
             active_pr = 0
 
         res = (
-            f"🌟 SPlatform {_get_ver_str(self.version, UPDATES_URL)}"
-            f"\n☕ Версия платформы: {platform_version.full}"
+            f"🌟 SPlatform v6.5"
             "\nРазработчик: Milinuri Nirvalen (@milinuri)"
             f"\n\n🌳 [{nu_delta}] {nu_str} проверено"
             f"\n🌳 {lp_str} обновлено ({lp_delta} назад)"

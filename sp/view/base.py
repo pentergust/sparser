@@ -10,7 +10,6 @@ from sp.counter import CounterTarget
 from sp.db import User
 from sp.intents import Intent
 from sp.updates import UpdateData
-from sp.version import VersionInfo
 
 _VR = TypeVar("_VR")
 
@@ -28,7 +27,7 @@ class View(Generic[_VR], ABC):
         """Информация о пользователе."""
 
     @abstractmethod
-    async def status(self, platform_version: VersionInfo) -> _VR:
+    async def status(self) -> _VR:
         """Информация о платформе."""
 
     @abstractmethod
