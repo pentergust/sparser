@@ -1,4 +1,7 @@
-"""Модели базы данных."""
+"""Модели базы данных Postgres.
+
+TODO: Переместить компонент на уровень бота.
+"""
 
 from collections import Counter
 from collections.abc import Iterator
@@ -25,45 +28,56 @@ class CountedUsers:
     а также какие классы заданы у пользователей.
     Используется в методе для подсчёта количества пользователей.
 
-    total (int): Сколько всего пользователей платформы.
-    notify (int): Сколько пользователей включили уведомления.
-    active (int): Сколько пользователей использую платформу.
-    cl (Counter): Счётчик классов пользователей.
-    hours (Counter): счётчик времени отправки расписания.
+    - `total` (int): Сколько всего пользователей платформы.
+    - `notify` (int): Сколько пользователей включили уведомления.
+    - `active` (int): Сколько пользователей использую платформу.
+    - `cl` (Counter): Счётчик классов пользователей.
+    - `hours` (Counter): счётчик времени отправки расписания.
     """
 
     total: int
     notify: int
     active: int
-    cl: Counter
-    hour: Counter
+    cl: Counter[str | None]
+    hour: Counter[int]
 
 
-# Модели базы данных
-# ==================
+class UserIntent(Model):
+    """Хранилище заготовленных намерений пользователя.
+
+    - user: Какому пользователю принадлежат.
+    - name: Строковое имя намерения.
+    - intent: Запакованное в строку намерение.
+    """
+
+    user: fields.ForeignKeyRelation["User"] = fields.ForeignKeyField(
+        "models.User", "intents"
+    )
+    name = fields.CharField(max_length=64)
+    intent = fields.TextField()
 
 
 class User(Model):
     """Пользователь расписания.
 
-    - id: Telegram ID пользователя.
-    - create_time: Когда был зарегистрирован в боте.
-    - cl: Выбранный пользователем класс или без привязки.
-    - set_class: Устанавливал ли пользователь класс.
-    - notify: Отправлять ли уведомлений пользователю.
-    - intents: Намерения пользователя.
+    - `id`: Telegram ID пользователя.
+    - `create_time`: Когда был зарегистрирован в боте.
+    - `cl`: Выбранный пользователем класс или без привязки.
+    - `set_class`: Устанавливал ли пользователь класс.
+    - `notify`: Отправлять ли уведомлений пользователю.
+    - `intents`: Намерения пользователя.
     """
 
     id = fields.BigIntField(pk=True)
     create_time = fields.DatetimeField(auto_now_add=True)
     update_tome = fields.DatetimeField(auto_now=True)
     last_parse = fields.DatetimeField(auto_now_add=True)
+    # TODO: Перейти на использование намерений
     cl = fields.CharField(max_length=4, default="")
     set_class = fields.BooleanField(default=False)
     notify = fields.BooleanField(default=True)
     hours = fields.IntField(default=0)
-
-    intents: fields.ReverseRelation["UserIntent"]
+    intents: fields.ReverseRelation[UserIntent]
 
     @classmethod
     async def get_stats(cls, sc: Schedule) -> CountedUsers:
@@ -98,9 +112,7 @@ class User(Model):
             total_users, notify_users, active_users, cl_counter, hour_counter
         )
 
-    # Настройка класса пользователя
-    # =============================
-
+    # TODO: Перейти на использование намерения
     async def set_cl(self, cl: str, sc: Schedule) -> bool:
         """Устанавливает класс пользователя по умолчанию.
 
@@ -147,9 +159,6 @@ class User(Model):
         self.set_class = False
         await self.save()
 
-    # Время рассылки расписания
-    # =========================
-
     def get_hour(self, hour: int) -> bool:
         """Отправлять ли расписание в указанный час."""
         return bool(self.hours & (1 << hour - _HOUR_OFFSET))
@@ -170,12 +179,7 @@ class User(Model):
         """Сбрасывает часы отправка расписания."""
         self.hours = 0
 
-    # Обновления в расписании
-    # =======================
-
-    async def get_updates(
-        self, sc: Schedule, save_users: bool = True
-    ) -> UpdateData | None:
+    async def get_updates(self, sc: Schedule) -> UpdateData | None:
         """Возвращает компактную запись о всех новых обновлениях.
 
         Получает все новые записи об изменениях в расписании, начиная
@@ -212,33 +216,29 @@ class User(Model):
         return None
 
     async def intent_or(self, intent: Intent | None = None) -> Intent:
-        """Возвращает намерение или намерение по умолчанию."""
-        return intent if intent is not None else await self.get_intent()
+        """Возвращает выбранное намерение или намерение по умолчанию.
 
-    async def get_intent(self, intent: Intent | None = None) -> Intent:
-        """Получает намерение пользователя по умолчанию."""
-        main_intent = await self.intents.filter(name="main").get_or_none()
-        if main_intent is None:
-            if self.cl == "":
-                raise ValueError("User not set class")
-            return Intent(
-                cl={
-                    self.cl,
-                }
-            )
-        return Intent.from_str(main_intent.intent)
+        При фильтрации значений чтобы указать некоторое обязательное
+        намерение.
+        """
+        return intent if intent is not None else await self.main_intent()
 
+    async def main_intent(self) -> Intent:
+        """Получает намерение пользователя по умолчанию.
 
-class UserIntent(Model):
-    """Хранилище заготовленных намерений пользователя.
+        Оно заменяет собой параметр класса по умолчанию.
+        Описывает что пользователю интереснее всего в расписании.
+        Для учеников это обычно класс.
+        для преподавателей может быть предмет.
 
-    - user: Какому пользователю принадлежат.
-    - name: Строковое имя намерения.
-    - intent: Запакованное в строку намерение.
-    """
+        Для обратной совместимости пытается предоставить класс
+        как намерение по умолчанию.
+        В будущих версиях данный подход будет изменён.
+        """
+        intent_str = await self.intents.filter(name="main").get_or_none()
+        if intent_str is not None:
+            return Intent.from_str(intent_str.intent)
 
-    user: fields.ForeignKeyRelation[User] = fields.ForeignKeyField(
-        "models.User", "intents"
-    )
-    name = fields.CharField(max_length=64)
-    intent = fields.TextField()
+        if self.cl == "":
+            raise ValueError("User not set class")
+        return Intent(cl={self.cl})
