@@ -2,9 +2,14 @@
 
 Позволяет напрямую взаимодействовать с генератором сообщений.
 А также управлять хранилищем пользователя.
+Полезно при отладке.
+Ну и кто знает, может вы хотите использовать его.
+
+TODO: Сделать частью sp.
+FIXME: Портировать на новую версию sp.
 
 Author: Milinuri Nirvalen
-Ver: v2 (sp v6.2)
+Version: v2.0.1 (sp v6.2)
 """
 
 from datetime import datetime
@@ -19,7 +24,6 @@ from sp.intents import Intent
 from sp.platform import Platform
 from sp.utils import get_str_timedelta
 from sp.version import VersionInfo
-from sp.view.messages import MessagesView, send_search_res
 
 # Определение группы
 # ==================
@@ -47,7 +51,7 @@ pass_app = click.make_pass_decorator(AppContext)
 )
 @click.group()
 @click.pass_context
-def cli(ctx: click.Context, uid: str, pid: int) -> None:
+async def cli(ctx: click.Context, uid: str, pid: int) -> None:
     """Скрипт для управления платформой расписания.
 
     Позволяет напрямую взаимодействовать с генератором сообщений
@@ -102,7 +106,7 @@ def sc(app: AppContext, intent: Intent | None) -> None:
 def users(app: AppContext) -> None:
     """Список всех пользователей платформы."""
     for k, v in app.platform.users.get_users().items():
-        print(f"-- {k} / {v.cl} - {v.set_class}")
+        click.echo(f"-- {k} / {v.cl} - {v.set_class}")
 
 
 @cli.command()
@@ -122,7 +126,7 @@ def updates(
     if intent is None:
         intent = Intent()
     for u in app.platform.view.sc.get_updates(intent, offset):
-        print(app.platform.view.get_update(u))
+        click.echo(app.platform.view.get_update(u))
 
 
 @cli.command()
@@ -135,7 +139,7 @@ def search(
 ) -> None:
     """Глобальный поиск в расписании."""
     res = app.platform.view.sc.search(target, intent, cabinets)
-    print(send_search_res(intent, res))
+    click.echo(send_search_res(intent, res))
 
 
 @cli.command()
@@ -172,8 +176,8 @@ def counter(
         header += " по кабинетам:"
         res = cnt.index(cabinets_mode=True)
 
-    print(header)
-    print(app.platform.counter(res, CounterTarget(target)))
+    click.echo(header)
+    click.echo(app.platform.counter(res, CounterTarget(target)))
 
 
 # Пользователи расписания
@@ -195,11 +199,13 @@ def get(app: AppContext) -> None:
     else:
         parse_delta = 0
 
-    print(f"Создан: {app.user.data.create_time} ({create_delta})")
-    print(f"Класс: {app.user.data.cl} (Установлен: {app.user.data.set_class})")
-    print(f"Последняя проверка {app.user.data.last_parse} ({parse_delta})")
-    print(f"Уведомления: {app.user.data.notifications}")
-    print(f"Уведомлять: {','.join([str(x) for x in app.user.data.hours])}")
+    click.echo(f"Создан: {app.user.data.create_time} ({create_delta})")
+    click.echo(
+        f"Класс: {app.user.data.cl} (Установлен: {app.user.data.set_class})"
+    )
+    click.echo(f"Последняя проверка {app.user.data.last_parse} ({parse_delta})")
+    click.echo(f"Уведомления: {app.user.data.notifications}")
+    click.echo(f"Уведомлять: {','.join([str(x) for x in app.user.data.hours])}")
 
 
 @user.command()
@@ -215,17 +221,17 @@ def count(app: AppContext) -> None:
         active_pr = 0
         notify_pr = 0
 
-    print(f"Всего: {c_users.total}")
-    print(f"  | Активных: {c_users.active} ({active_pr}%)")
-    print(f"  | С оповещениями: {c_users.notify} ({notify_pr}%)")
+    click.echo(f"Всего: {c_users.total}")
+    click.echo(f"  | Активных: {c_users.active} ({active_pr}%)")
+    click.echo(f"  | С оповещениями: {c_users.notify} ({notify_pr}%)")
 
-    print(f"по классам ({len(c_users.cl)}):")
+    click.echo(f"по классам ({len(c_users.cl)}):")
     for k, v in c_users.cl.items():
-        print(f"  | {k}: {v}")
+        click.echo(f"  | {k}: {v}")
 
-    print(f"по оповещениям ({len(c_users.hour)}):")
+    click.echo(f"по оповещениям ({len(c_users.hour)}):")
     for k, v in c_users.hour.items():
-        print(f"  | {k}: {v}")
+        click.echo(f"  | {k}: {v}")
 
 
 @user.command()
@@ -233,7 +239,7 @@ def count(app: AppContext) -> None:
 def create(app: AppContext) -> None:
     """Добавляет нового/сбрасывает данные пользователя."""
     app.user.create()
-    print(f"Create user: {user.uid}")
+    click.echo(f"Create user: {user.uid}")
 
 
 @user.command()
@@ -241,7 +247,7 @@ def create(app: AppContext) -> None:
 def remove(app: AppContext) -> None:
     """Удаляет пользователя."""
     app.user.remove()
-    print(f"Remove user: {user.uid}")
+    click.echo(f"Remove user: {user.uid}")
 
 
 @user.command()
@@ -251,9 +257,9 @@ def select(app: AppContext, cl: str) -> None:
     """Устанавливает класс по умолчанию для пользователя."""
     status = app.user.set_class(cl, app.platform.view.sc)
     if status:
-        print(f"User {app.user.uid} set class {cl}")
+        click.echo(f"User {app.user.uid} set class {cl}")
     else:
-        print(f"User {app.user.uid} {cl} not found?")
+        click.echo(f"User {app.user.uid} {cl} not found?")
 
 
 @user.command()
@@ -265,7 +271,7 @@ def notify(app: AppContext, select: str) -> None:
         app.user.set_notify_on()
     else:
         app.user.set_notify_off()
-    print(f"User {app.user.uid} set notify {select}!")
+    click.echo(f"User {app.user.uid} set notify {select}!")
 
 
 # Оповещения пользователей
