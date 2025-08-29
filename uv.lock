@@ -926,7 +926,7 @@ wheels = [
 [[package]]
 name = "sp"
 version = "6.5"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
     { name = "asyncpg-stubs" },
