@@ -31,7 +31,6 @@ class View(Generic[_VR], ABC):
     async def status(self, platform_version: VersionInfo) -> _VR:
         """Информация о платформе."""
 
-    # FIXME: get_lessons -> lessons
     @abstractmethod
     def lessons(self, intent: Intent) -> _VR:
         """Расписание уроков с использованием фильтров."""
@@ -48,7 +47,6 @@ class View(Generic[_VR], ABC):
         """Поиск по имена урока/кабинета в расписании."""
 
     @abstractmethod
-    # FIXME: get_update -> update
     # TODO: Более общий аргумент вместо hide_cl
     def update(self, update: UpdateData, hide_cl: str | None = None) -> _VR:
         """Возвращает сообщение со списком изменений в расписании."""

@@ -126,7 +126,7 @@ def updates(
     if intent is None:
         intent = Intent()
     for u in app.platform.view.sc.get_updates(intent, offset):
-        click.echo(app.platform.view.get_update(u))
+        click.echo(app.platform.view.update(u))
 
 
 @cli.command()

@@ -41,7 +41,7 @@ async def process_request(
 
     elif intent.cl or intent.days:
         if intent.days:
-            text = view.get_lessons(await user.intent_or(intent))
+            text = view.lessons(await user.intent_or(intent))
         else:
             text = view.today_lessons(await user.intent_or(intent))
     else:

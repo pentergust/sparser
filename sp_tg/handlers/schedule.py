@@ -55,7 +55,7 @@ async def week_sc_command(
 ) -> None:
     """Расписание уроков на неделю."""
     await message.answer(
-        text=view.get_lessons(
+        text=view.lessons(
             await user.intent_or(
                 view.sc.construct_intent(days=[0, 1, 2, 3, 4, 5], cl=user.cl)
             ),
@@ -78,7 +78,7 @@ async def sc_callback(
     """Отправляет расписание уроков для класса в указанный день."""
     # Расписание на неделю
     if callback_data.day == "week":
-        text = view.get_lessons(
+        text = view.lessons(
             await user.intent_or(
                 view.sc.construct_intent(days=[0, 1, 2, 3, 4, 5], cl=user.cl)
             ),
@@ -95,7 +95,7 @@ async def sc_callback(
 
     # Расписание на другой день недели
     else:
-        text = view.get_lessons(
+        text = view.lessons(
             await user.intent_or(
                 view.sc.construct_intent(
                     cl=callback_data.cl, days=int(callback_data.day)

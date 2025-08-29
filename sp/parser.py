@@ -543,7 +543,7 @@ class Schedule:
     # Получение данных из расписания
     # ==============================
 
-    def get_lessons(self, cl: str | None = None) -> list[list[str]]:
+    def lessons(self, cl: str | None = None) -> list[list[str]]:
         """Получает полное расписание уроков для указанного класса.
 
         .. deprecated:: 5.8 Данный метод может быть переработан

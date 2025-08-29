@@ -28,7 +28,7 @@ from sp.version import (
     VersionOrd,
     check_updates,
 )
-from sp.view.base import BaseView
+from sp.view.base import View
 
 # Константы
 # =========
@@ -365,7 +365,7 @@ def _get_ver_str(cur_ver: VersionInfo, dest_url: str) -> str:
     return res
 
 
-class MessagesView(BaseView[str]):
+class MessagesView(View[str]):
     """Предоставляет методы для более удобной работы с расписанием.
 
     В отличие от необработанных результатов работы Schedule, данный
@@ -446,14 +446,14 @@ class MessagesView(BaseView[str]):
     # Отображение расписания
     # ======================
 
-    def get_lessons(self, intent: Intent) -> str:
+    def lessons(self, intent: Intent) -> str:
         """Собирает сообщение с расписанием уроков.
 
         Обёртка над методом класса Schedule для получения расписания.
         Принимает намерения, для уточнения форматов расписание.
         Форматирует сообщений с помощью send_day_lessons.
         """
-        lessons = {x: self.sc.get_lessons(x) for x in intent.cl}
+        lessons = {x: self.sc.lessons(x) for x in intent.cl}
         message = ""
         for day in intent.days:
             message += f"\n📅 На {DAY_NAMES[day]}:"
@@ -483,7 +483,7 @@ class MessagesView(BaseView[str]):
 
         if len(intent.cl) == 0:
             raise ValueError("Intent must contain at least one class let")
-        max_lessons = max(map(lambda x: len(self.sc.get_lessons(x)), intent.cl))
+        max_lessons = max(map(lambda x: len(self.sc.lessons(x)), intent.cl))
         hour = timetable[max_lessons - 1][2]
 
         if now.hour >= hour:
@@ -523,7 +523,7 @@ class MessagesView(BaseView[str]):
     def today_lessons(self, intent: Intent) -> str:
         """Расписание уроков на сегодня/завтра.
 
-        Работает как get_lessons.
+        Работает как lessons.
         Отправляет расписание для классов на сегодня, если уроки
         ешё идут.
         Отправляет расписание на завтра, если уроки на сегодня уже
@@ -531,9 +531,9 @@ class MessagesView(BaseView[str]):
 
         Использует намерения для уточнения расписания.
         Однако будет игнорировать указанные дни в намерении.
-        Иначе используйте метод get_lessons.
+        Иначе используйте метод lessons.
         """
-        return self.get_lessons(
+        return self.lessons(
             intent.reconstruct(self.sc, days=self.current_day(intent))
         )
 
@@ -560,7 +560,7 @@ class MessagesView(BaseView[str]):
         """
         return send_search_res(intent, self.sc.search(target, intent, cabinets))
 
-    def get_update(self, update: UpdateData, hide_cl: str | None = None) -> str:
+    def update(self, update: UpdateData, hide_cl: str | None = None) -> str:
         """Собирает сообщение со списком изменений в расписании.
 
         Собирает полноценное сообщение со всеми изменениями.
@@ -617,8 +617,7 @@ class MessagesView(BaseView[str]):
             return None
 
         return (
-            "🎉 У вас изменилось расписание!\n"
-            f"{self.get_update(update, user.cl)}"
+            f"🎉 У вас изменилось расписание!\n{self.update(update, user.cl)}"
         )
 
     def counter(  # noqa: PLR0912
