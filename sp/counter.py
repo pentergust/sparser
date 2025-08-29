@@ -12,46 +12,47 @@
 
 from collections import Counter, defaultdict
 from enum import Enum
-from typing import TypeAlias, TypedDict, TypeVar
+from typing import TypeAlias, TypedDict
 
-from .intents import Intent
-from .parser import Schedule
-
-# Вспомогательные типы данных
-# ===========================
+from sp.intents import Intent
+from sp.parser import Schedule
 
 
 class ClCounterData(TypedDict):
     """Результаты подсчётов счётчика классов."""
 
     total: int
-    days: Counter
-    lessons: Counter
-    cabinets: Counter
+    # cl
+    days: Counter[int]
+    lessons: Counter[str]
+    cabinets: Counter[str]
 
 
 class DayCounterData(TypedDict):
     """Результат подсчёта счётчика дней."""
 
     total: int
-    cl: Counter
-    lessons: Counter
-    cabinets: Counter
+    cl: Counter[str]
+    # days
+    lessons: Counter[str]
+    cabinets: Counter[str]
 
 
 class IndexCounterData(TypedDict):
     """Результаты подсчёта счётчика индексов."""
 
     total: int
-    cl: Counter
-    days: Counter
-    main: Counter
+    cl: Counter[str]
+    days: Counter[int]
+    # lessons
+    # cabinets
+    main: Counter[str]
 
 
 class CounterTarget(Enum):
     """Описывает все доступные подгруппы счётчиков.
 
-    Пример использования с CurrentCounter:
+    Пример использования с ``CurrentCounter``:
 
     ```py
         counter = CurrentCounter(sc, Intent())
@@ -79,11 +80,9 @@ class CounterTarget(Enum):
     MAIN = "main"
 
 
-# Вспомогательные функции
-# =======================
-
-_R = TypeVar("_R", ClCounterData, DayCounterData, IndexCounterData)
-CounterRes: TypeAlias = dict[str, _R]
+CounterRes: TypeAlias = dict[
+    str, ClCounterData | DayCounterData | IndexCounterData
+]
 
 
 def _group_counter_res(counter_res: CounterRes) -> dict[int, CounterRes]:
@@ -115,7 +114,7 @@ def _group_counter_res(counter_res: CounterRes) -> dict[int, CounterRes]:
     return groups
 
 
-def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
+def reverse_counter(cnt: Counter[str]) -> dict[int, list[str]]:
     """Меняет ключ и значение ``collections.Counter`` местами.
 
     Переворачивает счётчик из name:count -> count:[name, name, name].
@@ -123,7 +122,7 @@ def reverse_counter(cnt: Counter) -> dict[int, list[str]]:
     количеству.
     Также будет пропускать пустые значения при подсчёте.
     """
-    res = defaultdict(list)
+    res: defaultdict[int, list[str]] = defaultdict(list)
     for k, v in cnt.items():
         if not v:
             continue
