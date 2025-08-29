@@ -11,6 +11,8 @@
 - функция получения расписания.
 - Методы кеширования расписания.
 - Класс Schedule для работы с расписанием и его сохранением.
+
+TODO: Отделить парсер и расписание.
 """
 
 import hashlib
@@ -286,6 +288,7 @@ def parse_lessons() -> dict[str, list[list[str]]]:  # noqa: PLR0912
 # ==========================
 
 
+# TODO: Разобрать
 class ScheduleDict(TypedDict):
     """Описывает что собой представляет словарь расписание."""
 
@@ -295,8 +298,8 @@ class ScheduleDict(TypedDict):
 
 
 # Определение полезных типов
-LessonIndex: TypeAlias = dict[str, list[dict[str, dict[str, int]]]]
-ClassIndex: TypeAlias = dict[str, list[dict[str, dict[str, int]]]]
+LessonIndex: TypeAlias = dict[str, list[dict[str, dict[str, list[int]]]]]
+ClassIndex: TypeAlias = dict[str, list[dict[str, dict[str, list[int]]]]]
 SearchRes: TypeAlias = list[list[list[str]]]
 
 

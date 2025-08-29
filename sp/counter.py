@@ -1,52 +1,31 @@
 """Счётчики элементов расписания.
 
-Предоставляет вспомогательный класс для подсчёта количества
-элементов в расписании.
-Используется для последующего анализа расписания.
-Все функции используют намерения, для уточнения результатов подсчёта.
-
-Обратите внимание, что счётчики возвращают "сырой" результат.
-Который вы может в последствии самостоятельно обработать
-в необходимый вам формат.
+Предоставляет счётчик для анализа количества элементов в расписании.
+Все методы используют намерения, для уточнения результатов подсчёта.
 """
 
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from enum import Enum
-from typing import TypeAlias, TypedDict
+from typing import Any, TypeVar
 
 from sp.intents import Intent
 from sp.parser import Schedule
 
 
-class ClCounterData(TypedDict):
-    """Результаты подсчётов счётчика классов."""
+@dataclass(slots=True)
+class CounterGroup:
+    """Группа результатов работы счётчика.
 
-    total: int
-    # cl
-    days: Counter[int]
-    lessons: Counter[str]
-    cabinets: Counter[str]
-
-
-class DayCounterData(TypedDict):
-    """Результат подсчёта счётчика дней."""
-
-    total: int
-    cl: Counter[str]
-    # days
-    lessons: Counter[str]
-    cabinets: Counter[str]
-
-
-class IndexCounterData(TypedDict):
-    """Результаты подсчёта счётчика индексов."""
+    в зависимости от типа счётчика некоторые поля могут быть пусты.
+    К примеру у счётчика по классам классы будут пустыми.
+    """
 
     total: int
     cl: Counter[str]
     days: Counter[int]
-    # lessons
-    # cabinets
-    main: Counter[str]
+    lessons: Counter[str]
+    cabinets: Counter[str]
 
 
 class CounterTarget(Enum):
@@ -80,36 +59,20 @@ class CounterTarget(Enum):
     MAIN = "main"
 
 
-CounterRes: TypeAlias = dict[
-    str, ClCounterData | DayCounterData | IndexCounterData
-]
+_K = TypeVar("_K", int, str)
+CounterRes = dict[_K, CounterGroup]
 
 
-def _group_counter_res(counter_res: CounterRes) -> dict[int, CounterRes]:
-    """Группирует результат работы счётчиков по total ключу.
-
-    Формат вывода:
-
-    ```py
-    {
-        2: { # Общее количество ("total" счётчика)
-            "8в" { # Некоторые счётчики, не обязательно класс.
-                # ...
-            },
-            "...", {
-                # ...
-            }
-        }
-    }
-    ```
-    """
-    groups: defaultdict[int, CounterRes] = defaultdict(dict)
+def _group_counter_res(
+    counter_res: CounterRes[_K],
+) -> dict[int, CounterRes[_K]]:
+    """Группирует результат работы счётчиков по total ключу."""
+    groups: defaultdict[int, CounterRes[Any]] = defaultdict(dict)
     for k, v in counter_res.items():
-        key = v["total"]
-        if not key:
+        if not v.total:
             continue
 
-        groups[key][k] = v
+        groups[v.total][k] = v
 
     return groups
 
@@ -131,52 +94,30 @@ def reverse_counter(cnt: Counter[str]) -> dict[int, list[str]]:
     return res
 
 
-# Класс счётчика
-# ==============
-
-
 class CurrentCounter:
     """Счётчик элементов текущего расписания.
 
-    Предоставляет методы для подсчёта элементов текущего расписания.
-    Возвращает сырые результаты, которое после можно обработать через
-    класс представления.
+    Предоставляет методы для подсчёта элементов расписания.
+    Вы можете отобразить результат через класс представления.
     """
 
     def __init__(self, sc: Schedule, intent: Intent) -> None:
         self.sc = sc
         self.intent = intent
 
-    def cl(
-        self, intent: Intent | None = None
-    ) -> dict[int, dict[str, ClCounterData]]:
+    def cl(self, intent: Intent | None = None) -> dict[int, CounterRes[str]]:
         """Счётчик по классам с использованием sp.lessons.
 
         Считает элементы расписания, пробегаясь по sp.lessons.
         Использует намерение для уточнения результатов поиска.
-
-        Пример результатов работы счетчика:
-
-        ```py
-        {
-            "7а": { # Классы
-                "total": 12, # Общее количество элементов.
-                "days": Counter(), # Количество элементов по дням.
-                "lessons": Counter(), # Количество элементов по урокам.
-                "cabinets": Counter(), # Элементы по кабинетам.
-            }
-        }
-        ```
         """
-        res: dict[str, ClCounterData] = {}
+        res: dict[str, CounterGroup] = {}
         intent = intent or self.intent
-
-        # Пробегаемся по урокам и дням в расписании
-        for cl, days in self.sc.lessons.items():
+        for cl, days in self.sc.schedule["lessons"].items():
             if intent.cl and cl not in intent.cl:
                 continue
 
-            day_counter: Counter[str] = Counter()
+            day_counter: Counter[int] = Counter()
             lessons_counter: Counter[str] = Counter()
             cabinets_counter: Counter[str] = Counter()
 
@@ -191,50 +132,30 @@ class CurrentCounter:
                     for cabinet in lesson_cabinet[1].split("/"):
                         cabinets_counter[cabinet] += 1
 
-                day_counter[str(day)] = len(lessons)
+                day_counter[day] = len(lessons)
 
-            res[cl] = {
-                "total": sum(day_counter.values()),
-                "days": day_counter,
-                "lessons": lessons_counter,
-                "cabinets": cabinets_counter,
-            }
+            res[cl] = CounterGroup(
+                total=sum(day_counter.values()),
+                cl=Counter(),
+                days=day_counter,
+                lessons=lessons_counter,
+                cabinets=cabinets_counter,
+            )
         return _group_counter_res(res)
 
-    def days(
-        self, intent: Intent | None = None
-    ) -> dict[int, dict[str, DayCounterData]]:
+    def days(self, intent: Intent | None = None) -> dict[int, CounterRes[int]]:
         """Счётчик по дням с использованием sc.lessons.
 
         Производит подсчёт элементов относительно дней недели.
         Использует намерение для уточнения результатов работы счётчиков.
-
-        Пример результатов работы счётчика:
-
-
-        ```py
-        {
-            "1": { # День недели (0 - понедельник, 5 - суббота).
-                "total": 12 # Общее количество элементов расписания.
-                "cl": Counter() # Количество элементов по классам.
-                "lessons": Counter() # Элементов по урокам.
-                "cabinets": Counter() # Элементов по кабинетам.
-            }
-        }
-        ```
         """
-        res: dict[str, DayCounterData] = {
-            str(x): {
-                "cl": Counter(),
-                "total": 0,
-                "lessons": Counter(),
-                "cabinets": Counter(),
-            }
+        res = {
+            x: CounterGroup(0, Counter(), Counter(), Counter(), Counter())
             for x in range(6)
         }
         intent = intent or self.intent
 
-        for cl, days in self.sc.lessons.items():
+        for cl, days in self.sc.schedule["lessons"].items():
             if intent.cl and cl not in intent.cl:
                 continue
 
@@ -243,90 +164,83 @@ class CurrentCounter:
                     continue
 
                 for lesson in lessons:
-                    lesson_cabinet: list[str] = lesson.split(":")  # noqa
-                    res[str(day)]["cl"][cl] += 1
-                    res[str(day)]["lessons"][lesson_cabinet[0]] += 1
-                    res[str(day)]["total"] += 1
-
+                    lesson_cabinet: list[str] = lesson.split(":")
+                    res[day].cl[cl] += 1
+                    res[day].lessons[lesson_cabinet[0]] += 1
+                    res[day].total += 1
                     for x in lesson_cabinet[1].split("/"):
-                        res[str(day)]["cabinets"][x] += 1
+                        res[day].cabinets[x] += 1
 
         return _group_counter_res(res)
 
-    def index(
-        self, intent: Intent | None = None, cabinets_mode: bool = False
-    ) -> dict[int, dict[str, IndexCounterData]]:
-        """Счётчик уроков/кабинетов с использованием индексов.
+    def lessons(
+        self, intent: Intent | None = None
+    ) -> dict[int, CounterRes[str]]:
+        """Счётчик уроков с использованием индексов.
 
         Производит подсчёт элементов расписания в счётчиках.
         В зависимости от режима считает уроки или кабинеты.
         Использует намерение, для уточнения результатов счётчика.
-
-        .. caution:: Этот счётчик сильно отличается
-
-            Обратите внимание, что поскольку этот счётчик использует
-            в подсчёте индексы, то и шаблон результатов работы этого
-            счётчика отличается.
-
-        .. table::
-
-                +----------+---------+---------+
-                | cabinets | obj     | another |
-                +==========+=========+=========+
-                | false    | lesson  | cabinet |
-                +----------+---------+---------+
-                | true     | cabinet | lesson  |
-                +----------+---------+---------+
-
-        ```py
-        {
-            "obj": { # урок или кабинет в зависимости от режима.
-                "total": 12 # Общее количество элементов расписания.
-                "cl": Counter() # Количество элементов по классам.
-                "days": Counter() # Элементов по дням.
-                "main": Counter() # Элементов по `another`.
-            }
-        }
-        ```
         """
-        res: dict[str, IndexCounterData] = defaultdict(
-            lambda: {
-                "total": 0,
-                "days": Counter(),
-                "cl": Counter(),
-                "main": Counter(),
-            }
+        res: dict[str, CounterGroup] = defaultdict(
+            lambda: CounterGroup(0, Counter(), Counter(), Counter(), Counter())
         )
-        if intent is None:
-            intent = self.intent
-
-        if cabinets_mode:
-            index = self.sc.c_index
-            obj_filter = intent.cabinets
-            another_filter = intent.lessons
-        else:
-            index = self.sc.l_index
-            obj_filter = intent.lessons
-            another_filter = intent.cabinets
-
-        for k, v in index.items():
-            if obj_filter and k not in obj_filter:
+        intent = intent or self.intent
+        for k, v in self.sc.l_index.items():
+            if intent.lessons and k not in intent.lessons:
                 continue
 
-            for day, another_v in enumerate(v):
+            for day, cabinets in enumerate(v):
                 if intent.days and day not in intent.days:
                     continue
 
-                for another, cl_s in another_v.items():
-                    if another_filter and another not in another_filter:
+                for cabinet, cl_s in cabinets.items():
+                    if intent.cabinets and cabinet not in intent.cabinets:
                         continue
 
                     for cl, i in cl_s.items():
                         if intent.cl and cl not in intent.cl:
                             continue
 
-                        res[k]["total"] += len(i)
-                        res[k]["cl"][cl] += len(i)
-                        res[k]["days"][str(day)] += len(i)
-                        res[k]["main"][another] += len(i)
+                        res[k].total += len(i)
+                        res[k].cl[cl] += len(i)
+                        res[k].days[day] += len(i)
+                        res[k].lessons[cabinet] += len(i)
+
+        return _group_counter_res(res)
+
+    def cabinets(
+        self, intent: Intent | None = None
+    ) -> dict[int, CounterRes[str]]:
+        """Счётчик уроков с использованием индексов.
+
+        Производит подсчёт элементов расписания в счётчиках.
+        В зависимости от режима считает уроки или кабинеты.
+        Использует намерение, для уточнения результатов счётчика.
+        """
+        res: dict[str, CounterGroup] = defaultdict(
+            lambda: CounterGroup(0, Counter(), Counter(), Counter(), Counter())
+        )
+        intent = intent or self.intent
+        for k, v in self.sc.c_index.items():
+            if intent.cabinets and k not in intent.cabinets:
+                continue
+
+            for day, lessons in enumerate(v):
+                if intent.days and day not in intent.days:
+                    continue
+
+                for lesson, cl_s in lessons.items():
+                    if intent.lessons and lesson not in intent.lessons:
+                        continue
+
+                    for cl, i in cl_s.items():
+                        if intent.cl and cl not in intent.cl:
+                            continue
+
+                        res[k].total += len(i)
+                        res[k].cl[cl] += len(i)
+                        res[k].days[day] += len(i)
+                        res[k].cabinets[lesson] += len(i)
+
         return _group_counter_res(res)
