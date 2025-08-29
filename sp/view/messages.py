@@ -19,7 +19,8 @@ from sp.counter import CounterTarget, reverse_counter
 from sp.db import User
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
 from sp.intents import Intent
-from sp.parser import Schedule, UpdateData
+from sp.parser import Schedule
+from sp.updates import UpdateData
 from sp.utils import get_str_timedelta, plural_form
 from sp.version import (
     PROJECT_VERSION,

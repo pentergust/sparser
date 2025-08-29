@@ -24,8 +24,9 @@ import openpyxl
 import requests
 from loguru import logger
 
-from .intents import Intent
-from .utils import load_file, save_file
+from sp.intents import Intent
+from sp.updates import UpdateData
+from sp.utils import load_file, save_file
 
 url = "https://docs.google.com/spreadsheets/d/1pP_qEHh4PBk5Rsb7Wk9iVbJtTA11O9nTQbo1JFjnrGU/export?format=xlsx"
 RAW_SC_PATH = Path("sp_data/sc.xlsx")
@@ -237,14 +238,6 @@ class ScheduleDict(TypedDict):
     hash: str
     last_parse: int
     lessons: dict[str, list[list[str]]]
-
-
-class UpdateData(TypedDict):
-    """Что представляет собой запись об обновлении расписания."""
-
-    start_time: int
-    end_time: int
-    updates: list[dict[str, list]]
 
 
 # Определение полезных типов

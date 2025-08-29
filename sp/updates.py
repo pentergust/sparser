@@ -1,11 +1,22 @@
 """Модуль работы со списком обновлений."""
 
-from sp.parser import UpdateData
+from typing import Any, TypedDict
+
+# TODO: Дать более точные типа
+WeekUpdatesT = list[dict[str, list[dict[str, Any]]]]
+
+
+class UpdateData(TypedDict):
+    """Что представляет собой запись об обновлении расписания."""
+
+    start_time: int
+    end_time: int
+    updates: WeekUpdatesT
 
 
 # TODO: В надеждах когда-нибудь переписать эту страшную функцию
 # А пока работает и не трогаем, хе-хе ...
-def compact_updates(updates: list[UpdateData]) -> UpdateData:  # noqa: PLR0912
+def compact_updates(updates: list[UpdateData]) -> UpdateData:
     """Упаковывает несколько записей об обновлениях в одну.
 
     Используется чтобы совместить несколько записей об изменениях.
@@ -20,7 +31,7 @@ def compact_updates(updates: list[UpdateData]) -> UpdateData:  # noqa: PLR0912
     - Если A -> B, B -> C, то A => C.
     - Иначе добавить запись.
     """
-    res: list[dict[str, list[dict]]] = updates[0]["updates"].copy()
+    res: WeekUpdatesT = updates[0]["updates"].copy()
 
     # Просматриваем все последующии записи об обновлениях
     for update_data in updates[1:]:
