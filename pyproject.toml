@@ -1,3 +1,24 @@
+[project]
+name = "sp"
+version = "6.5"
+description = "Platform for working with class schedules."
+requires-python = ">=3.11"
+authors = [{ name = "Milinuri Nirvalen", email = "pentergust@mail.ru>" }]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+# TODO: Migrate to aiosqlite
+# TODO: Migrate to orjson
+dependencies = [
+    "asyncpg>=0.30.0",
+    "asyncpg-stubs>=0.30.2",
+    "click>=8.2.1",
+    "loguru>=0.7.3",
+    "openpyxl>=3.1.5",
+    "requests>=2.32.5",
+    "tortoise-orm>=0.25.1",
+    "ujson>=5.11.0",
+]
+
 # Версия проекта -------------------------------------------------------
 
 [tool.sp]
@@ -5,74 +26,11 @@ version = "v6.5"
 build = 267
 api_version = 7
 
-# main -----------------------------------------------------------------
+# Other dependencies --------------------------------------------------- 
 
-[tool.poetry]
-name = "sp"
-version = "6.4"
-description = "Platform for working with class schedules."
-authors = ["Milinuri Nirvalen <pentergust@mail.ru>"]
-license = "GPL-3.0-or-later"
-readme = "README.md"
-repository = "https://codeberg.org/Salormoon/Sparser"
-documentation = "https://sparser.readthedocs.io/ru/latest/"
-
-
-# Main dependencies -------------------------------------------------------
-
-[tool.poetry.dependencies]
-python = "^3.10"
-requests = "^2.32.3"
-loguru = "^0.7.3"
-ujson = "^5.10.0"
-click = "^8.1.8"
-openpyxl = "^3.1.5"
-tortoise-orm = "^0.24.2"
-asyncpg = "^0.30.0"
-
-
-
-# For dev dependencies ----------------------------------------------------
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-icecream = "^2.1.4"
-ruff = "^0.9.3"
-mypy = "^1.14.1"
-
-
-# For building docs with sphinx ----------------------------------------
-
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-sphinx = "^7.2.6"
-sphinx-copybutton = "^0.5.2"
-sphinx-book-theme = "^1.1.2"
-
-
-# For Telegram bot Platform --------------------------------------------
-
-[tool.poetry.group.telegram.dependencies]
-aiogram = "^3.2.0"
-python-dotenv = "^1.0.0"
-
-
-# Configure Ruff -------------------------------------------------------
-
-[tool.ruff]
-line-length = 80
-indent-width = 4
-
-# Assume Python 3.10
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["W", "E", "F", "I", "D", "N", "PL", "UP", "ANN"]
-ignore = ["D407", "D413", "D107", "D213", "D203"]
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+# TODO: Migrate to mkdocs
+# TODO: Migrate to pydantic-settings
+[dependency-groups]
+dev = ["pyright>=1.1.404", "ruff>=0.12.11"]
+docs = ["sphinx>=8.2.3", "sphinx-book-theme>=1.1.4"]
+telegram = ["aiogram>=3.22.0", "python-dotenv>=1.1.1"]
