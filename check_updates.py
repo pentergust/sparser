@@ -84,6 +84,20 @@ def _update_last_check(path: Path, timestamp: int) -> None:
         f.write(str(timestamp))
 
 
+async def _wrap_update(
+    bot: Bot, hour: int, view: MessagesView, user: User
+) -> None:
+    try:
+        logger.debug("Process {}", user)
+        await process_update(bot, hour, view, user)
+
+    except TelegramForbiddenError:
+        await user.delete()
+
+    except Exception as e:  # noqa: BLE001 чтобы процесс не останавливался
+        logger.exception(e)
+
+
 async def process_update(
     bot: Bot, hour: int, view: MessagesView, user: User
 ) -> None:
@@ -124,23 +138,15 @@ async def main() -> None:
     now = datetime.now(UTC)
 
     logger.info("Start of the update process...")
+    tasks: list[asyncio.Future[None]] = []
     for user in await User.all():
         if not user.notify or not user.cl:
             continue
 
-        try:
-            logger.debug("Process {}", user)
-            await process_update(bot, now.hour, view, user)
-
-        # Если что-то произошло с пользователем:
-        # Заблокировал бота, исключил из чата, исчез сам ->
-        # Удаляем пользователя (чат) из базы.
-        except TelegramForbiddenError:
-            await user.delete()
-
-        except Exception as e:  # noqa: BLE001 чтобы процесс не останавливался
-            logger.exception(e)
-
+        tasks.append(
+            asyncio.create_task(_wrap_update(bot, now.hour, view, user))
+        )
+    await asyncio.gather(*tasks)
     _update_last_check(_TIMETAG_PATH, int(now.timestamp()))
 
 
