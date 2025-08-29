@@ -9,8 +9,12 @@
 - Рассылает расписание на сегодня/завтра пользователям.
 - Удаляет пользователей.
 
+TODO: Перейти на использование pydantic-settings
+TODO: Сделать частью Telegram бота
+TODO: Хранить метка обновления в redis
+
 Author: Milinuri Nirvalen
-Ver: 0.12 (sp v6.5, telegram v2.7)
+Ver: 0.12.1 (sp v6.5, telegram v2.7)
 """
 
 import asyncio
@@ -27,23 +31,13 @@ from loguru import logger
 from sp.db import User
 from sp.view.messages import MessagesView
 
-# Запуск платформы и TG бота
-# ==========================
-
 _TIMETAG_PATH = Path("sp_data/last_update")
-# Максимальная длинна отправляемого сообщения для Telegram и Вконтакте
-_MAX_UPDATE_MESSAGE_LEN = 4000
-
-# Если данные мигрировали в следствии
 CHAT_MIGRATE_MESSAGE = (
     "⚠️ У вашего чата сменился ID.\nНастройки чата были перемещены."
 )
 
-# Функции для сбора клавиатур
-# ===========================
 
-
-def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
+def _week_markup(cl: str) -> InlineKeyboardMarkup:
     """Получает клавиатуру для расписание на неделю.
 
     За подробностями обращайтесь к модулю ``sptg``.
@@ -63,17 +57,10 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     )
 
 
-def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
-    """Клавиатура сообщения с обновлением.
+def _updates_markup(cl: str) -> InlineKeyboardMarkup:
+    """Клавиатура для сообщения с обновлением расписания.
 
-    Данная клавиатура будет отправляться в месте с сообщением об
-    изменениях в расписании.
-    Она содержит в себе ссылки на все основные разделы, которые нужны
-    при просмотре сообщения с изменением:
-
-    - Вернуться домой.
-    - Перейти к списку изменений.
-    - Получить расписание на сегодня/завтра.
+    За подробностями обращайтесь к модулю ``sptg``.
     """
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -90,8 +77,11 @@ def get_updates_keyboard(cl: str) -> InlineKeyboardMarkup:
     )
 
 
-# Функции для обработки списка пользователей
-# ==========================================
+def _update_last_check(path: Path, timestamp: int) -> None:
+    """Оставляет временную метку последней проверки обновления."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        f.write(str(timestamp))
 
 
 async def process_update(
@@ -102,48 +92,22 @@ async def process_update(
     Отправляет расписание на сегодня/завтра в указанный час или
     список изменений в расписании, при наличии.
     """
-    # Рассылка расписания в указанные часы
     if user.get_hour(hour):
-        logger.info("Send schedule")
+        logger.debug("Send schedule")
         await bot.send_message(
             user.id,
             text=view.today_lessons(await user.get_intent()),
-            reply_markup=get_week_keyboard(user.cl),
+            reply_markup=_week_markup(user.cl),
         )
 
-    # Отправляем уведомления об обновлениях
     updates = await view.check_updates(user)
     if updates is None:
         return
 
-    logger.info("Send compare updates message")
-
+    logger.debug("Send compare updates message")
     await bot.send_message(
-        user.id, text=updates, reply_markup=get_updates_keyboard(user.cl)
+        user.id, text=updates, reply_markup=_updates_markup(user.cl)
     )
-
-
-def set_timetag(path: Path, timestamp: int) -> None:
-    """Оставляет временную метку последней проверки обновления.
-
-    После успешной работы скрипта записывает в файл временную метку.
-    Метка может использоваться для проверки работоспособности
-    скрипта обновлений.
-
-    Args:
-        path (Path): Путь к файлу временной метки.
-        timestamp (int): Временная UNIXtime метка.
-
-    """
-    if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(path, "w") as f:
-        f.write(str(timestamp))
-
-
-# Главная функция скрипта
-# =======================
 
 
 async def main() -> None:
@@ -153,7 +117,7 @@ async def main() -> None:
     отправляет по необходимости расписание на сегодня/завтра.
     """
     load_dotenv()
-    bot = Bot(getenv("TELEGRAM_TOKEN"))
+    bot = Bot(getenv("TELEGRAM_TOKEN"))  # pyright: ignore[reportArgumentType]
     view = MessagesView()
 
     logger.add("sp_data/updates.log")
@@ -161,9 +125,7 @@ async def main() -> None:
 
     logger.info("Start of the update process...")
     for user in await User.all():
-        # Если у пользователя отключены уведомления или не указан
-        # класс по умолчанию -> пропускаем.
-        if not user.notify or user.cl == "":
+        if not user.notify or not user.cl:
             continue
 
         try:
@@ -176,11 +138,10 @@ async def main() -> None:
         except TelegramForbiddenError:
             await user.delete()
 
-        # Ловим все прочие исключения и отображаем их на экран
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 чтобы процесс не останавливался
             logger.exception(e)
 
-    set_timetag(_TIMETAG_PATH, int(now.timestamp()))
+    _update_last_check(_TIMETAG_PATH, int(now.timestamp()))
 
 
 # Запуск скрипта обновлений
