@@ -21,7 +21,6 @@ from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
 from sp.intents import Intent
 from sp.parser import Schedule
 from sp.updates import UpdateData
-from sp.utils import get_str_timedelta, plural_form
 from sp.version import (
     PROJECT_VERSION,
     UPDATES_URL,
@@ -116,6 +115,29 @@ def get_current_lesson(now: time) -> LessonTime:
 
 # Функции отображения списка изменений
 # ====================================
+
+
+def plural_form(n: int, v: tuple[str, str, str]) -> str:
+    """Возвращает склонённое значение в зависимости от числа.
+
+    Возвращает склонённое слово: "для одного", "для двух",
+    "для пяти" значений.
+    """
+    return v[2 if (4 < n % 100 < 20) else (2, 0, 1, 1, 1, 2)[min(n % 10, 5)]]
+
+
+def get_str_timedelta(s: int, hours: bool | None = True) -> str:
+    """Возвращает строковый обратный отсчёт из количества секунд.
+
+    Если hours = False -> ММ:SS.
+    Если hours = True -> HH:MM:SS.
+    """
+    if hours:
+        h, r = divmod(s, 3600)
+        m, s = divmod(r, 60)
+        return f"{h:02}:{m:02}:{s:02}"
+    m, s = divmod(s, 60)
+    return f"{m:02}:{s:02}"
 
 
 def _send_cl_updates(cl_updates: list[list[str] | None]) -> str:

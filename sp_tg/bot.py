@@ -33,9 +33,8 @@ from loguru import logger
 from tortoise import Tortoise
 
 from sp.db import User
-from sp.utils import get_str_timedelta
 from sp.version import VersionInfo
-from sp.view.messages import MessagesView
+from sp.view.messages import MessagesView, get_str_timedelta
 from sp_tg.handlers import routers
 from sp_tg.keyboards import (
     PASS_SET_CL_MARKUP,

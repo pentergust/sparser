@@ -22,8 +22,8 @@ from sp.counter import CounterTarget, CurrentCounter
 from sp.db import User
 from sp.intents import Intent
 from sp.platform import Platform
-from sp.utils import get_str_timedelta
 from sp.version import VersionInfo
+from sp.view.messages import get_str_timedelta
 
 # Определение группы
 # ==================
