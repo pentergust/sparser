@@ -5,11 +5,11 @@
 К примеру проверять наличие обновлений на сервере.
 """
 
+import tomllib
 from enum import IntEnum
 from typing import NamedTuple
 
 import requests
-import tomllib
 
 # Откуда получать сведения об обновлениях в репозитории
 UPDATES_URL = (
