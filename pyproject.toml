@@ -32,7 +32,11 @@ api_version = 7
 # TODO: Migrate to pydantic-settings
 [dependency-groups]
 dev = ["pyright>=1.1.404", "ruff>=0.12.11"]
-docs = ["sphinx>=8.2.3", "sphinx-book-theme>=1.1.4"]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.18",
+    "mkdocstrings-python>=1.18.2",
+]
 telegram = ["aiogram>=3.22.0", "python-dotenv>=1.1.1"]
 
 # Ruff linter ----------------------------------------------------------
