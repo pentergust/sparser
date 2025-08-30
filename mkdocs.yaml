@@ -1,0 +1,128 @@
+site_name: SPlatform
+copyright: 2020 - 2025 Miroq
+repo_url: https://git.miroq.ru/splatform/telegram
+repo_name: Sparser
+edit_uri: _edit/main/docs/
+
+nav:
+  - Home:
+      - index.md
+      - install.md
+      - contribute.md
+      - develop.md
+      - changelog.md
+  - Usage:
+      - usage/index.md
+      - usage/start.md
+      - usage/class.md
+      - usage/schedule.md
+      - usage/query.md
+      - usage/notify.md
+      - usage/updates.md
+      - usage/counters.md
+      - usage/next.md
+  - Wrappers:
+      - wrappers/index.md
+      - wrappers/telegram.md
+      - wrappers/cli.md
+      - wrappers/vk.md
+  - Api:
+      - api/index.md
+      - api/counter.md
+      - api/db.md
+      - api/enums.md
+      - api/intents.md
+      - api/schedule.md
+      - api/timetable.md
+      - api/updates.md
+      - Provider:
+          - api/provider/index.md
+          - api/provider/base.md
+          - api/provider/google.md
+      - View:
+          - api/view/index.md
+          - api/view/base.md
+          - api/view/messages.md
+
+  #     - install.md
+  #     - contribute.md
+  #     - changelog.md
+
+theme:
+  name: material
+  language: ru
+  palette:
+    scheme: slate
+    primary: teal
+    accent: teal
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - navigation.footer
+    - content.action.edit
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/bullhorn
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/bomb
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/robot
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: false
+            parameter_headings: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docsting_style: 'google'
+            docstring_section_style: 'list'
+            merge_init_into_class: true
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            members_order: 'source'
+
+markdown_extensions:
+  - toc:
+      toc_depth: 3
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://codeberg.org/salormoon/
+      name: Команда разработчиков проекта
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/mili_qlaster
+      name: Новостной канал проекта
