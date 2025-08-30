@@ -212,9 +212,9 @@ def get_counter_message(
 
     # Счётчики по индексам
     elif counter == "lessons":
-        groups = cur_counter.index(cabinets_mode=False)
+        groups = cur_counter.lessons()
     else:
-        groups = cur_counter.index(cabinets_mode=True)
+        groups = cur_counter.cabinets()
 
     message += view.counter(groups=groups, target=target)
     return message
