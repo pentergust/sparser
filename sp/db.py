@@ -12,7 +12,7 @@ from loguru import logger
 from tortoise import Model, fields
 
 from sp.intents import Intent
-from sp.parser import Schedule
+from sp.schedule import Schedule
 from sp.updates import UpdateData, compact_updates
 
 _HOUR_OFFSET = 6

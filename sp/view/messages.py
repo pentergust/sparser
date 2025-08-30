@@ -1,7 +1,5 @@
 """Генератор текстовых сообщений для класса Schedule.
 
-Является прототипом первого будущего класса представления.
-Является промежуточным слоем между расписанием и платформой.
 Используется для преобразования необработанных результатов работы
 методов класса Schedule.
 Выходным результатом генератора сообщений являются строки.
@@ -16,7 +14,7 @@ from sp.counter import CounterTarget, reverse_counter
 from sp.db import User
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES, WeekDay
 from sp.intents import Intent
-from sp.parser import Schedule
+from sp.schedule import Schedule
 from sp.timetable import LessonTime, Timetable
 from sp.updates import UpdateData
 from sp.view.base import View

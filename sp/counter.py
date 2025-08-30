@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any, TypeVar
 
 from sp.intents import Intent
-from sp.parser import Schedule
+from sp.schedule import Schedule
 
 
 @dataclass(slots=True)

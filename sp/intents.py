@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, NamedTuple, Self, TypeVar
 from sp.enums import DAY_NAMES, SHORT_DAY_NAMES
 
 if TYPE_CHECKING:
-    from sp.parser import Schedule
+    from sp.schedule import Schedule
 
 
 _T = TypeVar("_T")
