@@ -10,7 +10,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
-import requests
+import aiohttp
 
 UPDATES_URL = (
     "https://codeberg.org/Salormoon/sparser/raw/branch/main/pyproject.toml"
@@ -78,7 +78,11 @@ def local_version(path: Path) -> Version:
 
 async def remote_version(url: str) -> Version:
     """Загружает версию из удалённого источника."""
-    ver_file = tomllib.loads(requests.get(url).text)
+    async with aiohttp.ClientSession() as session:
+        res = await session.get(url)
+        res.raise_for_status()
+        ver_file = tomllib.loads(await res.text())
+
     git_ver = ver_file["tool"].get("sp")
     if git_ver is None:
         raise KeyError("File has no SPVersion metadata")
