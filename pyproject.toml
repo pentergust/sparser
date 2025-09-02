@@ -9,6 +9,7 @@ readme = "README.md"
 # TODO: Migrate to aiosqlite
 # TODO: Migrate to orjson
 dependencies = [
+    "aiohttp>=3.12.15",
     "asyncpg>=0.30.0",
     "asyncpg-stubs>=0.30.2",
     "click>=8.2.1",
