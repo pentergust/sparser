@@ -11,13 +11,12 @@ type DaySchedule map[string][]Lesson
 type Schedule []DaySchedule
 
 type ScheduleStatus struct {
-	Parsed time.Time
-	Hash   string
+	Parsed time.Time `json:"parsed"`
+	Hash   string    `json:"hash"`
 }
 
 type ScheduleProvider interface {
 	Day(day time.Time) (*DaySchedule, error)
-	Today() (*DaySchedule, error)
 	Week() (*Schedule, error)
 	Status() ScheduleStatus
 }

@@ -34,15 +34,6 @@ func (h ScheduleHandlers) GetDay(c fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-func (h ScheduleHandlers) GetToday(c fiber.Ctx) error {
-	res, err := h.Provider.Today()
-	if err != nil {
-		return fiber.NewError(500, err.Error())
-	}
-
-	return c.JSON(res)
-}
-
 func (h ScheduleHandlers) GetWeek(c fiber.Ctx) error {
 	res, err := h.Provider.Week()
 	if err != nil {
