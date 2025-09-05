@@ -70,19 +70,6 @@ theme:
   icon:
     repo: fontawesome/brands/github
     edit: material/pencil
-    admonition:
-      note: fontawesome/solid/note-sticky
-      abstract: fontawesome/solid/book
-      info: fontawesome/solid/circle-info
-      tip: fontawesome/solid/bullhorn
-      success: fontawesome/solid/check
-      question: fontawesome/solid/circle-question
-      warning: fontawesome/solid/triangle-exclamation
-      failure: fontawesome/solid/bomb
-      danger: fontawesome/solid/skull
-      bug: fontawesome/solid/robot
-      example: fontawesome/solid/flask
-      quote: fontawesome/solid/quote-left
 
 plugins:
   - search
@@ -117,12 +104,13 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.superfences
 
-extra:
-  generator: false
-  social:
-    - icon: fontawesome/brands/github
-      link: https://codeberg.org/salormoon/
-      name: Команда разработчиков проекта
-    - icon: fontawesome/brands/telegram
-      link: https://t.me/mili_qlaster
-      name: Новостной канал проекта
+options:
+  extra:
+    generator: false
+    social:
+      - icon: fontawesome/brands/github
+        link: https://codeberg.org/salormoon/
+        name: Команда разработчиков проекта
+      - icon: fontawesome/brands/telegram
+        link: https://t.me/mili_qlaster
+        name: Новостной канал проекта
