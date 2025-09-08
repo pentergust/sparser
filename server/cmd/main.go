@@ -10,11 +10,12 @@ import (
 func main() {
 	app := fiber.New()
 
+	p := provider.LoadFrom("sp_data/")
+
 	// Расписание уроков
 	sc := handlers.ScheduleHandlers{
 		Provider: provider.DebugProvider{},
 	}
-	app.Get("/sc/today", sc.GetToday)
 	app.Get("/sc/week", sc.GetWeek)
 	app.Get("/sc/status", sc.GetStatus)
 	app.Get("/sc/:day", sc.GetDay)
