@@ -38,6 +38,12 @@ docs = [
     "mkdocs-material>=9.6.18",
     "mkdocstrings-python>=1.18.2",
 ]
+server = [
+    "fastapi>=0.116.1",
+    "orjson>=3.11.3",
+    "pydantic>=2.11.7",
+    "uvicorn>=0.35.0",
+]
 telegram = ["aiogram>=3.22.0", "python-dotenv>=1.1.1"]
 
 # Ruff linter ----------------------------------------------------------
