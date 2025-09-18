@@ -240,17 +240,17 @@ class MessagesView(View[str]):
 
     def __init__(self, sc: Schedule | None = None) -> None:
         self.sc: Schedule = sc or Schedule()
-        # TODO: ПОдгружать извне
+        # TODO: Подгружать извне
         self.timetable = Timetable(
             [
-                LessonTime(time(8, 0), time(8, 45)),
-                LessonTime(time(8, 55), time(9, 40)),
-                LessonTime(time(10, 0), time(10, 45)),
-                LessonTime(time(11, 5), time(11, 50)),
-                LessonTime(time(12, 0), time(12, 45)),
-                LessonTime(time(12, 55), time(13, 40)),
-                LessonTime(time(13, 50), time(14, 35)),
-                LessonTime(time(14, 45), time(15, 30)),
+                LessonTime(time(8, 0), time(8, 40)),
+                LessonTime(time(8, 50), time(9, 30)),
+                LessonTime(time(9, 50), time(10, 30)),
+                LessonTime(time(10, 50), time(11, 30)),
+                LessonTime(time(11, 40), time(12, 20)),
+                LessonTime(time(12, 30), time(13, 10)),
+                LessonTime(time(13, 20), time(14, 0)),
+                LessonTime(time(14, 10), time(14, 50)),
             ]
         )
 
