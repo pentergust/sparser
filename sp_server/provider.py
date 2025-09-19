@@ -14,13 +14,6 @@ from loguru import logger
 from sp.updates import UpdateData
 from sp_server.schedule import LessonTime, Schedule, Status, TimeTable
 
-# TODO: Переместить в хранилище
-RAW_SC_PATH = Path("sp_data/sc.xlsx")
-SC_PATH = Path("sp_data/sc.json")
-SC_UPDATES_PATH = Path("sp_data/updates.json")
-INDEX_PATH = Path("sp_data/index.json")
-TIMETABLE_PATH = Path("sp_data/timetable.json")
-
 LoadData = dict[str, Any] | list[Any]
 LessonIndex = dict[str, list[dict[str, dict[str, list[int]]]]]
 ClassIndex = dict[str, list[dict[str, dict[str, list[int]]]]]
@@ -52,7 +45,6 @@ def _clear_day_lessons(day_lessons: list[str]) -> list[str]:
 def get_sc_updates(a: Schedule, b: Schedule) -> list[dict[str, list]]:
     """Полное сравнение двух расписаний.
 
-    Возвращает все найденные изменения в формате.
 
     ```py
         [
