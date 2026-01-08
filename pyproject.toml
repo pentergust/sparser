@@ -40,8 +40,8 @@ docs = [
 ]
 provider = [
     "fastapi>=0.128.0",
-    "orjson>=3.11.5",
     "pydantic>=2.12.5",
+    "toml>=0.10.2",
     "uvicorn>=0.40.0",
 ]
 telegram = ["aiogram>=3.22.0", "python-dotenv>=1.1.1"]
