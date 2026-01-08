@@ -4,7 +4,6 @@ import hashlib
 import io
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 
@@ -16,15 +15,6 @@ from loguru import logger
 
 from provider import types
 from sp.counter import defaultdict
-
-
-@dataclass(slots=True, frozen=True)
-class RawSchedule:
-    """Сырое загруженное расписание из сети."""
-
-    hash: str
-    data: bytes
-
 
 _TIMETABLE = (
     types.LessonTime(start=time(8, 0), end=time(8, 40)),
@@ -166,16 +156,21 @@ class Provider:
 
         await self._save_files()
 
-    async def _load_raw(self) -> RawSchedule:
+    async def _load_file(self) -> bytes:
         logger.info("Download schedule csv_file ...")
         assert self._session is not None  # noqa: S101
         resp = await self._session.get("export?format=xlsx")
         resp.raise_for_status()
-        raw_data = await resp.content.read()
-        return RawSchedule(
-            hashlib.md5(raw_data, usedforsecurity=False).hexdigest(),
-            raw_data,
-        )
+        return await resp.content.read()
+
+    async def _load_hash(self) -> str:
+        logger.info("Download schedule csv_file ...")
+        assert self._session is not None  # noqa: S101
+        resp = await self._session.get("export?format=csv")
+        resp.raise_for_status()
+        return hashlib.md5(
+            await resp.content.read(), usedforsecurity=False
+        ).hexdigest()
 
     async def update(self) -> None:
         """Обновление данных."""
@@ -184,20 +179,27 @@ class Provider:
             raise ValueError("You need to connect provider before update")
 
         now = datetime.now(UTC)
+        self._meta.check_at = now
         if now < self.meta.next_check:
             logger.debug("Not now -> sleep")
             return
 
-        raw = await self._load_raw()
-        if self._meta.hash == raw.hash:
+        new_hash = await self._load_hash()
+        logger.debug(self._meta.hash == new_hash)
+        logger.debug(self._meta.hash)
+        logger.debug(new_hash)
+        if self._meta.hash == new_hash:
             logger.info("Schedule is up to date")
             self._meta.next_check = now + timedelta(minutes=30)
             return
 
         self._meta.next_check = now + timedelta(minutes=30)
-        self._meta.hash = raw.hash
+        self._meta.hash = new_hash
+        self._meta.update_at = now
         self._sc = types.Schedule(
-            schedule=parse_lessons(io.BytesIO(initial_bytes=raw.data))
+            schedule=parse_lessons(
+                io.BytesIO(initial_bytes=await self._load_file())
+            )
         )
 
         await self._save_files()
@@ -220,7 +222,9 @@ class Provider:
             schedule=self.meta,
         )
 
-    async def schedule(self, filters: types.ScheduleFilter | None = None) -> types.Schedule:
+    async def schedule(
+        self, filters: types.ScheduleFilter | None = None
+    ) -> types.Schedule:
         """Возвращает расписание уроков."""
         if filters is None:
             return self.sc
