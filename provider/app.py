@@ -1,12 +1,29 @@
 """Главный файл приложения."""
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from loguru import logger
 
 from provider.provider import Provider
 from provider.types import Schedule, ScheduleFilter, Status, TimeTable
 
-app = FastAPI()
 provider = Provider()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Жизненный цикл сервера."""
+    logger.info("Start server")
+    await provider.connect()
+
+    yield
+
+    logger.info("Stop server")
+    await provider.close()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/time")
