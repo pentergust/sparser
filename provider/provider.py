@@ -195,6 +195,7 @@ class Provider:
             return
 
         self._meta.next_check = now + timedelta(minutes=30)
+        self._meta.hash = raw.hash
         self._sc = types.Schedule(
             schedule=parse_lessons(io.BytesIO(initial_bytes=raw.data))
         )
