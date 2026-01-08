@@ -41,6 +41,11 @@ async def get_provider_status() -> Status:
     """Возвращает расписание звонков."""
     return await provider.status()
 
+@app.get("/cl")
+async def get_provider_cl() -> list[str]:
+    """Возвращает расписание звонков."""
+    return list(provider.sc.schedule.keys())
+
 
 @app.post("/schedule")
 async def get_schedule(filters: ScheduleFilter | None = None) -> Schedule:
