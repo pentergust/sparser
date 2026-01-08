@@ -42,7 +42,7 @@ async def get_provider_status() -> Status:
     return await provider.status()
 
 
-@app.get("/schedule")
+@app.post("/schedule")
 async def get_schedule(filters: ScheduleFilter | None = None) -> Schedule:
     """Возвращает расписание уроков."""
     return await provider.schedule(filters)
