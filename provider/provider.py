@@ -220,8 +220,11 @@ class Provider:
             schedule=self.meta,
         )
 
-    async def schedule(self, filters: types.ScheduleFilter) -> types.Schedule:
+    async def schedule(self, filters: types.ScheduleFilter | None = None) -> types.Schedule:
         """Возвращает расписание уроков."""
+        if filters is None:
+            return self.sc
+
         sc = _filter_cl(self.sc.schedule, filters.cl)
         sc = _filter_days(sc, filters.days)
         return types.Schedule(schedule=sc)
