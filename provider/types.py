@@ -1,6 +1,6 @@
 """Используемые типы в поставщике."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from datetime import datetime, time
 
 from pydantic import BaseModel
@@ -55,7 +55,7 @@ class Lesson(BaseModel):
     name: str | None
     cabinets: list[str]
 
-DayLessons = Sequence[Lesson | None]
+DayLessons = MutableSequence[Lesson | None]
 ClassLessons = Sequence[DayLessons]
 ScheduleT = Mapping[str, ClassLessons]
 
