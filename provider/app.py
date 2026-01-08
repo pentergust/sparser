@@ -6,20 +6,24 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from loguru import logger
 
+from provider.checker import Checker
 from provider.provider import Provider
 from provider.types import Schedule, ScheduleFilter, Status, TimeTable
 
 provider = Provider()
+checker = Checker(provider)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Жизненный цикл сервера."""
     logger.info("Start server")
     await provider.connect()
+    await checker.run()
 
     yield
 
     logger.info("Stop server")
+    checker.stop()
     await provider.close()
 
 
