@@ -7,6 +7,8 @@ from typing import Any
 import aiohttp
 
 from sp import types
+from sp.lesson import PartialLesson
+from sp.schedule import Schedule
 
 
 class Provider:
@@ -21,7 +23,7 @@ class Provider:
         self._session: aiohttp.ClientSession | None = None
 
         self._meta: types.Status | None = None
-        self._sc: types.Schedule | None = None
+        self._sc: Schedule | None = None
 
     @property
     def session(self) -> aiohttp.ClientSession:
@@ -94,15 +96,21 @@ class Provider:
         if sc_hash == self._meta.schedule.hash:
             return
 
-        self._sc = await self.fetch_schedule()
+        self._sc = self._to_schedule(await self.fetch_schedule())
 
 
     # Кешированное получение
     # ======================
 
-    # TODO: Оборачивать в полноценное расписание
+    def _to_schedule(self, schedule: types.Schedule) -> Schedule:
+        return Schedule({cl: [[
+            PartialLesson(name=lesson.name, cabinets=lesson.cabinets)
+            if lesson is not None
+            else None
+            for lesson in day
+        ] for day in week] for cl, week in schedule.schedule.items()})
 
-    async def schedule(self) -> types.Schedule:
+    async def schedule(self) -> Schedule:
         """Возвращает расписание уроков."""
         await self._check_update()
         if self._sc is None:
