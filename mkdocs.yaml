@@ -44,10 +44,6 @@ nav:
           - api/view/base.md
           - api/view/messages.md
 
-  #     - install.md
-  #     - contribute.md
-  #     - changelog.md
-
 theme:
   name: material
   language: ru
@@ -82,13 +78,13 @@ plugins:
             parameter_headings: true
             show_symbol_type_heading: true
             show_symbol_type_toc: true
-            docsting_style: 'google'
-            docstring_section_style: 'list'
+            docsting_style: "google"
+            docstring_section_style: "list"
             merge_init_into_class: true
             show_if_no_docstring: true
             show_signature_annotations: true
             signature_crossrefs: true
-            members_order: 'source'
+            members_order: "source"
 
 markdown_extensions:
   - toc:
