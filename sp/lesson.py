@@ -110,6 +110,9 @@ class PartialSchedule:
 
     def unpack(self, lesson: PartialLesson | DayLesson, order: int) -> Lesson:
         """Дополняет информацию до полноценного урока."""
+        if self._day is None:
+            raise ValueError("You need to specify day to unpack lesson")
+
         if isinstance(lesson, PartialLesson):
             if self._cl is None:
                 raise ValueError("Class is bot specified")
