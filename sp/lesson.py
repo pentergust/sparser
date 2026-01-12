@@ -11,8 +11,11 @@ class Lesson:
     cl: str
     """Для какого класса проводится."""
 
-    name: str
-    """Название урока."""
+    name: str | None
+    """Название урока.
+
+    Может быть пустым, тогда засчитывается как отсутствие урока.
+    """
 
     cabinets: Sequence[str]
     """В каких кабинетах проводится.
@@ -37,8 +40,11 @@ class DayLesson:
     cl: str
     """Для какого класса проводится."""
 
-    name: str
-    """Название урока."""
+    name: str | None
+    """Название урока.
+
+    Может быть пустым, тогда засчитывается как отсутствие урока.
+    """
 
     cabinets: Sequence[str]
     """В каких кабинетах проводится.
@@ -48,13 +54,7 @@ class DayLesson:
 
     def to_lesson(self, day: int, order: int) -> Lesson:
         """Дополняет информацию до полноценного урока."""
-        return Lesson(
-            cl=self.cl,
-            name=self.name,
-            cabinets=self.cabinets,
-            day=day,
-            order=order,
-        )
+        return Lesson(self.cl, self.name, self.cabinets, day, order)
 
 
 @dataclass(slots=True, frozen=True)
@@ -64,8 +64,11 @@ class PartialLesson:
     Содержит не только необходимую информацию об уроке.
     """
 
-    name: str
-    """Название урока."""
+    name: str | None
+    """Название урока.
+
+    Может быть пустым, тогда засчитывается как отсутствие урока.
+    """
 
     cabinets: Sequence[str]
     """В каких кабинетах проводится.
@@ -75,7 +78,4 @@ class PartialLesson:
 
     def to_lesson(self, cl: str, day: int, order: int) -> Lesson:
         """Дополняет информацию до полноценного урока."""
-        return Lesson(
-            cl=cl, name=self.name, cabinets=self.cabinets, day=day, order=order
-        )
-
+        return Lesson(cl, self.name, self.cabinets, day, order)
