@@ -90,6 +90,20 @@ class TimeTable(BaseModel):
 
     default: Sequence[LessonTime]
 
+    def index(self, now: time ) -> int | None:
+        """Возвращает индекс текущий урока, основываясь на времени.
+
+        Используется в функции сбора расписания на день.
+        Чтобы указать на время текущего урока.
+        """
+        for i, lesson in enumerate(self.default):
+            if now > lesson.start and now < lesson.end:
+                return i
+
+            if now < lesson.end:
+                return i
+        return None
+
 
 class Lesson(BaseModel):
     """Описание урока."""
