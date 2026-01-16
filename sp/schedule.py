@@ -27,6 +27,10 @@ class Schedule:
         """Возвращает расписание уроков на день для класса."""
         return lesson.DayLessons(self._schedule[cl][day], day, cl)
 
+
+    # Итераторы
+    # =========
+
     def iter_lessons(self) -> Iterator[lesson.Lesson | None]:
         """Возвращает каждый урок в расписании."""
         for cl, week in self._schedule.items():
@@ -36,3 +40,14 @@ class Schedule:
                         yield None
                     else:
                         yield partial_lesson.to_lesson(cl, day, order)
+
+    def iter_days(self) -> Iterator[lesson.DayLessons]:
+        """Возвращает каждый день недели для класса в расписании."""
+        for cl, week in self._schedule.items():
+            for day, day_lessons in enumerate(week):
+                    yield lesson.DayLessons(day_lessons, day, cl)
+
+    def iter_week(self) -> Iterator[lesson.WeekLessons]:
+        """Возвращает каждую неделю для класса в расписании."""
+        for cl, week in self._schedule.items():
+            yield lesson.WeekLessons(week, cl)
