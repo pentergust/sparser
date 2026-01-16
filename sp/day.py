@@ -5,10 +5,14 @@
 """
 
 from enum import IntEnum
+from typing import Literal
 
 # Используются при обработке дней недели, а также в прочих компонентах
 DAY_NAMES = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота")
 SHORT_DAY_NAMES = ("пн", "вт", "ср", "чт", "пт", "сб")
+
+Day = Literal[0, 1, 2, 3, 4, 5]
+Order = Literal[0, 1, 2, 3, 4, 5, 6, 7]
 
 
 class WeekDay(IntEnum):
