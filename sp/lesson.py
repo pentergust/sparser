@@ -1,6 +1,6 @@
 """Представление Урока."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 
@@ -28,7 +28,6 @@ class Lesson:
 
     order: int
     """Порядковые номер урока в дне."""
-
 
 @dataclass(slots=True, frozen=True)
 class DayLesson:
@@ -82,6 +81,9 @@ class PartialLesson:
 
 
 AnyLesson = Lesson | DayLesson | PartialLesson
+PartialWeekLessons = list[list[PartialLesson | None]]
+ScheduleMap = Mapping[str, PartialWeekLessons]
+
 
 # Контейнеры для уроков
 # =====================
