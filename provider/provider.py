@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+from collections import defaultdict
 from collections.abc import Sequence
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
@@ -14,7 +15,6 @@ import toml
 from loguru import logger
 
 from provider import types
-from sp.counter import defaultdict
 
 _TIMETABLE = (
     types.LessonTime(start=time(8, 0), end=time(8, 40)),
