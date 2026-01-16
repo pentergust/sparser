@@ -55,21 +55,17 @@ class Provider:
         resp.raise_for_status()
         return types.Schedule.model_validate(await resp.json())
 
-
     async def fetch_time(self) -> types.TimeTable:
         """Возвращает расписание звонков."""
         resp = await self.session.get("time")
         resp.raise_for_status()
-        data: Sequence[Any] = await resp.json()
-        return [types.LessonTime.model_validate(lesson) for lesson in data]
-
+        return types.TimeTable.model_validate(await resp.json())
 
     async def fetch_status(self) -> types.Status:
         """Возвращает статус поставщика и расписания."""
         resp = await self.session.get("status")
         resp.raise_for_status()
         return types.Status.model_validate(await resp.json())
-
 
     async def fetch_cl(self) -> Sequence[str]:
         """Возвращает список классов в расписании."""
@@ -98,17 +94,26 @@ class Provider:
 
         self._sc = self._to_schedule(await self.fetch_schedule())
 
-
     # Кешированное получение
     # ======================
 
     def _to_schedule(self, schedule: types.Schedule) -> Schedule:
-        return Schedule({cl: [[
-            PartialLesson(name=lesson.name, cabinets=lesson.cabinets)
-            if lesson is not None
-            else None
-            for lesson in day
-        ] for day in week] for cl, week in schedule.schedule.items()})
+        return Schedule(
+            {
+                cl: [
+                    [
+                        PartialLesson(
+                            name=lesson.name, cabinets=lesson.cabinets
+                        )
+                        if lesson is not None
+                        else None
+                        for lesson in day
+                    ]
+                    for day in week
+                ]
+                for cl, week in schedule.schedule.items()
+            }
+        )
 
     async def schedule(self) -> Schedule:
         """Возвращает расписание уроков."""
