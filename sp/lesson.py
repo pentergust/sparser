@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 
 @dataclass(slots=True, frozen=True)
@@ -28,6 +29,7 @@ class Lesson:
 
     order: int
     """Порядковые номер урока в дне."""
+
 
 @dataclass(slots=True, frozen=True)
 class DayLesson:
@@ -80,6 +82,7 @@ class PartialLesson:
         return Lesson(cl, self.name, self.cabinets, day, order)
 
 
+# Lessons -> DayLessons -> PartialLessons
 AnyLesson = Lesson | DayLesson | PartialLesson
 PartialWeekLessons = list[list[PartialLesson | None]]
 ScheduleMap = Mapping[str, PartialWeekLessons]
@@ -88,6 +91,8 @@ ScheduleMap = Mapping[str, PartialWeekLessons]
 # Контейнеры для уроков
 # =====================
 
+class LessonIterator(Protocol):
+    def iter_lessons(self) -> Iterator[Lesson | None]: ...
 
 class PartialSchedule:
     """Представляет сжатое расписание."""
