@@ -91,8 +91,10 @@ ScheduleMap = Mapping[str, PartialWeekLessons]
 # Контейнеры для уроков
 # =====================
 
+
 class LessonIterator(Protocol):
     def iter_lessons(self) -> Iterator[Lesson | None]: ...
+
 
 class PartialSchedule:
     """Представляет сжатое расписание."""
@@ -115,16 +117,22 @@ class PartialSchedule:
             return PartialLesson(lesson.name, lesson.cabinets)
         return DayLesson(lesson.cl, lesson.name, lesson.cabinets)
 
-    def unpack(self, lesson: PartialLesson | DayLesson, order: int) -> Lesson:
+    def unpack(
+        self,
+        lesson: PartialLesson | DayLesson,
+        order: int,
+        day: int | None = None,
+    ) -> Lesson:
         """Дополняет информацию до полноценного урока."""
-        if self._day is None:
+        day = day or self._day
+        if day is None:
             raise ValueError("You need to specify day to unpack lesson")
 
         if isinstance(lesson, PartialLesson):
             if self._cl is None:
                 raise ValueError("Class is bot specified")
-            return lesson.to_lesson(self._cl, self._day, order)
-        return lesson.to_lesson(self._day, order)
+            return lesson.to_lesson(self._cl, day, order)
+        return lesson.to_lesson(day, order)
 
 
 class DayLessons(PartialSchedule):
@@ -179,9 +187,26 @@ class WeekLessons(PartialSchedule):
         super().__init__(cl=cl)
         self.lessons = lessons
 
+    def lesson(self, day: int, order: int) -> Lesson | None:
+        """Возвращает полный урок по индексу."""
+        dl = self.lessons[day][order]
+        if dl is None:
+            return None
+
+        return self.unpack(dl, order, day)
+
     def day(self, day: int) -> DayLessons:
         """Возвращает уроки на день."""
         return DayLessons(self.lessons[day], day, self._cl)
+
+    def iter_lessons(self) -> Iterator[Lesson | None]:
+        """Проходится по каждому уроку."""
+        for day, day_lessons in enumerate(self.lessons):
+            for order, lesson in enumerate(day_lessons):
+                if lesson is None:
+                    yield None
+                    continue
+                yield self.unpack(lesson, order, day)
 
     def iter_days(self) -> Iterator[DayLessons]:
         """Возвращает все дни в расписании."""
