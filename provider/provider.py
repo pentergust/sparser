@@ -16,7 +16,8 @@ from loguru import logger
 
 from provider import types
 
-_TIMETABLE = (
+# TODO: Загружать при запуске
+_TIMETABLE = types.TimeTable(default=(
     types.LessonTime(start=time(8, 0), end=time(8, 40)),
     types.LessonTime(start=time(8, 50), end=time(9, 30)),
     types.LessonTime(start=time(9, 50), end=time(10, 30)),
@@ -25,7 +26,7 @@ _TIMETABLE = (
     types.LessonTime(start=time(12, 30), end=time(13, 10)),
     types.LessonTime(start=time(13, 20), end=time(14, 0)),
     types.LessonTime(start=time(14, 10), end=time(14, 50)),
-)
+))
 
 
 def _clear_day_lessons(day_lessons: types.DayLessons) -> types.DayLessons:

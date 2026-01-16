@@ -85,7 +85,10 @@ class LessonTime(BaseModel):
     end: time
 
 
-TimeTable = Sequence[LessonTime]
+class TimeTable(BaseModel):
+    """Общее расписание звонков."""
+
+    default: Sequence[LessonTime]
 
 
 class Lesson(BaseModel):
