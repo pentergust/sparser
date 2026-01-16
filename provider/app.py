@@ -54,13 +54,13 @@ async def get_provider_cl() -> list[str]:
     return list(provider.sc.schedule.keys())
 
 
-@app.get("/schedule")
+@app.get("/")
 async def get_schedule() -> Schedule:
     """Возвращает полное расписание уроков."""
     return await provider.schedule()
 
 
-@app.post("/schedule")
+@app.post("/")
 async def filter_schedule(filters: ScheduleFilter | None = None) -> Schedule:
     """Возвращает отфильтрованное или расписание уроков.
 
