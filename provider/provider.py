@@ -38,6 +38,7 @@ def _clear_day_lessons(day_lessons: types.DayLessons) -> types.DayLessons:
         day_lessons.pop()
     return []
 
+_ScheduleMap = dict[str, list[list[types.Lesson | None]]]
 
 def parse_lessons(data: io.BytesIO) -> types.ScheduleT:
     """Разбирает XLSX файл в словарь расписания.
@@ -45,7 +46,7 @@ def parse_lessons(data: io.BytesIO) -> types.ScheduleT:
     Расписание в XLSX файле представлено подобным образом.
     """
     logger.info("Start parse lessons...")
-    lessons: types.ScheduleT = defaultdict(lambda: [[] for _ in range(6)])
+    lessons: _ScheduleMap = defaultdict(lambda: [[] for _ in range(6)])
     day = -1
     last_row = 8
     sheet = openpyxl.load_workbook(data).active

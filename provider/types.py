@@ -1,6 +1,6 @@
 """Используемые типы в поставщике расписания."""
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, time
 from typing import Literal
 
@@ -103,7 +103,7 @@ class Lesson(BaseModel):
     Может быть несколько, если класс делится на группы."""
 
 # Дополнительные типы для расписания
-DayLessons = MutableSequence[Lesson | None]
+DayLessons = Sequence[Lesson | None]
 ClassLessons = Sequence[DayLessons]
 ScheduleT = Mapping[str, ClassLessons]
 
