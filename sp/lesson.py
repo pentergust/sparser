@@ -4,6 +4,8 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from sp.day import Day, Order
+
 
 @dataclass(slots=True, frozen=True)
 class Lesson:
@@ -24,10 +26,10 @@ class Lesson:
     Будет указано несколько, если класс разделяется на группы.
     """
 
-    day: int
+    day: Day
     """В какой день недели проводится. От 0 до 5."""
 
-    order: int
+    order: Order
     """Порядковые номер урока в дне."""
 
 
@@ -53,7 +55,7 @@ class DayLesson:
     Будет указано несколько, если класс разделяется на группы.
     """
 
-    def to_lesson(self, day: int, order: int) -> Lesson:
+    def to_lesson(self, day: Day, order: Order) -> Lesson:
         """Дополняет информацию до полноценного урока."""
         return Lesson(self.cl, self.name, self.cabinets, day, order)
 
@@ -77,7 +79,7 @@ class PartialLesson:
     Будет указано несколько, если класс разделяется на группы.
     """
 
-    def to_lesson(self, cl: str, day: int, order: int) -> Lesson:
+    def to_lesson(self, cl: str, day: Day, order: Order) -> Lesson:
         """Дополняет информацию до полноценного урока."""
         return Lesson(cl, self.name, self.cabinets, day, order)
 
@@ -99,8 +101,8 @@ class LessonIterator(Protocol):
 class PartialSchedule:
     """Представляет сжатое расписание."""
 
-    def __init__(self, day: int | None = None, cl: str | None = None) -> None:
-        self._day = day
+    def __init__(self, day: Day | None = None, cl: str | None = None) -> None:
+        self._day: Day | None = day
         self._cl = cl
 
     def pack(self, lesson: AnyLesson) -> DayLesson | PartialLesson:
@@ -120,8 +122,8 @@ class PartialSchedule:
     def unpack(
         self,
         lesson: PartialLesson | DayLesson,
-        order: int,
-        day: int | None = None,
+        order: Order,
+        day: Day | None = None,
     ) -> Lesson:
         """Дополняет информацию до полноценного урока."""
         day = day or self._day
@@ -146,13 +148,13 @@ class DayLessons(PartialSchedule):
     def __init__(
         self,
         lessons: Sequence[DayLesson | PartialLesson | None],
-        day: int,
+        day: Day,
         cl: str | None = None,
     ) -> None:
         super().__init__(day, cl)
         self.lessons = lessons or []
 
-    def lesson(self, order: int) -> Lesson | None:
+    def lesson(self, order: Order) -> Lesson | None:
         """Возвращает полный урок по индексу."""
         if order > len(self.lessons):
             return None
@@ -164,11 +166,11 @@ class DayLessons(PartialSchedule):
 
     def iter_lessons(self) -> Iterator[Lesson | None]:
         """Проходится по каждому уроку."""
-        for i, lesson in enumerate(self.lessons):
+        for order, lesson in enumerate(self.lessons):
             if lesson is None:
                 yield None
                 continue
-            yield self.unpack(lesson, i)
+            yield self.unpack(lesson, order) # pyright: ignore[reportArgumentType]
 
 
 class WeekLessons(PartialSchedule):
@@ -187,7 +189,7 @@ class WeekLessons(PartialSchedule):
         super().__init__(cl=cl)
         self.lessons = lessons
 
-    def lesson(self, day: int, order: int) -> Lesson | None:
+    def lesson(self, day: Day, order: Order) -> Lesson | None:
         """Возвращает полный урок по индексу."""
         dl = self.lessons[day][order]
         if dl is None:
@@ -195,7 +197,7 @@ class WeekLessons(PartialSchedule):
 
         return self.unpack(dl, order, day)
 
-    def day(self, day: int) -> DayLessons:
+    def day(self, day: Day) -> DayLessons:
         """Возвращает уроки на день."""
         return DayLessons(self.lessons[day], day, self._cl)
 
@@ -206,9 +208,9 @@ class WeekLessons(PartialSchedule):
                 if lesson is None:
                     yield None
                     continue
-                yield self.unpack(lesson, order, day)
+                yield self.unpack(lesson, order, day) # pyright: ignore[reportArgumentType]
 
     def iter_days(self) -> Iterator[DayLessons]:
         """Возвращает все дни в расписании."""
         for day, lessons in enumerate(self.lessons):
-            yield DayLessons(lessons, day, self._cl)
+            yield DayLessons(lessons, day, self._cl) # pyright: ignore[reportArgumentType]

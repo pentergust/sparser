@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 
 from sp import lesson
+from sp.day import Day
 
 
 class Schedule:
@@ -11,7 +12,6 @@ class Schedule:
     def __init__(self, schedule: lesson.ScheduleMap) -> None:
         self._schedule = schedule
 
-    # TODO: Новые индексы
     # TODO: Фильтрация через намерения
 
     @property
@@ -23,7 +23,7 @@ class Schedule:
         """Возвращает расписание уроков на неделю для класса."""
         return lesson.WeekLessons(self._schedule[cl], cl)
 
-    def day(self, cl: str, day: int) -> lesson.DayLessons:
+    def day(self, cl: str, day: Day) -> lesson.DayLessons:
         """Возвращает расписание уроков на день для класса."""
         return lesson.DayLessons(self._schedule[cl][day], day, cl)
 
@@ -39,13 +39,13 @@ class Schedule:
                     if partial_lesson is None:
                         yield None
                     else:
-                        yield partial_lesson.to_lesson(cl, day, order)
+                        yield partial_lesson.to_lesson(cl, day, order) # pyright: ignore[reportArgumentType]
 
     def iter_days(self) -> Iterator[lesson.DayLessons]:
         """Возвращает каждый день недели для класса в расписании."""
         for cl, week in self._schedule.items():
             for day, day_lessons in enumerate(week):
-                    yield lesson.DayLessons(day_lessons, day, cl)
+                    yield lesson.DayLessons(day_lessons, day, cl) # pyright: ignore[reportArgumentType]
 
     def iter_week(self) -> Iterator[lesson.WeekLessons]:
         """Возвращает каждую неделю для класса в расписании."""
