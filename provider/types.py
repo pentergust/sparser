@@ -13,6 +13,7 @@ class ProviderStatus(BaseModel):
     version: str
     url: str
 
+
 class ScheduleStatus(BaseModel):
     """Информация о расписании."""
 
@@ -41,13 +42,16 @@ class Status(BaseModel):
     provider: ProviderStatus
     schedule: ScheduleStatus
 
+
 class LessonTime(BaseModel):
     """Время для уроков."""
 
     start: time
     end: time
 
+
 TimeTable = Sequence[LessonTime]
+
 
 class Lesson(BaseModel):
     """Информация об уроке."""
@@ -55,14 +59,17 @@ class Lesson(BaseModel):
     name: str | None
     cabinets: list[str]
 
+
 DayLessons = MutableSequence[Lesson | None]
 ClassLessons = Sequence[DayLessons]
 ScheduleT = Mapping[str, ClassLessons]
+
 
 class Schedule(BaseModel):
     """Расписание уроков."""
 
     schedule: ScheduleT
+
 
 class ScheduleFilter(BaseModel):
     """Фильтры для получения расписания."""

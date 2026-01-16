@@ -13,6 +13,7 @@ from provider.types import Schedule, ScheduleFilter, Status, TimeTable
 provider = Provider()
 checker = Checker(provider)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Жизненный цикл сервера."""
@@ -40,6 +41,7 @@ async def get_timetable() -> TimeTable:
 async def get_provider_status() -> Status:
     """Возвращает расписание звонков."""
     return await provider.status()
+
 
 @app.get("/cl")
 async def get_provider_cl() -> list[str]:
