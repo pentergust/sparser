@@ -186,9 +186,6 @@ class Provider:
             return
 
         new_hash = await self._load_hash()
-        logger.debug(self._meta.hash == new_hash)
-        logger.debug(self._meta.hash)
-        logger.debug(new_hash)
         if self._meta.hash == new_hash:
             logger.info("Schedule is up to date")
             self._meta.next_check = now + timedelta(minutes=30)
