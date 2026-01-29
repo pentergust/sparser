@@ -16,18 +16,6 @@ from loguru import logger
 
 from provider import types
 
-# TODO: Загружать при запуске
-_TIMETABLE = types.TimeTable(default=(
-    types.LessonTime(start=time(8, 0), end=time(8, 40)),
-    types.LessonTime(start=time(8, 50), end=time(9, 30)),
-    types.LessonTime(start=time(9, 50), end=time(10, 30)),
-    types.LessonTime(start=time(10, 50), end=time(11, 30)),
-    types.LessonTime(start=time(11, 40), end=time(12, 20)),
-    types.LessonTime(start=time(12, 30), end=time(13, 10)),
-    types.LessonTime(start=time(13, 20), end=time(14, 0)),
-    types.LessonTime(start=time(14, 10), end=time(14, 50)),
-))
-
 
 def _clear_day_lessons(day_lessons: types.DayLessons) -> types.DayLessons:
     """Удаляет все пустые уроки с конца списка."""
@@ -38,7 +26,9 @@ def _clear_day_lessons(day_lessons: types.DayLessons) -> types.DayLessons:
         day_lessons.pop()
     return []
 
+
 _ScheduleMap = dict[str, list[list[types.Lesson | None]]]
+
 
 def parse_lessons(data: io.BytesIO) -> types.ScheduleT:
     """Разбирает XLSX файл в словарь расписания.
@@ -128,6 +118,7 @@ class Provider:
         self._meta: types.ScheduleStatus | None = None
         self._sc: types.Schedule | None = None
         self._session: aiohttp.ClientSession | None = None
+        self._timetable: types.TimeTable | None = None
 
     @property
     def meta(self) -> types.ScheduleStatus:
@@ -208,7 +199,11 @@ class Provider:
 
     async def timetable(self) -> types.TimeTable:
         """Возвращает расписание звонков."""
-        return _TIMETABLE
+        if self._timetable is None:
+            self._timetable = await self._load_timetable(
+                Path("sp_data/time.toml")
+            )
+        return self._timetable
 
     async def status(self) -> types.Status:
         """Возвращает статус поставщика."""
@@ -234,6 +229,10 @@ class Provider:
 
     # Внутренние методы
     # =================
+
+    async def _load_timetable(self, path: Path) -> types.TimeTable:
+        async with await anyio.open_file(path) as f:
+            return types.TimeTable.model_validate(toml.loads(await f.read()))
 
     async def _load_meta(self, path: Path) -> types.ScheduleStatus:
         async with await anyio.open_file(path) as f:
