@@ -2,8 +2,9 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from loguru import logger
 
 from provider.checker import Checker
@@ -55,9 +56,22 @@ async def get_provider_cl() -> list[str]:
 
 
 @app.get("/")
-async def get_schedule() -> Schedule:
-    """Возвращает полное расписание уроков."""
-    return await provider.schedule()
+async def get_schedule(
+    cl: str | None = Query(None), days: str | None = Query(None)
+) -> Schedule:
+    """Возвращает полное расписание уроков.
+
+    Вы можете передать фильтры чтобы получить расписание для получения
+    расписания для определённых классов/дней недели.
+    """
+    return await provider.schedule(
+        ScheduleFilter(
+            cl=cl.split(",") if cl is not None else [],
+            days=[int(x) for x in days.split(",") if x.isdigit()]
+            if days is not None
+            else [],
+        )
+    )
 
 
 @app.post("/")
