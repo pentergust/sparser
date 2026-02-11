@@ -5,11 +5,11 @@
 по функционалу.
 """
 
-# Импортируем все обработчики
 from tg.handlers import (
     counters,
     errors,
     intents,
+    menu,
     notify,
     request,
     schedule,
@@ -17,19 +17,16 @@ from tg.handlers import (
     updates,
 )
 
-# Список всех экземпляров роутеров обработчиков
-# Вы можете и самостоятельно отключать не нужным вам обработчики
-# Однако помните что пункты меню будут на месте.
-# Только они останутся безответными.
 routers = (
-    counters.router,  # Счётчики расписания. Считаются количество элементов.
-    errors.router,  # Обработчик ошибок во время работы бота.
-    intents.router,  # Редактор пользовательских намерений.
-    notify.router,  # Рассылка расписания и изменения в нём.
-    schedule.router,  # Получение расписания, один из главных обработчиков.
-    set_class.router,  # Выбор класса пользователя
-    updates.router,  # Просмотр списка изменений в расписании
-    request.router,  # Запросы к расписанию
+    counters.router,
+    errors.router,
+    intents.router,
+    menu.router,
+    notify.router,
+    schedule.router,
+    set_class.router,
+    updates.router,
+    request.router,
 )
 
 __all__ = ("routers",)
