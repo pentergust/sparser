@@ -8,6 +8,7 @@
 # Импортируем все обработчики
 from tg.handlers import (
     counters,
+    errors,
     intents,
     notify,
     request,
@@ -22,6 +23,7 @@ from tg.handlers import (
 # Только они останутся безответными.
 routers = (
     counters.router,  # Счётчики расписания. Считаются количество элементов.
+    errors.router,  # Обработчик ошибок во время работы бота.
     intents.router,  # Редактор пользовательских намерений.
     notify.router,  # Рассылка расписания и изменения в нём.
     schedule.router,  # Получение расписания, один из главных обработчиков.
