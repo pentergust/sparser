@@ -34,13 +34,13 @@ from tortoise import Tortoise
 
 from sp.db import User
 from sp.view.messages import MessagesView, get_str_timedelta
-from sp_tg.handlers import routers
-from sp_tg.keyboards import (
+from tg.handlers import routers
+from tg.keyboards import (
     PASS_SET_CL_MARKUP,
     get_main_keyboard,
     get_other_keyboard,
 )
-from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
+from tg.messages import SET_CLASS_MESSAGE, get_home_message
 
 # Настройки и константы
 # =====================

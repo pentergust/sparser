@@ -19,7 +19,7 @@ from aiogram.types import (
 )
 
 from sp.db import User
-from sp_tg.filters import IsAdmin
+from tg.filters import IsAdmin
 
 router = Router(name=__name__)
 

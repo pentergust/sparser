@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from sp.db import User
 from sp.view.messages import MessagesView
-from sp_tg.keyboards import (
+from tg.keyboards import (
     get_sc_keyboard,
     get_select_day_keyboard,
     get_week_keyboard,

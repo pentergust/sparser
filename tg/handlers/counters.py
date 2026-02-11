@@ -18,7 +18,7 @@ from sp.counter import CounterTarget, CurrentCounter
 from sp.db import User, UserIntent
 from sp.intents import Intent
 from sp.view.messages import MessagesView
-from sp_tg.messages import get_intent_status
+from tg.messages import get_intent_status
 
 router = Router(name=__name__)
 

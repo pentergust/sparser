@@ -16,9 +16,9 @@ from aiogram.types import (
 
 from sp.db import User
 from sp.view.messages import MessagesView
-from sp_tg.filters import IsAdmin
-from sp_tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
-from sp_tg.messages import SET_CLASS_MESSAGE, get_home_message
+from tg.filters import IsAdmin
+from tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
+from tg.messages import SET_CLASS_MESSAGE, get_home_message
 
 router = Router(name=__name__)
 

@@ -4,13 +4,13 @@
 Которая в свою очередь запускает Long polling.
 
 ```sh
-poetry run python -m sp_tg
+poetry run python -m tg
 ```
 """
 
 import asyncio
 
-from sp_tg.bot import main
+from tg.bot import main
 
 if __name__ == "__main__":
     asyncio.run(main())

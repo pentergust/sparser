@@ -6,7 +6,7 @@
 """
 
 # Импортируем все обработчики
-from sp_tg.handlers import (
+from tg.handlers import (
     counters,
     intents,
     notify,
