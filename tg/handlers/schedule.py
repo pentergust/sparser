@@ -9,12 +9,12 @@ from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, Message
 
-from tg.db import User
 from sp.view.messages import MessagesView
+from tg.db import User
 from tg.keyboards import (
     get_sc_keyboard,
     get_select_day_keyboard,
-    get_week_keyboard,
+    week_markup,
 )
 
 router = Router(name=__name__)
@@ -91,7 +91,7 @@ async def sc_callback(
         text = view.today_lessons(
             await user.intent_or(view.sc.construct_intent(cl=callback_data.cl))
         )
-        reply_markup = get_week_keyboard(callback_data.cl)
+        reply_markup = week_markup(callback_data.cl)
 
     # Расписание на другой день недели
     else:
@@ -102,7 +102,7 @@ async def sc_callback(
                 )
             ),
         )
-        reply_markup = get_week_keyboard(callback_data.cl)
+        reply_markup = week_markup(callback_data.cl)
 
     await query.message.edit_text(text=text, reply_markup=reply_markup)
 

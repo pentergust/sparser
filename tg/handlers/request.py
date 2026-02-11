@@ -12,9 +12,9 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from loguru import logger
 
-from tg.db import User
 from sp.view.messages import MessagesView
-from tg.keyboards import get_main_keyboard, get_week_keyboard
+from tg.db import User
+from tg.keyboards import main_markup, week_markup
 from tg.messages import get_home_message
 
 router = Router(name=__name__)
@@ -73,7 +73,7 @@ async def sc_handler(
     elif user.cl != "":
         await message.answer(
             text=view.today_lessons(await user.main_intent()),
-            reply_markup=get_week_keyboard(user.cl),
+            reply_markup=week_markup(user.cl),
         )
     else:
         await message.answer(
@@ -112,7 +112,7 @@ async def main_handler(
         relative_day = view.relative_day(user)
         await message.answer(
             text=get_home_message(user.cl),
-            reply_markup=get_main_keyboard(user.cl, relative_day),
+            reply_markup=main_markup(user.cl, relative_day),
         )
 
     # Отправляем список классов, в личные сообщения.

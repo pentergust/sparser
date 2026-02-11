@@ -14,10 +14,10 @@ from aiogram.types import (
     Message,
 )
 
-from tg.db import User
 from sp.view.messages import MessagesView
+from tg.db import User
 from tg.filters import IsAdmin
-from tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard
+from tg.keyboards import PASS_SET_CL_MARKUP, main_markup
 from tg.messages import SET_CLASS_MESSAGE, get_home_message
 
 router = Router(name=__name__)
@@ -79,9 +79,7 @@ async def set_class_command(
         if await user.set_cl(command.args, view.sc):
             await message.answer(
                 text=get_home_message(command.args),
-                reply_markup=get_main_keyboard(
-                    command.args, view.relative_day(user)
-                ),
+                reply_markup=main_markup(command.args, view.relative_day(user)),
             )
         # Если такого класса не существует
         else:
@@ -109,7 +107,7 @@ async def pass_handler(
     await user.set_cl("", view.sc)
     await message.answer(
         text=get_home_message(user.cl),
-        reply_markup=get_main_keyboard(user.cl, None),
+        reply_markup=main_markup(user.cl, None),
     )
 
 
@@ -151,5 +149,5 @@ async def pass_class_callback(
     await user.set_cl("", view.sc)
     await query.message.edit_text(
         text=get_home_message(user.cl),
-        reply_markup=get_main_keyboard(user.cl, None),
+        reply_markup=main_markup(user.cl, None),
     )

@@ -12,8 +12,8 @@ from sp.view.messages import MessagesView, get_str_timedelta
 from tg.db import User
 from tg.keyboards import (
     PASS_SET_CL_MARKUP,
-    get_main_keyboard,
-    get_other_keyboard,
+    action_markup,
+    main_markup,
 )
 from tg.messages import SET_CLASS_MESSAGE, get_home_message
 
@@ -67,7 +67,7 @@ async def info_handler(
     """Статус работы бота и платформы."""
     await message.answer(
         text=await get_status_message(view, _TIMETAG_PATH, user),
-        reply_markup=get_other_keyboard(user.cl),
+        reply_markup=action_markup(user.cl),
     )
 
 
@@ -86,7 +86,7 @@ async def start_handler(
     await message.delete()
     await message.answer(
         text=get_home_message(user.cl),
-        reply_markup=get_main_keyboard(user.cl, view.relative_day(user)),
+        reply_markup=main_markup(user.cl, view.relative_day(user)),
     )
 
 
@@ -103,7 +103,7 @@ async def delete_msg_callback(
     except TelegramBadRequest:
         await query.message.edit_text(
             text=get_home_message(user.cl),
-            reply_markup=get_main_keyboard(user.cl, view.relative_day(user)),
+            reply_markup=main_markup(user.cl, view.relative_day(user)),
         )
 
 
@@ -114,7 +114,7 @@ async def home_callback(
     """Возвращает в главный раздел."""
     await query.message.edit_text(
         text=get_home_message(user.cl),
-        reply_markup=get_main_keyboard(user.cl, view.relative_day(user)),
+        reply_markup=main_markup(user.cl, view.relative_day(user)),
     )
 
 
@@ -128,5 +128,5 @@ async def other_callback(
     """
     await query.message.edit_text(
         text=await get_status_message(view, _TIMETAG_PATH, user),
-        reply_markup=get_other_keyboard(user.cl),
+        reply_markup=action_markup(user.cl),
     )

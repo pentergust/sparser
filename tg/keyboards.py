@@ -28,7 +28,7 @@ PASS_SET_CL_MARKUP = InlineKeyboardMarkup(
 # Для расписания уроков --------------------------------------------------------
 
 
-def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
+def week_markup(cl: str) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для получение расписания на неделю.
 
     Используется в сообщении с расписанием уроков.
@@ -56,6 +56,7 @@ def get_week_keyboard(cl: str) -> InlineKeyboardMarkup:
     )
 
 
+# TODO: -> schedule
 def get_sc_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру, для получения расписания на сегодня.
 
@@ -84,6 +85,7 @@ def get_sc_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     )
 
 
+# TODO: -> schedule
 def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     """Возвращает клавиатуру выбора дня недели в расписании.
 
@@ -116,10 +118,11 @@ def get_select_day_keyboard(cl: str, relative_day: str) -> InlineKeyboardMarkup:
     )
 
 
-# Основные клавиатуры ----------------------------------------------------------
+# Клавиатуры главного меню
+# ========================
 
 
-def get_other_keyboard(
+def action_markup(
     cl: str | None = None, home_button: bool | None = True
 ) -> InlineKeyboardMarkup:
     """Собирает дополнительную клавиатуру.
@@ -165,7 +168,7 @@ def get_other_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def get_main_keyboard(
+def main_markup(
     cl: str, relative_day: str | None = None
 ) -> InlineKeyboardMarkup:
     """Возвращает главную клавиатуру бота.
@@ -183,7 +186,7 @@ def get_main_keyboard(
     - sc:{cl}:today => Получаем расписания на сегодня/завтра для класса.
     """
     if cl == "":
-        return get_other_keyboard(cl, home_button=False)
+        return action_markup(cl, home_button=False)
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
