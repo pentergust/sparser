@@ -24,6 +24,7 @@ from loguru import logger
 from tortoise import Tortoise
 
 from sp.view.messages import MessagesView
+from tg import middleware
 from tg.db import User
 from tg.handlers import routers
 
@@ -43,55 +44,6 @@ _ALERT_AUTO_UPDATE_AFTER_SECONDS = 3600
 dp = Dispatcher(view=MessagesView())
 
 
-# Добавление Middleware
-# =====================
-
-
-@dp.message.middleware()
-@dp.callback_query.middleware()
-@dp.error.middleware()
-async def user_middleware(
-    handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
-    event: Update,
-    data: dict[str, Any],
-) -> Awaitable[Any]:
-    """Добавляет экземпляр пользователя и хранилище намерений."""
-    # Это выглядит как костыль, работает примерно так же
-    if isinstance(event, ErrorEvent):
-        if event.update.callback_query is not None:
-            uid = event.update.callback_query.message.chat.id
-        else:
-            uid = event.update.message.chat.id
-    elif isinstance(event, CallbackQuery):
-        uid = event.message.chat.id
-    elif isinstance(event, Message):
-        uid = event.chat.id
-    else:
-        raise ValueError("Unknown event type")
-
-    user, _ = await User.get_or_create(id=uid)
-    data["user"] = user
-    return await handler(event, data)
-
-
-# Если вы хотите отключить ведение журнала в боте
-# Закомментируйте необходимые вам декораторы
-@dp.message.middleware
-@dp.callback_query.middleware
-async def log_middleware(
-    handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
-    event: Update,
-    data: dict[str, Any],
-) -> Awaitable[Any]:
-    """Отслеживает полученные ботом сообщения и callback query."""
-    if isinstance(event, CallbackQuery):
-        logger.info("[c] {}: {}", event.message.chat.id, event.data)
-    elif isinstance(event, Message):
-        logger.info("[m] {}: {}", event.chat.id, event.text)
-
-    return await handler(event, data)
-
-
 # Запуск бота
 # ===========
 
@@ -106,6 +58,13 @@ async def main() -> None:
     logger.info("Init DB connection:")
     await Tortoise().init(db_url=_DB_URL, modules={"models": ["tg.db"]})
     await Tortoise.generate_schemas()
+
+    dp.message.middleware.register(middleware.set_user)
+    dp.callback_query.middleware.register(middleware.set_user)
+    dp.errors.middleware.register(middleware.set_user)
+
+    dp.message.middleware.register(middleware.log_middleware)
+    dp.callback_query.middleware.register(middleware.log_middleware)
 
     for r in routers:
         logger.info("Include router: {}", r.name)
