@@ -7,17 +7,81 @@
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
+from sp.enums import SHORT_DAY_NAMES
 from sp.view.messages import MessagesView
 from tg.db import User
 from tg.keyboards import (
-    get_sc_keyboard,
-    get_select_day_keyboard,
     week_markup,
 )
 
 router = Router(name=__name__)
+
+
+def sc_markup(cl: str, relative_day: str) -> InlineKeyboardMarkup:
+    """Возвращает клавиатуру, для получения расписания на сегодня.
+
+    Используется в сообщениях с расписанием уроков.
+    Когда режим просмотра выставлен "на неделю".
+    Также содержит кнопки для возврата домой и выбора дня недели.
+
+    Buttons:
+
+    - home => Возврат в домашний раздел.
+    - sc:{cl}:today => Получить расписание на сегодня для класса.
+    - select_day:{cl} => Выбрать день недели для расписания.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🏠Домой", callback_data="home"),
+                InlineKeyboardButton(
+                    text=relative_day, callback_data=f"sc:{cl}:today"
+                ),
+                InlineKeyboardButton(
+                    text="▷", callback_data=f"select_day:{cl}"
+                ),
+            ]
+        ]
+    )
+
+
+def select_day_markup(cl: str, relative_day: str) -> InlineKeyboardMarkup:
+    """Возвращает клавиатуру выбора дня недели в расписании.
+
+    Используется в сообщения с расписанием.
+    Позволяет выбрать один из дней недели.
+    Автоматически подставляя указанный класс в запрос.
+
+    Buttons:
+
+    - sc:{cl}:{0..6} => Получить расписания для указанного дня.
+    - sc:{cl}:today => Получить расписание на сегодня.
+    - sc:{cl}:week => получить расписание на неделю.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=x, callback_data=f"sc:{cl}:{i}")
+                for i, x in enumerate(SHORT_DAY_NAMES)
+            ],
+            [
+                InlineKeyboardButton(text="◁", callback_data="home"),
+                InlineKeyboardButton(
+                    text=relative_day, callback_data=f"sc:{cl}:today"
+                ),
+                InlineKeyboardButton(
+                    text="Неделя", callback_data=f"sc:{cl}:week"
+                ),
+            ],
+        ]
+    )
 
 
 # Callback данные
@@ -60,7 +124,7 @@ async def week_sc_command(
                 view.sc.construct_intent(days=[0, 1, 2, 3, 4, 5], cl=user.cl)
             ),
         ),
-        reply_markup=get_sc_keyboard(user.cl, view.relative_day(user)),
+        reply_markup=sc_markup(user.cl, view.relative_day(user)),
     )
 
 
@@ -84,7 +148,7 @@ async def sc_callback(
             ),
         )
         relative_day = view.relative_day(user)
-        reply_markup = get_sc_keyboard(callback_data.cl, relative_day)
+        reply_markup = sc_markup(callback_data.cl, relative_day)
 
     # Расписание на сегодня/завтра
     elif callback_data.day == "today":
@@ -117,7 +181,7 @@ async def select_day_callback(
     """Отображает клавиатуру для выбора дня расписания уроков."""
     await query.message.edit_text(
         text=f"📅 на ...\n🔶 Для {callback_data.cl}:",
-        reply_markup=get_select_day_keyboard(
+        reply_markup=select_day_markup(
             callback_data.cl, view.relative_day(user)
         ),
     )
