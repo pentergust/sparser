@@ -1,4 +1,7 @@
-"""Модели базы данных Postgres."""
+"""Модели базы данных Postgres.
+
+Портировано напрямую из Sp.
+"""
 
 from collections import Counter
 from collections.abc import Iterator

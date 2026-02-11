@@ -8,6 +8,7 @@ from aiogram.types import ErrorEvent
 from loguru import logger
 
 from tg.db import User
+from tg.filters import NotAdminError
 
 router = Router(name=__name__)
 
@@ -81,6 +82,12 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
 
     # Не исключено что сообщение может быть пустым
     if message is None:
+        return None
+
+    if isinstance(exception.exception, NotAdminError):
+        await message.answer(
+            "Только администратор может использовать данную команду."
+        )
         return None
 
     await message.answer(send_error_message(exception, user))

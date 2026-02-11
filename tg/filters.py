@@ -11,8 +11,10 @@
 from aiogram.enums import ChatMemberStatus
 from aiogram.filters import BaseFilter
 from aiogram.types import CallbackQuery, Message
-from loguru import logger
 
+
+class NotAdminError(Exception):
+    """Если не администратор пытается использовать функционал администратора."""
 
 class IsAdmin(BaseFilter):
     """Проверяет что участник является администратором чата.
@@ -32,25 +34,22 @@ class IsAdmin(BaseFilter):
         """Проверяет что пользователь администратор чата."""
         if isinstance(event, Message):
             chat = event.chat
-        elif isinstance(event, CallbackQuery):
+        elif event.message is not None:
             chat = event.message.chat
+        else:
+            raise NotAdminError("Message not found")
 
-        # Есть такая вероятность, что чата не будет, тогда это странно..
-        if chat is None:
-            logger.error("Chat is empty: {}", event)
-            raise ValueError("Chat is empty")
-
-        # В личной переписке администраторов нету
         if chat.type == "private":
             return True
+
+        if event.from_user is None:
+            raise NotAdminError("User not found")
 
         member = await chat.get_member(event.from_user.id)
         if member.status not in (
             ChatMemberStatus.CREATOR,
             ChatMemberStatus.ADMINISTRATOR,
         ):
-            await event.answer(
-                "⚙️ Только администраторы чата могут изменять настройки бота."
-            )
-            return False
+            raise NotAdminError
+
         return True
