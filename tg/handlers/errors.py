@@ -1,12 +1,13 @@
 """Обработчик ошибок бота."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
-from aiogram import Router
+from aiogram import Bot, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
-from aiogram.types import ErrorEvent
+from aiogram.types import ErrorEvent, Message
 from loguru import logger
 
+from tg.config import BotConfig
 from tg.db import User
 from tg.filters import NotAdminError
 
@@ -46,8 +47,6 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
 
     return (
         "⚠️ Произошла ошибка в работе бота."
-        # TODO: Использовать общий конфиг
-        # f"\n-- Версия: {_BOT_VERSION}"
         f"\n-- Время: {now}"
         "\n\n👤 Пользователь"
         f"\n-- Имя: {user_name}"
@@ -56,13 +55,13 @@ def send_error_message(exception: ErrorEvent, user: User) -> str:
         f"\n{action}"
         f"\n\n🚫 Возникло исключение  {exception.exception.__class__.__name__}:"
         f"\n-- {exception.exception}"
-        "\n\nПожалуйста, отправьте @milinuri данное сообщение."
-        "\nЭто очень поможет сделать бота стабильнее."
     )
 
 
 @router.errors
-async def error_handler(exception: ErrorEvent, user: User) -> None:
+async def error_handler(
+    exception: ErrorEvent, user: User, config: BotConfig, bot: Bot
+) -> None:
     """Ловит и обрабатывает все исключения.
 
     Отправляет сообщение об ошибке пользователям.
@@ -90,11 +89,16 @@ async def error_handler(exception: ErrorEvent, user: User) -> None:
         )
         return None
 
-    await message.answer(send_error_message(exception, user))
-    # TODO: Использовать общий конфиг
-    # if not _DEBUG_MODE and _ADMIN_ID is not None:
-    #     await message.bot.send_message(
-    #         chat_id=_ADMIN_ID, text=send_error_message(exception, user)
-    #     )
+    await message.answer(
+        "⚠️ Произошла ошибочка.\n"
+        "Попробуйте воспользоваться командой чуть позже.\n\n"
+        "Если проблема не решилась, свяжитесь с администратором."
+    )
+    if not config.debug:
+        if isinstance(message, Message):
+            await message.copy_to(config.bot_admin)
+        await bot.send_message(
+            config.bot_admin, send_error_message(exception, user)
+        )
 
     return None
