@@ -13,7 +13,6 @@ from tg.handlers import (
     request,
     schedule,
     set_class,
-    tutorial,
     updates,
 )
 
@@ -27,7 +26,6 @@ routers = (
     notify.router,  # Рассылка расписания и изменения в нём.
     schedule.router,  # Получение расписания, один из главных обработчиков.
     set_class.router,  # Выбор класса пользователя
-    tutorial.router,  # справка как использовать бота
     updates.router,  # Просмотр списка изменений в расписании
     request.router,  # Запросы к расписанию
 )
