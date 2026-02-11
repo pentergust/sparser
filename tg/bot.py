@@ -10,12 +10,6 @@
 Это главный файл с самыми необходимыми обработчиками.
 С функцией для загрузки всех дополнительных роутеров и последующего
 запуска бота.
-
-Предоставляет:
-
-- /start /help (home): Главное сообщение бота.
-- /info: Статус работы платформы и бота.
-- delete_msg: Удалить сообщение или отправить главный раздел.
 """
 
 from collections.abc import Awaitable, Callable
@@ -333,11 +327,9 @@ async def main() -> None:
     await Tortoise().init(db_url=_DB_URL, modules={"models": ["sp.db"]})
     await Tortoise.generate_schemas()
 
-    # Загружаем обработчики.
     for r in routers:
-        logger.info("Include router: {} ...", r.name)
+        logger.info("Include router: {}", r.name)
         dp.include_router(r)
 
-    # Запускаем бота.
     logger.info("Start polling ...")
-    await dp.start_polling(bot)
+    await dp.start_polling(bot)  # pyright: ignore[reportUnknownMemberType]
