@@ -1,7 +1,4 @@
-"""Модели базы данных Postgres.
-
-TODO: Переместить компонент на уровень бота.
-"""
+"""Модели базы данных Postgres."""
 
 from collections import Counter
 from collections.abc import Iterator

@@ -18,7 +18,7 @@ from aiogram.types import (
     Message,
 )
 
-from sp.db import User
+from tg.db import User
 from tg.filters import IsAdmin
 
 router = Router(name=__name__)

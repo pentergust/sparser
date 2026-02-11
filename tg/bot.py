@@ -26,8 +26,8 @@ from dotenv import load_dotenv
 from loguru import logger
 from tortoise import Tortoise
 
-from sp.db import User
 from sp.view.messages import MessagesView, get_str_timedelta
+from tg.db import User
 from tg.handlers import routers
 from tg.keyboards import (
     PASS_SET_CL_MARKUP,
@@ -324,7 +324,7 @@ async def main() -> None:
     """
     bot = Bot(TELEGRAM_TOKEN)
     logger.info("Init DB connection:")
-    await Tortoise().init(db_url=_DB_URL, modules={"models": ["sp.db"]})
+    await Tortoise().init(db_url=_DB_URL, modules={"models": ["tg.db"]})
     await Tortoise.generate_schemas()
 
     for r in routers:

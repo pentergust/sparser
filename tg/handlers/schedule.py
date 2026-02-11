@@ -9,7 +9,7 @@ from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, Message
 
-from sp.db import User
+from tg.db import User
 from sp.view.messages import MessagesView
 from tg.keyboards import (
     get_sc_keyboard,

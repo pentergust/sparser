@@ -14,7 +14,7 @@ from aiogram.types import (
     Message,
 )
 
-from sp.db import User
+from tg.db import User
 from sp.view.messages import MessagesView
 from tg.filters import IsAdmin
 from tg.keyboards import PASS_SET_CL_MARKUP, get_main_keyboard

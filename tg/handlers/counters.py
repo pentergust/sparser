@@ -15,7 +15,7 @@ from aiogram.types import (
 )
 
 from sp.counter import CounterTarget, CurrentCounter
-from sp.db import User, UserIntent
+from tg.db import User, UserIntent
 from sp.intents import Intent
 from sp.view.messages import MessagesView
 from tg.messages import get_intent_status

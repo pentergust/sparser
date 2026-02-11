@@ -16,7 +16,7 @@ from aiogram.types import (
     Message,
 )
 
-from sp.db import User
+from tg.db import User
 from sp.intents import Intent
 from sp.updates import UpdateData
 from sp.view.messages import MessagesView

@@ -17,7 +17,7 @@ from aiogram.types import (
     Message,
 )
 
-from sp.db import User, UserIntent
+from tg.db import User, UserIntent
 from sp.enums import SHORT_DAY_NAMES
 from sp.intents import Intent
 from sp.view.messages import MessagesView

@@ -12,7 +12,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from loguru import logger
 
-from sp.db import User
+from tg.db import User
 from sp.view.messages import MessagesView
 from tg.keyboards import get_main_keyboard, get_week_keyboard
 from tg.messages import get_home_message
