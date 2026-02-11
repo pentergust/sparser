@@ -14,7 +14,7 @@ from loguru import logger
 
 from sp.view.messages import MessagesView
 from tg.db import User
-from tg.keyboards import main_markup, week_markup
+from tg.markups import main_markup, week_markup
 from tg.messages import get_home_message
 
 router = Router(name=__name__)

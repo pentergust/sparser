@@ -17,7 +17,7 @@ from aiogram.types import (
 from sp.enums import SHORT_DAY_NAMES
 from sp.view.messages import MessagesView
 from tg.db import User
-from tg.keyboards import (
+from tg.markups import (
     week_markup,
 )
 

@@ -10,7 +10,7 @@ from aiogram.types import CallbackQuery, Message
 
 from sp.view.messages import MessagesView, get_str_timedelta
 from tg.db import User
-from tg.keyboards import (
+from tg.markups import (
     PASS_SET_CL_MARKUP,
     action_markup,
     main_markup,
